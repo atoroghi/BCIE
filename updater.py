@@ -4,26 +4,23 @@ import math
 import torch
 from torch.distributions.multivariate_normal import MultivariateNormal
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy import stats
-from ipywidgets import interact, interactive, fixed, interact_manual
-import ipywidgets as widgets
 import cvxpy as cp
 seed = torch.manual_seed(1)
 
 class Updater:
-	def __init__(self,X,y,mu_prior,Sigma_prior,W,args):
+	def __init__(self,X,y,mu_prior,Sigma_prior,W,args,etta):
 		self.X = X
-		self.y = y  
+		self.y = y
 		self.mu_prior = mu_prior
 		self.Sigma_prior = Sigma_prior
-		self.lam= torch.inverse(Sigma_prior) 
+		self.lam= torch.inverse(Sigma_prior)
 		self.W= W
 		self.prior_distribution=MultivariateNormal(mu_prior, covariance_matrix=Sigma_prior)
 		self.alpha=args.alpha
 		self.max_iters=args.max_iters_laplace
-		self.etta=args.etta
+		self.etta=etta
 		self.emb_dim=args.emb_dim
+		self.device = device
 
 
 
@@ -33,8 +30,10 @@ class Updater:
 		return self.W
 
 	def SDR_cvxopt(self,Sigma_prior, X_all, y , previous_w):
-		landa= torch.inverse(Sigma_prior)
-		previous_w=previous_w.detach().numpy()
+		X_all = X_all.cpu()
+		y = y.cpu()
+		landa = torch.inverse(Sigma_prior).cpu()
+		previous_w=previous_w.cpu().detach().numpy()
 		w= cp.Variable(self.emb_dim)
 		constraints=[]
 		objective_function= 0.5*cp.quad_form(w-previous_w, landa)
@@ -85,10 +84,10 @@ class Updater:
 		prior_precision = self.lam
 		Sigma = torch.inverse(prior_precision + self.etta*H_map)
 		return mu, Sigma
-    
-    
-    
 
-    
+
+
+
+
 
 
