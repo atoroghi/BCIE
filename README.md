@@ -37,7 +37,7 @@ Supposed to be used as the main critiquing loop simulator. Its code is also smel
 
 In order to run the code, you can just call the main function that you intend to use and input the arguments, e.g. using:
 
- `python main-datasetcheck.py -ne 5000 -ni 1 -lr 0.05 -reg 0.03 -dataset ML -emb_dim 5 -neg_ratio 10 -batch_size 250 -save_each 200 -max_iters_laplace 10000 -alpha 0.01 -etta 15000`
+ `python main-train.py -ne 5000 -ni 1 -lr 0.05 -reg 0.03 -dataset ML -emb_dim 5 -neg_ratio 10 -batch_size 250 -save_each 200 -max_iters_laplace 10000 -alpha 0.01 -etta 15000`
  
  #### datasets
  Includes the synthetic datasets that I created for my experiments. It is tried to have a synthetic dataset close to what a real movie dataset will look like (consisting of 1-1, 1-N, N-1,N-N) relations. The `SimilarML` folder contains the duplicated version in which each item that our studied users (user 0 to 3) like have a similar counterpart which will be implicitly critiqued.
