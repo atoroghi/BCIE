@@ -4,7 +4,7 @@ import torch
 import math
 
 class Dataset:
-    def __init__(self, ds_name, noise):
+    def __init__(self, ds_name):
         self.name = ds_name
         self.dir = "datasets/" + ds_name + "/"
         self.ent2id = {}
@@ -12,10 +12,9 @@ class Dataset:
         self.items = []
         self.users = []
         self.users_likes = {}
-        self.noise_intensity = noise
         self.data = {spl: self.read(self.dir + spl + ".txt") for spl in ["train", "valid", "test"]}
         self.batch_index = 0
-
+       
     def read(self, file_path):
         with open(file_path, "r") as f:
             lines = f.readlines()
@@ -30,20 +29,14 @@ class Dataset:
                 if triples[i][0] not in self.users_likes:
                     self.users_likes[triples[i][0]]=[]
                 else:
-                    if triples[i][2] not in self.users_likes[triples[i][0]]:
-                        self.users_likes[triples[i][0]].append(triples[i][2])
-                    
+                    if file_path!=self.dir + "valid.txt":
+                        if triples[i][2] not in self.users_likes[triples[i][0]]:
+                            self.users_likes[triples[i][0]].append(triples[i][2])
                 if triples[i][2] not in self.items:
                     self.items.append(triples[i][2])
-        noise_intensity=self.noise_intensity
-        num_facts=np.arange(triples.shape[0])
-        to_change=np.random.choice(num_facts,int(np.ceil(noise_intensity*triples.shape[0])),replace=False)
-        for ind in to_change:
-            ent=np.random.choice([0,2],1)
-            triples[ind][ent]=triples[np.random.choice(num_facts[:-2],1)[0]][ent]
 
         return triples
-
+    
     def num_ent(self):
         return len(self.ent2id)
     
