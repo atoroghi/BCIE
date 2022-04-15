@@ -57,7 +57,7 @@ class Tester:
                 queries = self.create_queries(fact, head_or_tail)
                 for raw_or_fil in settings:
                     h, r, t = self.add_fact_and_shred(fact, queries, raw_or_fil)
-                    sim_scores,_,_,_ = self.model(h, r, t)
+                    scores,_,_,_,_,_,_ = self.model(h, r, t)
                     rank = self.get_rank(sim_scores)
                     self.measure.update(rank, raw_or_fil)
 
