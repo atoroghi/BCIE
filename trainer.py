@@ -1,4 +1,4 @@
-import os
+import os, time, sys
 from SimplE import SimplE
 from dataload import LoadDataset
 from utils import loss_plt
@@ -25,15 +25,15 @@ class Trainer:
 
         optimizer = torch.optim.Adagrad(
             self.model.parameters(),
-            lr=self.args.lr,
-            weight_decay=0,
-            initial_accumulator_value=0.1 # this is added because of the consistency to the original tensorflow code
+            lr = self.args.lr,
+            weight_decay = 0,
+            initial_accumulator_value = 0.1 # this is added because of the consistency to the original tensorflow code
         )
         dataloader = DataLoader(
             self.dataset, 
-            batch_size=self.args.batch_size, 
-            shuffle=True, 
-            num_workers=8
+            batch_size = self.args.workers, 
+            shuffle = True, 
+            num_workers = self.args.workers
         )
 
         # main training loop
@@ -45,6 +45,8 @@ class Trainer:
             loss_temp = []
             for x in dataloader:
                 x = x.to(self.device)
+                x = x.view(-1, 4)
+                
                 optimizer.zero_grad()
 
                 score = self.model(x)
@@ -59,6 +61,7 @@ class Trainer:
                 loss.backward()
                 optimizer.step()
                 loss_temp.append(loss.cpu().item())
+
             loss_track.append(np.mean(loss_temp))
             print('epoch: {}\tloss: {}'.format(epoch, loss_track[-1]))
 

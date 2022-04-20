@@ -24,12 +24,12 @@ class SimplE(nn.Module):
         nn.init.uniform_(self.rel_inv_embs.weight.data, -sqrt_size, sqrt_size)
 
     def forward(self, x):
-        hh_embs = self.ent_h_embs(x[:,:,0])
-        ht_embs = self.ent_h_embs(x[:,:,2])
-        th_embs = self.ent_t_embs(x[:,:,0])
-        tt_embs = self.ent_t_embs(x[:,:,2])
-        r_embs = self.rel_embs(x[:,:,1])
-        r_inv_embs = self.rel_inv_embs(x[:,:,1])
+        hh_embs = self.ent_h_embs(x[:,0])
+        ht_embs = self.ent_h_embs(x[:,2])
+        th_embs = self.ent_t_embs(x[:,0])
+        tt_embs = self.ent_t_embs(x[:,2])
+        r_embs = self.rel_embs(x[:,1])
+        r_inv_embs = self.rel_inv_embs(x[:,1])
 
         # get forward and inverse similarity
         for_sim = hh_embs * r_embs * tt_embs
@@ -38,7 +38,7 @@ class SimplE(nn.Module):
         return torch.clamp((for_sim + inv_sim) / 2, -20, 20)
 
     def loss(self, score, x):
-        labels = torch.unsqueeze(x[:,:,3], axis=2)
+        labels = torch.unsqueeze(x[:,3], axis=1)
         loss = torch.sum(F.softplus(-labels * score))
         return loss, self.reg_loss()
 

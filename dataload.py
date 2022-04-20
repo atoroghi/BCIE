@@ -7,11 +7,14 @@ from torch.utils.data import DataLoader
 
 class LoadDataset(Dataset):
     # mode is 'test' or 'train'
-    def __init__(self, dataset_name, mode, neg_ratio, noise):
-        self.name = dataset_name
-        self.neg_ratio = int(neg_ratio)
-        assert neg_ratio >= 1
-        self.noise = noise
+    def __init__(self, mode, args):
+        self.name = args.dataset
+        self.neg_ratio = int(args.neg_ratio)
+        #assert neg_ratio >= 1
+        self.noise = args.ni
+        self.workers = args.workers
+        self.batch_size = args.batch_size
+        self.par_batch = self.batch_size // self.workers
 
         # load datasets and info mappings
         path = os.path.join('datasets', self.name)
@@ -31,7 +34,10 @@ class LoadDataset(Dataset):
             
             with open(os.path.join(path, 'user_likes_map.pkl'), 'rb') as f:
                 self.user_likes_map = pickle.load(f)
-        
+
+        # for indexing last batch
+        self.last_index = self.data.shape[0] // self.par_batch
+
         # total num of items in kg + rec
         self.num_items = max(np.max(self.kg), np.max(rec))
         self.num_rel = max(np.max(self.kg[:,1]), np.max(rec[:,1]))
@@ -43,28 +49,48 @@ class LoadDataset(Dataset):
             self.link_map = pickle.load(f)
 
     def __getitem__(self, index):
-        pos = self.data[index]
+        if index != self.last_index:
+            pos = self.data[index : index + self.par_batch]
+        else:
+            pos = self.data[index :]
         neg = self.get_negatives(pos)
-        data = np.concatenate((np.expand_dims(pos, axis=0), neg), axis=0)
+        
+        data = np.concatenate((pos, neg), axis=0)
         
         # add label information in col 4
         labels = -np.ones((data.shape[0], 1))
-        labels[0] = 1
+        labels[:pos.shape[0]] = 1
         data = np.hstack((data, labels))
+
         return torch.from_numpy(data).long()
 
     def __len__(self):
-        return self.data.shape[0]
+        # each worker selects (batch / num workers)
+        return self.data.shape[0] // (self.par_batch)
 
     # negative sampling
-    # TODO: update this with better policy
+    # TODO: make this parallel?
     def get_negatives(self, pos):
-        neg = np.ones((self.neg_ratio, 3), dtype=np.int32)
-        neg[:] *= pos
-        for i in range(self.neg_ratio):
-            ind = 0 if np.random.rand() < 0.5 else 2 # flip head or tail
-            neg[i, ind] = self.replace_item(pos[ind])
-        return neg
+        for i in range(pos.shape[0]):
+            neg = np.ones((self.neg_ratio, 3), dtype=np.int32)
+            neg[:] *= pos[i]
+            
+            for j in range(self.neg_ratio):
+                ind = 0 if np.random.rand() < 0.5 else 2 # flip head or tail
+                neg[j, ind] = self.replace_item(pos[i, ind])
+
+            if i == 0:
+                final_neg = neg
+            else:
+                final_neg = np.concatenate((final_neg, neg), axis=0)
+        return final_neg
+
+        #neg = np.ones((self.neg_ratio, 3), dtype=np.int32)
+        #neg[:] *= pos
+        #for i in range(self.neg_ratio):
+            #ind = 0 if np.random.rand() < 0.5 else 2 # flip head or tail
+            #neg[i, ind] = self.replace_item(pos[ind])
+        #return neg
 
     def replace_item(self, item):
         while True:

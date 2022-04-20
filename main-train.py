@@ -18,12 +18,14 @@ def get_args():
     parser.add_argument('-reg_lambda', default=0.03, type=float, help="l2 regularization parameter")
     parser.add_argument('-dataset', default="ML_FB", type=str, help="wordnet dataset")
     parser.add_argument('-emb_dim', default=200, type=int, help="embedding dimension")
-    parser.add_argument('-neg_ratio', default=10, type=int, help="number of negative examples per positive example")
-    parser.add_argument('-batch_size', default=16384, type=int, help="batch size")
     parser.add_argument('-save_each', default=50, type=int, help="validate every k epochs")
     parser.add_argument('-max_iters_laplace', default=1000, type=int, help="Maximum number of iterations for Laplace Approximation")
     parser.add_argument('-alpha', default=0.01, type=float, help="Learning rate for Laplace Approximation")
     parser.add_argument('-etta', default=1.0, type=float, help="Learning rate for Laplace Approximation")
+    
+    parser.add_argument('-workers', default=8, type=int, help="Number of workers for dataloader")
+    parser.add_argument('-batch_size', default=16384, type=int, help="batch size")
+    parser.add_argument('-neg_ratio', default=10, type=int, help="number of negative examples per positive example")
     args = parser.parse_args()
     return args
 
@@ -44,7 +46,7 @@ if __name__ == '__main__':
     ))
 
     print("loading data")
-    dataset = LoadDataset(args.dataset, 'train', args.neg_ratio, args.ni)
+    dataset = LoadDataset('train', args)
     
     print("training")
     trainer = Trainer(dataset, args, device)
@@ -52,7 +54,7 @@ if __name__ == '__main__':
 
     print("~~~~ Select best epoch on validation set ~~~~")
     epochs2test = [str(int(args.save_each * (i + 1))) for i in range(args.ne // args.save_each)]
-    dataset = Dataset(args.dataset,args.ni)
+    dataset = Dataset(args.dataset, args.ni)
     
     best_mrr = -1.0
     best_epoch = "0"
