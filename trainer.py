@@ -1,8 +1,9 @@
-import os, time, sys
+import os
 from SimplE import SimplE
 from dataload import LoadDataset
-from utils import loss_plt
+#from utils import loss_plt
 import numpy as np
+from tqdm import tqdm
 
 import torch
 import torch.nn as nn
@@ -25,20 +26,20 @@ class Trainer:
 
         optimizer = torch.optim.Adagrad(
             self.model.parameters(),
-            lr = self.args.lr,
-            weight_decay = 0,
-            initial_accumulator_value = 0.1 # this is added because of the consistency to the original tensorflow code
+            lr=self.args.lr,
+            weight_decay=0,
+            initial_accumulator_value=0.1 # this is added because of the consistency to the original tensorflow code
         )
         dataloader = DataLoader(
             self.dataset, 
-            batch_size = self.args.workers, 
-            shuffle = True, 
-            num_workers = self.args.workers
+            batch_size=self.args.batch_size, 
+            shuffle=True, 
+            num_workers=8
         )
 
         # main training loop
         loss_track = []
-        for epoch in range(self.args.ne):
+        for epoch in tqdm(range(self.args.ne+1)):
             last_batch = False
             total_loss = 0.0
 
@@ -46,10 +47,8 @@ class Trainer:
             for x in dataloader:
                 x = x.to(self.device)
                 x = x.view(-1, 4)
-                
                 optimizer.zero_grad()
-
-                score = self.model(x)
+                score,_,_,_,_,_,_ = self.model(x[:,0],x[:,1],x[:,2])
                 score_loss, reg_loss = self.model.loss(score, x)
                 loss = (score_loss + reg_loss)
 
@@ -61,7 +60,6 @@ class Trainer:
                 loss.backward()
                 optimizer.step()
                 loss_temp.append(loss.cpu().item())
-
             loss_track.append(np.mean(loss_temp))
             print('epoch: {}\tloss: {}'.format(epoch, loss_track[-1]))
 
@@ -69,7 +67,7 @@ class Trainer:
                 self.save_model(epoch)
         print(loss_track)
 
-        loss_plt(loss_track, self.args.test_name)
+        #loss_plt(loss_track, self.args.test_name)
 
     def save_model(self, chkpnt):
         #print("Saving the model")
