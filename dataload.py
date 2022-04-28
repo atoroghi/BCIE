@@ -10,7 +10,7 @@ class LoadDataset(Dataset):
     def __init__(self, mode, args):
         self.name = args.dataset
         self.neg_ratio = int(args.neg_ratio)
-        #assert neg_ratio >= 1
+        assert self.neg_ratio >= 1
         self.noise = args.ni
         self.workers = args.workers
         self.batch_size = args.batch_size
@@ -39,8 +39,9 @@ class LoadDataset(Dataset):
         self.last_index = self.data.shape[0] // self.par_batch
 
         # total num of items in kg + rec
-        self.num_items = max(np.max(self.kg), np.max(rec))
-        self.num_rel = max(np.max(self.kg[:,1]), np.max(rec[:,1]))
+        # TODO: make this loss data specific (this is dependent of data format)
+        self.num_items = np.max(rec)
+        self.num_rel = rec[0,1]
         
         # for self.print_triplet 
         with open(os.path.join(path, 'item_map.pkl'), 'rb') as f:

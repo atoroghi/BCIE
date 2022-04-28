@@ -26,28 +26,28 @@ class Trainer:
 
         optimizer = torch.optim.Adagrad(
             self.model.parameters(),
-            lr=self.args.lr,
-            weight_decay=0,
-            initial_accumulator_value=0.1 # this is added because of the consistency to the original tensorflow code
+            lr = self.args.lr,
+            weight_decay = 0,
+            initial_accumulator_value = 0.1 # this is added because of the consistency to the original tensorflow code
         )
         dataloader = DataLoader(
             self.dataset, 
-            batch_size=self.args.batch_size, 
-            shuffle=True, 
-            num_workers=8
+            batch_size = self.args.workers, # each workers get batch_size / workers items 
+            shuffle = True, 
+            num_workers = self.args.workers
         )
 
         # main training loop
         loss_track = []
         for epoch in tqdm(range(self.args.ne+1)):
-            last_batch = False
-            total_loss = 0.0
-
+            
             loss_temp = []
             for x in dataloader:
                 x = x.to(self.device)
                 x = x.view(-1, 4)
                 optimizer.zero_grad()
+
+                # TODO: too many return values... this should be a class
                 score,_,_,_,_,_,_ = self.model(x[:,0],x[:,1],x[:,2])
                 score_loss, reg_loss = self.model.loss(score, x)
                 loss = (score_loss + reg_loss)
@@ -66,7 +66,6 @@ class Trainer:
             if epoch % self.args.save_each == 0:
                 self.save_model(epoch)
         print(loss_track)
-
         #loss_plt(loss_track, self.args.test_name)
 
     def save_model(self, chkpnt):
