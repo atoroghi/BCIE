@@ -48,6 +48,7 @@ class Trainer:
                 optimizer.zero_grad()
 
                 # TODO: too many return values... this should be a class
+                        # or just never return the embeddings...
                 score,_,_,_,_,_,_ = self.model(x[:,0],x[:,1],x[:,2])
                 score_loss, reg_loss = self.model.loss(score, x)
                 loss = (score_loss + reg_loss)

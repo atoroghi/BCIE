@@ -50,12 +50,14 @@ if __name__ == '__main__':
     trainer = Trainer(dataset, args, device)
     trainer.train()
 
-    # TODO: training and testing should be in seperate files
+    # TODO: training and testing should be called seperately
+            # ie: train script, then test script (call bash both.sh if we want)
+
     # TODO: trainer and tester should be functions not classes
+            # too many variable names for no reason
 
     print('testing')
-    #model_path = 'models/' + args.dataset + '/' + str(args.ne) + '.chkpnt'
-    model_path = 'models/ML_FB/0.chkpnt'
+    model_path = 'models/' + args.dataset + '/' + str(args.ne) + '.chkpnt'
     dataset = LoadDataset('test', args)
     tester = Tester(args.dataset, model_path, 'valid',dataset,args.emb_dim,args)
     hone, hthree, hfive, hten, htwenty = tester.evaluate_precritiquing()

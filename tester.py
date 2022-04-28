@@ -57,7 +57,6 @@ class Tester:
 
         # get list of user embeddings
         for user in self.users_list:
-            # EDIT: again, waste of computation (eg: only need likes embedding once)
             h = torch.tensor([user]).long().to(self.device)
             r = torch.tensor([47]).long().to(self.device)
             t = torch.tensor([0]).long().to(self.device)
