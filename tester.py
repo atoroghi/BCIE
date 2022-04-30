@@ -13,7 +13,7 @@ import wandb
 class Tester:
     def __init__(self, dataset, model_path, valid_or_test,loaddataset,emb_dim,args):
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-        self.model = torch.load(model_path, map_location = self.device)
+        self.model = torch.load(model_path, map_location = 'cpu')
         self.model.eval()
         self.dataset = dataset
         self.valid_or_test = valid_or_test
@@ -38,29 +38,23 @@ class Tester:
         wandb.config.update(args,allow_val_change=True)
 
         for item in self.items_list:
-            #h = torch.tensor([0]).long().to(self.device)
-            #r = torch.tensor([0]).long().to(self.device)
-            t = torch.tensor([item]).long().to(self.device)
-            #_, _, _, item_embedding_tail, _, _, item_embedding_head = self.model(h, r, t)
+            t = torch.tensor([item]).long()
             item_embedding_head = self.model.ent_h_embs(t)
             item_embedding_tail = self.model.ent_t_embs(t)
-            to_head=(item_embedding_head.cpu().detach().numpy()).reshape((1,self.emb_dim))
-            to_tail=(item_embedding_tail.cpu().detach().numpy()).reshape((1,self.emb_dim))
+            to_head=(item_embedding_head.detach().numpy()).reshape((1,self.emb_dim))
+            to_tail=(item_embedding_tail.detach().numpy()).reshape((1,self.emb_dim))
             index=self.items_index[item]
             self.items_embeddings_head[index]=to_head
             self.items_embeddings_tail[index]=to_tail
         for user in self.users_list:
-            h = torch.tensor([user]).long().to(self.device)
-            #r = torch.tensor([47]).long().to(self.device)
-            r=torch.tensor([47]).long().to(self.device)
-            #t = torch.tensor([0]).long().to(self.device)
+            h = torch.tensor([user]).long()
+            r=torch.tensor([47]).long()
             users_embedding_head = self.model.ent_h_embs(h)
             users_embedding_tail = self.model.ent_t_embs(h)
             likes_embedding = self.model.rel_embs(r)
             likes_embedding_inv = self.model.rel_inv_embs(r)
-            #_, users_embedding_head, likes_embedding, _, users_embedding_tail, likes_embedding_inv, _ = self.model(h, r, t)
-            self.users_embeddings_head_proj[user-self.users_list[0]]=np.multiply((users_embedding_head.cpu().detach().numpy()),(likes_embedding.cpu().detach().numpy()))
-            self.users_embeddings_tail_proj[user-self.users_list[0]]=np.multiply((users_embedding_tail.cpu().detach().numpy()),(likes_embedding_inv.cpu().detach().numpy()))
+            self.users_embeddings_head_proj[user-self.users_list[0]]=np.multiply((users_embedding_head.detach().numpy()),(likes_embedding.detach().numpy()))
+            self.users_embeddings_tail_proj[user-self.users_list[0]]=np.multiply((users_embedding_tail.detach().numpy()),(likes_embedding_inv.detach().numpy()))
 
     def evaluate_precritiquing(self):
         hitatone=0
@@ -77,8 +71,6 @@ class Tester:
             ranked_indices = recommender.pre_critiquing_new()
 
             for ground_truth in self.users_likes[user_id]:
-                #recommender= Recommender(self.loaddataset,self.model,user_id,ground_truth,"pre",user_posterior,self.items_embeddings_head,self.items_embeddings_tail,self.users_embeddings_head_proj[user_id-self.users_list[0]],self.users_embeddings_tail_proj[user_id-self.users_list[0]])
-                #_, rank= recommender.pre_critiquing_recommendation()
                 rank = int(np.where(ranked_indices==self.items_index[ground_truth])[0])
                 if rank<2:
                     hitatone +=1
