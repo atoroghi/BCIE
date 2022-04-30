@@ -1,7 +1,6 @@
 import torch
 from dataset import Dataset
 import numpy as np
-from measure import Measure
 import os
 from os import listdir
 from os.path import isfile, join
@@ -10,114 +9,99 @@ from tqdm import tqdm
 from recommender import Recommender
 import wandb
 
-# EDIT: no need for a class if treated as a function
-# EDIT: also new names introduced into the code here (just confusing)
+
 class Tester:
-    def __init__(self, dataset, model_path, valid_or_test, load_dataset, emb_dim, args):
+    def __init__(self, dataset, model_path, valid_or_test,loaddataset,emb_dim,args):
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.model = torch.load(model_path, map_location = self.device)
         self.model.eval()
         self.dataset = dataset
         self.valid_or_test = valid_or_test
-        self.measure = Measure()
         #self.all_facts_as_set_of_tuples = set(self.allFactsAsTuples())
-        self.emb_dim = emb_dim
-        self.model_path = model_path
-        self.load_dataset = load_dataset
-        self.items_list = load_dataset.rec_items
-        self.users_likes = load_dataset.user_likes_map
+        self.emb_dim=emb_dim
+        self.model_path=model_path
+        self.loaddataset=loaddataset
+        self.items_list=loaddataset.rec_items
+        self.users_likes= loaddataset.user_likes_map
         #self.users_list=self.users_likes.keys()
-        self.users_list = list(self.users_likes.keys())
-        self.items_embeddings_head = (-100)*np.ones([np.max(self.items_list) + 1, self.emb_dim])
-        self.items_embeddings_tail = (-100)*np.ones([np.max(self.items_list) + 1, self.emb_dim])
-        self.users_embeddings_head_proj = np.zeros([np.max(self.users_list) - self.users_list[0]+1, self.emb_dim])
-        self.users_embeddings_tail_proj = np.zeros([np.max(self.users_list) - self.users_list[0]+1, self.emb_dim])
+        self.users_list=list(self.users_likes.keys())
+        self.items_embeddings_head=np.zeros([len(self.items_list),self.emb_dim])
+        self.items_embeddings_tail=np.zeros([len(self.items_list),self.emb_dim])
+        self.items_index=dict(zip(self.items_list,list(range(0,len(self.items_list)))))
+        self.items_index_inverse=dict(zip(list(range(0,len(self.items_list))),self.items_list))
+        self.users_embeddings_head_proj=np.zeros([np.max(self.users_list)-self.users_list[0]+1,self.emb_dim])
+        self.users_embeddings_tail_proj=np.zeros([np.max(self.users_list)-self.users_list[0]+1,self.emb_dim])
+        wandb.login(key="d606ae06659873794e6a1a5fb4f55ffc72aac5a1")
+        wandb.init(project="pre-critiquing",config={"lr": 0.1},reinit=True,settings=wandb.Settings(start_method="fork"))
+        os.environ['WANDB_API_KEY']='d606ae06659873794e6a1a5fb4f55ffc72aac5a1'
+        os.environ['WANDB_USERNAME']='atoroghi'
+        wandb.config.update(args,allow_val_change=True)
 
-        # TODO: make this login a conditional argument
-        #wandb.login(key = "d606ae06659873794e6a1a5fb4f55ffc72aac5a1")
-        #wandb.init(project = "pre-critiquing", config = {"lr": 0.1})
-        #os.environ['WANDB_API_KEY'] = 'd606ae06659873794e6a1a5fb4f55ffc72aac5a1'
-        #os.environ['WANDB_USERNAME'] = 'atoroghi'
-        #wandb.config.update(args, allow_val_change=True)
-
-        # get list of all item embeddings
         for item in self.items_list:
-            # EDIT: waste of computation.. could just do model.ent_() 
-            # EDIT: why are we sending this to gpu and back again? 
-            h = torch.tensor([0]).long().to(self.device)
-            r = torch.tensor([0]).long().to(self.device)
+            #h = torch.tensor([0]).long().to(self.device)
+            #r = torch.tensor([0]).long().to(self.device)
             t = torch.tensor([item]).long().to(self.device)
-            _, _, _, item_embedding_tail, _, _, item_embedding_head = self.model(h, r, t)
-
-            to_head = (item_embedding_head.detach().cpu().numpy()).reshape((1, self.emb_dim))
-            to_tail = (item_embedding_tail.detach().cpu().numpy()).reshape((1, self.emb_dim))
-            
-            self.items_embeddings_head[item] = to_head
-            self.items_embeddings_tail[item] = to_tail
-
-        # get list of user embeddings
+            #_, _, _, item_embedding_tail, _, _, item_embedding_head = self.model(h, r, t)
+            item_embedding_head = self.model.ent_h_embs(t)
+            item_embedding_tail = self.model.ent_t_embs(t)
+            to_head=(item_embedding_head.cpu().detach().numpy()).reshape((1,self.emb_dim))
+            to_tail=(item_embedding_tail.cpu().detach().numpy()).reshape((1,self.emb_dim))
+            index=self.items_index[item]
+            self.items_embeddings_head[index]=to_head
+            self.items_embeddings_tail[index]=to_tail
         for user in self.users_list:
             h = torch.tensor([user]).long().to(self.device)
-            r = torch.tensor([47]).long().to(self.device)
-            t = torch.tensor([0]).long().to(self.device)
-            _, users_embedding_head, likes_embedding, _, users_embedding_tail, likes_embedding_inv, _ = self.model(h, r, t)
-            self.users_embeddings_head_proj[user - self.users_list[0]] = np.multiply((users_embedding_head.detach().cpu().numpy()), (likes_embedding.detach().cpu().numpy()))
-            self.users_embeddings_tail_proj[user - self.users_list[0]] = np.multiply((users_embedding_tail.detach().cpu().numpy()), (likes_embedding_inv.detach().cpu().numpy()))
+            #r = torch.tensor([47]).long().to(self.device)
+            r=torch.tensor([47]).long().to(self.device)
+            #t = torch.tensor([0]).long().to(self.device)
+            users_embedding_head = self.model.ent_h_embs(h)
+            users_embedding_tail = self.model.ent_t_embs(h)
+            likes_embedding = self.model.rel_embs(r)
+            likes_embedding_inv = self.model.rel_inv_embs(r)
+            #_, users_embedding_head, likes_embedding, _, users_embedding_tail, likes_embedding_inv, _ = self.model(h, r, t)
+            self.users_embeddings_head_proj[user-self.users_list[0]]=np.multiply((users_embedding_head.cpu().detach().numpy()),(likes_embedding.cpu().detach().numpy()))
+            self.users_embeddings_tail_proj[user-self.users_list[0]]=np.multiply((users_embedding_tail.cpu().detach().numpy()),(likes_embedding_inv.cpu().detach().numpy()))
 
     def evaluate_precritiquing(self):
-        hitatone = 0
-        hitatthree = 0
-        hitatfive = 0
-        hitatten = 0
-        hitattwenty = 0
-        counter = 0
-        
-        user_posterior = torch.ones(self.emb_dim).to(self.device)
+        hitatone=0
+        hitatthree=0
+        hitatfive=0
+        hitatten=0
+        hitattwenty=0
+        counter=0
+        user_counter=0
+        user_posterior=torch.ones(self.emb_dim).to(self.device)
         for user_id in tqdm(self.users_list):
+            ground_truth=0
+            recommender= Recommender(self.loaddataset,self.model,user_id,ground_truth,"pre",user_posterior,self.items_embeddings_head,self.items_embeddings_tail,self.users_embeddings_head_proj[user_id-self.users_list[0]],self.users_embeddings_tail_proj[user_id-self.users_list[0]])
+            ranked_indices = recommender.pre_critiquing_new()
+
             for ground_truth in self.users_likes[user_id]:
-                print(user_posterior)
-                recommender = Recommender(self.load_dataset,
-                                          self.model,user_id,
-                                          ground_truth,
-                                          "pre",
-                                          user_posterior,
-                                          self.items_embeddings_head,
-                                          self.items_embeddings_tail,
-                                          self.users_embeddings_head_proj[user_id-self.users_list[0]],
-                                          self.users_embeddings_tail_proj[user_id-self.users_list[0]])
-                _, rank = recommender.pre_critiquing_recommendation()
-                if rank < 2:
-                    hitatone += 1
-                if rank < 4:
+                #recommender= Recommender(self.loaddataset,self.model,user_id,ground_truth,"pre",user_posterior,self.items_embeddings_head,self.items_embeddings_tail,self.users_embeddings_head_proj[user_id-self.users_list[0]],self.users_embeddings_tail_proj[user_id-self.users_list[0]])
+                #_, rank= recommender.pre_critiquing_recommendation()
+                rank = int(np.where(ranked_indices==self.items_index[ground_truth])[0])
+                if rank<2:
+                    hitatone +=1
+                if rank<4:
                     hitatthree += 1
-                if rank < 6:
+                if rank<6:
                     hitatfive += 1
-                if rank < 11:
+                if rank<11:
                     hitatten += 1
-                if rank < 21:
-                    hitattwenty += 1
+                if rank<21:
+                    hitattwenty +=1
                 counter += 1
-        
-            print(hitatone / counter)
-            print(hitatthree / counter)
-            print(hitatfive / counter)
-            print(hitatten / counter)
-            print(hitattwenty / counter)
-        
-        hitatone_normalized = hitatone / counter
-        hitatthree_normalized = hitatthree / counter
-        hitatfive_normalized = hitatfive / counter
-        hitatten_normalized = hitatten / counter
-        hitattwenty_normalized = hitattwenty / counter
-        
-        wandb.log(
-            {"hit@1":hitatone_normalized,
-            "hit@3":hitatthree_normalized,
-            "hit@5":hitatfive_normalized,
-            "hit@10":hitatten_normalized,
-            "hit@20":hitattwenty_normalized}
-        )
+            user_counter += 1
+
+            wandb.log({"step":user_counter})
+        hitatone_normalized= hitatone/counter
+        hitatthree_normalized= hitatthree/counter
+        hitatfive_normalized= hitatfive/counter
+        hitatten_normalized= hitatten/counter
+        hitattwenty_normalized= hitattwenty/counter
+        wandb.log({"hit@1":hitatone_normalized,"hit@3":hitatthree_normalized,"hit@5":hitatfive_normalized,"hit@10":hitatten_normalized,"hit@20":hitattwenty_normalized})
         return hitatone_normalized, hitatthree_normalized, hitatfive_normalized, hitatten_normalized, hitattwenty_normalized
+
 
     #def get_rank(self, sim_scores):#assuming the test fact is the first one
     #    return (sim_scores >= sim_scores[0]).sum()
@@ -181,4 +165,8 @@ class Tester:
        #     for fact in self.dataset.data[spl]:
         #        tuples.append(tuple(fact))
         #
-        #return tuples""" 
+        #return tuples"""
+
+
+
+    
