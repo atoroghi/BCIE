@@ -7,10 +7,11 @@ import torch.nn.functional as F
 import os
 import numpy as np
 import random
+import operator
 
 
 class Recommender:
-    def __init__(self, loaddataset, model, user_id, ground_truth,pre_or_post, user_posterior,items_embeddings_head,items_embeddings_tail,users_embeddings_head,users_embeddings_tail):
+    def __init__(self, loaddataset, model, user_id, ground_truth,pre_or_post, user_posterior,items_embeddings_head,items_embeddings_tail,user_embeddings_head_proj,user_embeddings_tail_proj):
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         #self.model = torch.load(model_path, map_location=self.device)
         self.model = model
@@ -25,22 +26,22 @@ class Recommender:
         self.user_posterior = user_posterior
         self.items_embeddings_head = items_embeddings_head
         self.items_embeddings_tail = items_embeddings_tail
-        self.user_embedding_head = users_embeddings_head
-        self.user_embedding_tail = users_embeddings_tail
+        self.user_embedding_head_proj = user_embeddings_head_proj
+        self.user_embedding_tail_proj = user_embeddings_tail_proj
 
 
     # self.user_id=self.dataset.ent2id[user_no]
     # self.items_list=self.dataset.eligible_items[self.user_id]
 
     def pre_critiquing_new(self):
-      scores=np.clip(np.sum((np.multiply(self.user_embedding_head,self.items_embeddings_tail)+np.multiply(self.user_embedding_tail,self.items_embeddings_head)),axis=1),-40,40)
+      scores=np.clip(np.sum(np.multiply(self.user_embedding_head_proj ,self.items_embeddings_tail)+np.multiply(self.user_embedding_tail_proj ,self.items_embeddings_head),axis=1),-40,40)
       ranked_items_indices=scores.argsort()[::-1]
       return ranked_items_indices
 
 
     def pre_critiquing_recommendation(self):
 
-        scores= np.clip(np.sum((np.multiply(self.user_embedding_head,self.items_embeddings_tail)+np.multiply(self.user_embedding_tail,self.items_embeddings_head)),axis=1),-40,40)
+        scores= np.clip(np.sum((np.multiply(self.user_embedding_head_proj ,self.items_embeddings_tail)+np.multiply(self.user_embedding_tail_proj,self.items_embeddings_head)),axis=1),-40,40)
         ranked_items_indices=scores.argsort()[::-1]
         rank = int(np.where(ranked_items_indices==self.items_index[self.ground_truth])[0])
         recommended_items = [self.items_index_inverse[k] for k in ranked_items_indices [0:20]]
@@ -51,107 +52,85 @@ class Recommender:
 
     def post_critiquing_recommendation(self, user_posterior,gt):
         self.ground_truth = gt
-        scores= np.clip(np.sum((np.multiply(user_posterior,self.items_embeddings_tail)+np.multiply(self.user_embedding_tail,self.items_embeddings_head)),axis=1),-40,40)
+        scores= np.clip(np.sum((np.multiply(user_posterior,self.items_embeddings_tail)+np.multiply(self.user_embedding_tail_proj,self.items_embeddings_head)),axis=1),-40,40)
         ranked_items_indices=scores.argsort()[::-1]
         rank = int(np.where(ranked_items_indices==self.items_index[self.ground_truth])[0])
         recommended_items = [self.items_index_inverse[k] for k in ranked_items_indices [0:20]]
         return recommended_items, rank
 
 
-    # inputs to the "select_Critique" method are: facts about the ground truth and facts about the recommended items as well as the critique mode and the dictionary containing popularities of each object
-    def select_critique(self,gt_facts_head,gt_facts_tail,rec_facts_head,rec_facts_tail,critique_mode,pop_counts):
-      facts_diff_head={}
-      facts_diff_tail={}
+    ### inputs to the "select_Critique" method are: facts about the ground truth and facts about the recommended items as well as the critique mode and the dictionary containing popularities of each object
+    ### Also, we input the facts in which the gt is placed in their tail to differentiate between objects and relations
+    def select_critique(self,critique_selection_data,rec_facts,critique_mode,pop_counts,items_facts_tail_gt):
+      facts_diff={}
       #we want to count how many times each ground truth facts is satisfied by the facts about recommended items
-      for fact in gt_facts_head:
-            condition = (fact[0] == rec_facts_head[:, 0]) & (fact[1] == rec_facts_head[:, 1])
-            facts_diff_head[tuple(fact)]=np.count_nonzero(condition)
-      for fact in gt_facts_tail:
-            condition= (fact[0] == rec_facts_tail[:, 0]) & (fact[1] == rec_facts_tail[:, 1])
-            facts_diff_tail[tuple(fact)] = np.count_nonzero(condition)
+      for fact in critique_selection_data:
+            condition = (fact[0] == rec_facts[:, 0]) & (fact[1] == rec_facts[:, 1])
+            facts_diff[tuple(fact)]=np.count_nonzero(condition)
+
       if critique_mode=="random":
         # in this case, we want to randomly choose a critique from either head or tail
-        critique_candidates={}
-        if bool(facts_diff_tail):
-            candidate_facts_tail=dict((k, v) for k, v in facts_diff_tail.items() if v < 20)
-            tail_candidate=(0,0)
-            if list(candidate_facts_tail):
-              tail_candidate=random.choice(list(candidate_facts_tail))
-              critique_candidates["tail"]=tail_candidate
-        if bool(facts_diff_head):
-            candidate_facts_head=dict((k, v) for k, v in facts_diff_head.items() if v < 20)
-            head_candidate=(0,0)
-            if list(candidate_facts_head):
-              head_candidate=random.choice(list(candidate_facts_head))
-              critique_candidates["head"]=head_candidate
-        critique_facts=(0,0)
-        # the critique_facts will be (0,0) if there is no fact for the selected head that is not satisfied by at least one item so we continue selecting the head or tail
-        while critique_facts==(0,0):
-            selected_end=random.choice(list(critique_candidates))
-            critique=critique_candidates[selected_end], selected_end
-            critique_facts=critique[0]
-
-        # In this case, we want to select the fact about the most famous object as the crtique
-        if critique_mode=="pop":
-          critique_candidates={}
-          most_famous_repeats_tail=0
-          most_famous_repeats_head=0
-          if bool(facts_diff_tail):
-            candidate_facts_tail=dict((k, v) for k, v in facts_diff_tail.items() if v < 20)
-            freq_candidates_list_tail={}
-            for candidate in candidate_facts_tail:
-              freq_candidates_list_tail[candidate]=pop_counts[candidate[0]]
-              most_famous_repeats_tail = max(freq_candidates_list_tail.values())
-              tail_candidate = [k for k, v in freq_candidates_list_tail.items() if v == most_famous_repeats_tail][0]
-              critique_candidates["tail"]=tail_candidate
-          if bool(facts_diff_head):
-            candidate_facts_head=dict((k, v) for k, v in facts_diff_head.items() if v < 20)
-            freq_candidates_list_head={}
-            for candidate in candidate_facts_head:
-                freq_candidates_list_head[candidate]=pop_counts[candidate[1]]
-                most_famous_repeats_head = max(freq_candidates_list_head.values())
-                head_candidate = [k for k, v in freq_candidates_list_head.items() if v == most_famous_repeats_head][0]
-                critique_candidates["head"]=head_candidate
-            if most_famous_repeats_tail>most_famous_repeats_head:
-              critique=critique_candidates["tail"],"tail"
-            else:
-              critique=critique_candidates["head"],"head"
         
-        # in this case, we should take the fact that deviates the most from the facts related to recommended items, i.e. least satisfaction counts
-        if critique_mode=="diff":         
-          if bool(facts_diff_tail):
-            # this is the number of times the most deviating fact is satisfied
-            minval_tail=min(facts_diff_tail.values())
-          else:
-            minval_tail=0
-          if bool(facts_diff_head):
-            minval_head=min(facts_diff_head.values())
-          else:
-            minval_head=0
+        if critique_selection_data.size:
+          #we're only keeping the facts that are not satisfied by all recommended items
+            candidate_facts=[k for k, v in facts_diff.items() if v < 20]
+            critique_fact=random.choice(candidate_facts)
+            if any((items_facts_tail_gt[:]==np.array((critique_fact)+(-1,))).all(1)):
+              object=critique_fact[0]
+            else:
+              object=critique_fact[1]
+        # In this case, we want to select the fact about the most famous object as the crtique
+      if critique_mode=="pop":
+          if critique_selection_data.size:
+            candidate_facts=[k for k, v in facts_diff.items() if v < 20]
+            popularities={}
+            facts={}
+            for fact in candidate_facts:
+              # Checking if the object is in the head (gt in the tail)
+              if any((items_facts_tail_gt[:]==np.array((fact)+(-1,))).all(1)):
+                candidate_object=fact[0]
+                popularities[candidate_object]=pop_counts[fact[0]]
+                facts[candidate_object]=fact
+              else:
+                candidate_object=fact[1]
+                popularities[candidate_object]=pop_counts[fact[1]]
+                facts[candidate_object]=fact
+            object=max(popularities.items(), key=operator.itemgetter(1))[0]
+            critique_fact=facts[object]
 
+        # in this case, we should take the fact that deviates the most from the facts related to recommended items, i.e. least satisfaction counts
+      if critique_mode=="diff":        
+          if bool(facts_diff):
+            # this is the number of times the most deviating fact is satisfied
+            minval=min(facts_diff.values())
           # in the most deviating fact, gt is in the tail 
-          if minval_tail<minval_head and minval_tail>0:
-            # we might have multiple facts satisfied minval_tail times
-            candidates_list = [k for k, v in facts_diff_tail.items() if v == minval_tail]
+            # we might have multiple facts satisfied minval times. In this case, we choose the most famous object as the critique
+            candidates_list = [k for k, v in facts_diff.items() if v == minval]
             if len(candidates_list)>1:
-              freq_candidates_list={}
-              for candidate in candidates_list:
-                freq_candidates_list[candidate]=pop_counts[candidate[0]]
-                most_famous_repeats = max(freq_candidates_list.values())
-                critique = [k for k, v in freq_candidates_list.items() if v == most_famous_repeats][0],"tail"
+              popularities={}
+              facts={}
+              for fact in candidates_list:
+                if any((items_facts_tail_gt[:]==np.array((fact)+(-1,))).all(1)):
+                  candidate_object=fact[0]
+                  popularities[candidate_object]=pop_counts[fact[0]]
+                  facts[candidate_object]=fact
+                else:
+                  candidate_object=fact[1]
+                  popularities[candidate_object]=pop_counts[fact[1]]
+                  facts[candidate_object]=fact
+              object=max(popularities.items(), key=operator.itemgetter(1))[0]
+              critique_fact=facts[object]
             else:
-              critique=candidates_list[0],"tail"
+              if any((items_facts_tail_gt[:]==np.array((candidates_list[0])+(-1,))).all(1)):
+                object=candidates_list[0][0]
+              
+              else:
+                object=candidates_list[0][1]
+              critique_fact=candidates_list[0]
+
           else:
-            candidates_list = [k for k, v in facts_diff_head.items() if v == minval_head]
-            if len(candidates_list)>1:
-              freq_candidates_list = {}
-              for candidate in candidates_list:
-                freq_candidates_list[candidate]=pop_counts[candidate[1]]
-                most_famous_repeats = max(freq_candidates_list.values())
-                critique = [k for k, v in freq_candidates_list.items() if v == most_famous_repeats][0],"head"
-            else:
-              critique=candidates_list[0],"head"
-      return critique
+            object , critique_fact = None, None
+      return object , critique_fact
 
 
  #   def select_critique(self,data,critique_mode,recommended_items):

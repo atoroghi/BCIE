@@ -7,6 +7,7 @@ import numpy as np
 import cvxpy as cp
 #seed = torch.manual_seed(1)
 from scipy.special import expit
+import scipy.linalg as sp
 
 class Updater:
 	def __init__(self,X,y,mu_prior,Sigma_prior,W,args,etta,device):
@@ -19,7 +20,10 @@ class Updater:
 		#self.Sigma_prior = Sigma_prior.cpu()
 		self.Sigma_prior = Sigma_prior
 		#self.lam= torch.cholesky_inverse(Sigma_prior)
-		self.lam = np.linalg.inv(Sigma_prior)
+		zz , _ = sp.lapack.dpotrf(Sigma_prior, False, False)
+		inv_M , _ = sp.lapack.dpotri(zz)
+		#self.lam = np.linalg.inv(Sigma_prior)
+		self.lam = np.triu(inv_M) + np.triu(inv_M, k=1).T
 		#self.W= W.cpu()
 		self.W = W
 		#self.prior_distribution=MultivariateNormal(mu_prior, covariance_matrix=Sigma_prior)
@@ -88,7 +92,10 @@ class Updater:
 		mu = self.W
 		_, _, H_map = self.log_likelihood()
 		prior_precision = self.lam
-		Sigma = np.linalg.inv(prior_precision + self.etta*H_map)
+		za , _ = sp.lapack.dpotrf(prior_precision + self.etta*H_map, False, False)
+		inv_A , _ = sp.lapack.dpotri(za)
+		Sigma = np.triu(inv_A) + np.triu(inv_A, k=1).T
+		#Sigma = np.linalg.inv(prior_precision + self.etta*H_map)
 		return mu, Sigma
 
 
