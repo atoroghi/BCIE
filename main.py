@@ -14,10 +14,12 @@ import torch
 import numpy as np
 import statistics
 import wandb
+import sys
+
 def get_parameter():
     parser = argparse.ArgumentParser()
     
-    parser.add_argument('-ne', default=1000, type=int, help="number of epochs")
+    parser.add_argument('-ne', default=0, type=int, help="number of epochs")
     parser.add_argument('-ni', default=0, type=float, help="noise intensity")
     parser.add_argument('-lr', default=0.1, type=float, help="learning rate")
     parser.add_argument('-reg_lambda', default=0.03, type=float, help="l2 regularization parameter")
@@ -37,26 +39,24 @@ def get_parameter():
 
 if __name__ == '__main__':
     args = get_parameter()
-    #dataset = Dataset(args.dataset)
-    loaddataset=LoadDataset(args.dataset,"test",args)
-    model_path="models/" + args.dataset + "/" + str(args.ne) + ".chkpnt"
-    #model_path="models/" + "ML" + "/" + "10000" + ".chkpnt"
-    data_path="datasets/" + args.dataset
+    loaddataset = LoadDataset("test", args)
+    
+    # TODO: add support for named checkpoints
+    model_path = "models/" + args.dataset + "/" + str(args.ne) + ".chkpnt"
+    data_path = "datasets/" + args.dataset
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     model = torch.load(model_path, map_location='cpu')
     model.eval()
-    #users_list= dataset.users
-    #items_list= dataset.items
-    #users_likes= dataset.users_likes
-   # wandb.login(key="d606ae06659873794e6a1a5fb4f55ffc72aac5a1")
-   # wandb.init(project="critiquing",config={"lr": 0.1})
-   # os.environ['WANDB_API_KEY']='d606ae06659873794e6a1a5fb4f55ffc72aac5a1'
-   # os.environ['WANDB_USERNAME']='atoroghi'
-  #  wandb.config.update(args)
-    items_list= loaddataset.rec_items
-    users_likes= loaddataset.user_likes_map
-    #users_list=users_likes.keys()
-    users_list=list(users_likes.keys())[0:2]
+
+    items_list = loaddataset.rec_items
+    users_likes = loaddataset.user_likes_map
+    
+    # why only 0:2??
+    users_list = list(users_likes.keys())[0:2]
+    # UPDATE: use this (more general, user_likes isn't required then)
+    #users_list = list(loaddataset.users)
+
+    # TODO: where doth this come from??
     ### This dict contains facts about the item in which the item is the head of the triple, e.g., (Saraband, directed_by, Bergman)
     with open(os.path.join(data_path, 'items_facts_head.pkl'), 'rb') as f:
       items_facts_head = pickle.load(f)
@@ -70,26 +70,32 @@ if __name__ == '__main__':
     with open(os.path.join(data_path, 'pop_counts.pkl'), 'rb') as f:
       pop_counts=pickle.load(f)
 
+    items_embeddings_head = np.zeros([len(items_list),args.emb_dim])
+    items_embeddings_tail = np.zeros([len(items_list),args.emb_dim])
+    items_index = dict(zip(items_list,list(range(0,len(items_list)))))
+    items_index_inverse = dict(zip(list(range(0,len(items_list))),items_list))
+    
+    # UPDATE: this is just len(users_list)
+    users_embeddings_head = np.zeros([np.max(users_list)-users_list[0]+1,args.emb_dim])
+    users_embeddings_tail = np.zeros([np.max(users_list)-users_list[0]+1,args.emb_dim])
+    users_embeddings_head_proj = np.zeros([np.max(users_list)-users_list[0]+1,args.emb_dim])
+    users_embeddings_tail_proj = np.zeros([np.max(users_list)-users_list[0]+1,args.emb_dim])
 
-    items_embeddings_head=np.zeros([len(items_list),args.emb_dim])
-    items_embeddings_tail=np.zeros([len(items_list),args.emb_dim])
-    items_index=dict(zip(items_list,list(range(0,len(items_list)))))
-    items_index_inverse=dict(zip(list(range(0,len(items_list))),items_list))
-    users_embeddings_head=np.zeros([np.max(users_list)-users_list[0]+1,args.emb_dim])
-    users_embeddings_tail=np.zeros([np.max(users_list)-users_list[0]+1,args.emb_dim])
-    users_embeddings_head_proj=np.zeros([np.max(users_list)-users_list[0]+1,args.emb_dim])
-    users_embeddings_tail_proj=np.zeros([np.max(users_list)-users_list[0]+1,args.emb_dim])
+    # TODO: is this not the same as the beginning of tester.py?
+
     ### Getting the embedding of each item and storing in an array
     ### The row number that contains embeddings of each item is stored in a dict
     for item in items_list:
         t = torch.tensor([item]).long()
         item_embedding_head = model.ent_h_embs(t)
         item_embedding_tail = model.ent_t_embs(t)
-        to_head=(item_embedding_head.cpu().detach().numpy()).reshape((1,args.emb_dim))
-        to_tail=(item_embedding_tail.cpu().detach().numpy()).reshape((1,args.emb_dim))  
-        index=items_index[item]
+        to_head = (item_embedding_head.cpu().detach().numpy()).reshape((1,args.emb_dim))
+        to_tail = (item_embedding_tail.cpu().detach().numpy()).reshape((1,args.emb_dim))  
+
+        index = items_index[item]
         items_embeddings_head[index]=to_head
         items_embeddings_tail[index]=to_tail
+
     ### Getting the embedding of each user and storing in an array
     for user in users_list:
         h = torch.tensor([user]).long()
@@ -99,13 +105,12 @@ if __name__ == '__main__':
         user_embedding_tail = model.ent_t_embs(h)
         likes_embedding = model.rel_embs(r).detach().numpy()
         likes_embedding_inv = model.rel_inv_embs(r).detach().numpy()
-        to_head=(user_embedding_head.detach().numpy()).reshape((1,args.emb_dim))
-        to_tail=(user_embedding_tail.detach().numpy()).reshape((1,args.emb_dim))
-        users_embeddings_head[user-users_list[0]]=to_head
-        users_embeddings_tail[user-users_list[0]]=to_tail
-        users_embeddings_head_proj[user-users_list[0]]=np.multiply((to_head),(likes_embedding))
-        users_embeddings_tail_proj[user-users_list[0]]=np.multiply((to_tail),(likes_embedding_inv))
-
+        to_head = (user_embedding_head.detach().numpy()).reshape((1,args.emb_dim))
+        to_tail = (user_embedding_tail.detach().numpy()).reshape((1,args.emb_dim))
+        users_embeddings_head[user-users_list[0]] = to_head
+        users_embeddings_tail[user-users_list[0]] = to_tail
+        users_embeddings_head_proj[user-users_list[0]] = np.multiply((to_head),(likes_embedding))
+        users_embeddings_tail_proj[user-users_list[0]] = np.multiply((to_tail),(likes_embedding_inv))
     
     history={}
     
@@ -115,8 +120,6 @@ if __name__ == '__main__':
     hitatfive={0:[],1:[],2:[],3:[],4:[],5:[]}
     hitatten={0:[],1:[],2:[],3:[],4:[],5:[]}
     hitattwenty={0:[],1:[],2:[],3:[],4:[],5:[]}
-  
-
 
     #critiquing loop:
     for user_id in tqdm(users_list):
@@ -291,17 +294,6 @@ if __name__ == '__main__':
       print("hits@10 session5",hitatten5)
       hitattwenty5=statistics.mean(hitattwenty[5])
       print("hits@20 session5",hitattwenty5)
-
-  #    wandb.log({
-   #     "hits@1 session0":hitatone0,"hits@3 session0":hitatthree0,"hits@5 session0":hitatfive0,"hits@10 session0":hitatten0,"hits@20 session0":hitattwenty0,
-#"hits@1 session1":hitatone1,"hits@3 session1":hitatthree1,"hits@5 session1":hitatfive1,"hits@10 session1":hitatten1,"hits@20 session1":hitattwenty1,
-#"hits@1 session2":hitatone2,"hits@3 session2":hitatthree2,"hits@5 session2":hitatfive2,"hits@10 session2":hitatten2,"hits@20 session2":hitattwenty2,
-#"hits@1 session3":hitatone3,"hits@3 session3":hitatthree3,"hits@5 session3":hitatfive3,"hits@10 session3":hitatten3,"hits@20 session3":hitattwenty3,
-#"hits@1 session4":hitatone4,"hits@3 session4":hitatthree4,"hits@5 session4":hitatfive4,"hits@10 session4":hitatten4,"hits@20 session4":hitattwenty4,
-#"hits@1 session5":hitatone5,"hits@3 session5":hitatthree5,"hits@5 session5":hitatfive5,"hits@10 session5":hitatten5,"hits@20 session5":hitattwenty5
-#      })
-
-          
 
     with open('saved_history.pkl', 'wb') as f:
       pickle.dump(history, f)

@@ -5,8 +5,7 @@ from measure import Measure
 from recommender import Recommender
 from updater import Updater
 import matplotlib.pyplot as plt
-import torch, argparse, time, os
-
+import torch, argparse, time, os, wandb
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -24,6 +23,7 @@ def get_args():
     parser.add_argument('-alpha', default=0.01, type=float, help="learning rate for Laplace Approximation")
     parser.add_argument('-etta', default=1.0, type=float, help="learning rate for Laplace Approximation")
     parser.add_argument('-workers', default=8, type=int, help="threads for dataloader")
+    parser.add_argument('-user', default='grif', help="used for machine dependent ops")
     args = parser.parse_args()
     return args
 
@@ -45,21 +45,25 @@ if __name__ == '__main__':
 
     print('loading data')
     dataset = LoadDataset('train', args)
-    
+
     print('training')
-    trainer = Trainer(dataset, args, device)
-    trainer.train()
+    #trainer = Trainer(dataset, args, device)
+    #trainer.train()
 
     # TODO: training and testing should be called seperately
             # ie: train script, then test script (call bash both.sh if we want)
 
     # TODO: trainer and tester should be functions not classes
             # too many variable names for no reason
+            # also tester could just be merged with recommender...
+            # only purpose is getting the embedding list
 
     print('testing')
-    model_path = 'models/' + args.dataset + '/' + str(args.ne) + '.chkpnt'
+    # temp!!!! take away the -1 before push to github
+    model_path = 'models/' + args.dataset + '/' + str(args.ne - 1) + '.chkpnt'
     dataset = LoadDataset('test', args)
-    tester = Tester(args.dataset, model_path, 'valid',dataset,args.emb_dim,args)
+    tester = Tester(model_path, 'valid', dataset,args.emb_dim, args)
+    
     hone, hthree, hfive, hten, htwenty = tester.evaluate_precritiquing()
     print('pre-critiquing hit@1:')
     print(hone)
@@ -71,27 +75,3 @@ if __name__ == '__main__':
     print(hten)
     print('pre-critiquing hit@20:')
     print(htwenty)
-
-    #print("~~~~ Select best epoch on validation set ~~~~")
-    #epochs2test = [str(int(args.save_each * (i + 1))) for i in range(args.ne // args.save_each)]
-    #dataset = Dataset(args.dataset,args.ni)
-    
-    #best_mrr = -1.0
-    #best_epoch = "0"
-    #for epoch in epochs2test:
-    #    start = time.time()
-    #    print(epoch)
-    #    model_path = "models/" + args.dataset + "/" + epoch + ".chkpnt"
-    #    tester = Tester(dataset, model_path, "valid")
-    #    mrr = tester.test()
-    #    if mrr > best_mrr:
-    #        best_mrr = mrr
-    #        best_epoch = epoch
-    #    print(time.time() - start)
-
-    #print("Best epoch: " + best_epoch)
-
-   # print("~~~~ Testing on the best epoch ~~~~")
-   # best_model_path = "models/" + args.dataset + "/" + best_epoch + ".chkpnt"
-   # tester = Tester(dataset, best_model_path, "test")
-   # tester.test()
