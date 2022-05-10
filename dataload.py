@@ -7,10 +7,11 @@ from torch.utils.data import DataLoader
 
 class LoadDataset(Dataset):
     # mode is 'test' or 'train'
-    def __init__(self, mode, args):
+    def __init__(self, mode, args, power=3/4):
         self.name = args.dataset
         self.neg_ratio = int(args.neg_ratio)
         assert self.neg_ratio >= 1
+
         self.noise = args.ni
         self.workers = args.workers
         self.batch_size = args.batch_size
@@ -18,8 +19,8 @@ class LoadDataset(Dataset):
 
         # load datasets and info mappings
         path = os.path.join('datasets', self.name)
-        
         rec = np.load(os.path.join(path, 'rec.npy'), allow_pickle=True)
+
         if mode == 'train': 
             self.rec_train = np.load(os.path.join(path, 'rec_train.npy'), allow_pickle=True)
             self.kg = np.load(os.path.join(path, 'kg.npy'), allow_pickle=True)
@@ -28,20 +29,20 @@ class LoadDataset(Dataset):
         elif mode == 'test':
             self.data = np.load(os.path.join(path, 'rec_test.npy'), allow_pickle=True)
             
-            # info about users, items and total kg items
-            self.users = np.unique(rec[:,0])
-            self.rec_items = np.unique(rec[:,2])
-            
-            with open(os.path.join(path, 'user_likes_map.pkl'), 'rb') as f:
-                self.user_likes_map = pickle.load(f)
-
-        # for indexing last batch
-        self.last_index = self.data.shape[0] // self.par_batch
-
-        # total num of items in kg + rec
+        # info about users, items and total kg items
         # TODO: make this loss data specific (this is dependent of data format)
+        self.users = np.unique(rec[:,0])
+        self.rec_items = np.unique(rec[:,2])
+        self.last_index = self.data.shape[0] // self.par_batch
+        
         self.num_items = np.max(rec)
         self.num_rel = rec[0,1]
+
+        with open(os.path.join(path, 'user_likes_map.pkl'), 'rb') as f:
+            self.user_likes_map = pickle.load(f)
+
+        # preprocessing for negative sampling
+
         
         # for self.print_triplet 
         with open(os.path.join(path, 'item_map.pkl'), 'rb') as f:
@@ -86,16 +87,15 @@ class LoadDataset(Dataset):
                 final_neg = np.concatenate((final_neg, neg), axis=0)
         return final_neg
 
-        #neg = np.ones((self.neg_ratio, 3), dtype=np.int32)
-        #neg[:] *= pos
-        #for i in range(self.neg_ratio):
-            #ind = 0 if np.random.rand() < 0.5 else 2 # flip head or tail
-            #neg[i, ind] = self.replace_item(pos[ind])
-        #return neg
-
     def replace_item(self, item):
         while True:
-            sample = np.random.randint(self.num_items)
+            # fast for uniform sample
+            if self.power == 0:
+                sample = np.random.randint(self.num_items)
+            # discrete inverse sampling
+            else:
+                print()
+
             if sample != item: break
         return sample
 
@@ -114,21 +114,3 @@ class LoadDataset(Dataset):
         else:
             o = 'Freebase ID: {}'.format(triplet[2])
         print('<{} -- {} -- {}>'.format(s,r,o))
-
-#dset = LoadDataset('ML_FB','train', 2, 0.2)
-#dataloader = DataLoader(dset, batch_size=5, shuffle=True, num_workers=4)
-
-#import torch.nn as nn
-#device = 'cpu'
-#item_emb = nn.Embedding(dset.num_items, 8).to(device)
-#rel_emb = nn.Embedding(dset.num_rel+1, 8).to(device)
-#print(dset.num_rel)
-
-#for i, x in enumerate(dataloader): 
-    #x = x.to(device)
-
-    #h = item_emb(x[:,:,0])
-    #r = rel_emb(x[:,:,1])
-    #t = item_emb(x[:,:,2])
-    #print(h)
-    #break
