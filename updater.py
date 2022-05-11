@@ -20,14 +20,14 @@ class Updater:
 		#self.Sigma_prior = Sigma_prior.cpu()
 		self.Sigma_prior = Sigma_prior
 		#self.lam= torch.cholesky_inverse(Sigma_prior)
-		zz , _ = sp.lapack.dpotrf(Sigma_prior, False, False)
-		inv_M , _ = sp.lapack.dpotri(zz)
+		##zz , _ = sp.lapack.dpotrf(Sigma_prior, False, False)
+		##inv_M , _ = sp.lapack.dpotri(zz)
 		#self.lam = np.linalg.inv(Sigma_prior)
-		self.lam = np.triu(inv_M) + np.triu(inv_M, k=1).T
+		##self.lam = np.triu(inv_M) + np.triu(inv_M, k=1).T
 		#self.W= W.cpu()
 		self.W = W
 		#self.prior_distribution=MultivariateNormal(mu_prior, covariance_matrix=Sigma_prior)
-		self.prior_distribution = np.random.multivariate_normal(mu_prior,Sigma_prior)
+		##self.prior_distribution = np.random.multivariate_normal(mu_prior,Sigma_prior)
 		self.alpha=args.alpha
 		self.max_iters=args.max_iters_laplace
 		self.etta=etta
@@ -41,10 +41,11 @@ class Updater:
 
 		return self.W
 
-	def SDR_cvxopt(self,Sigma_prior, X_all, y , previous_w):
+	##def SDR_cvxopt(self,Sigma_prior, X_all, y , previous_w):
+	def SDR_cvxopt(self,landa, X_all, y , previous_w):
 		#X_all = X_all.cpu()
 		#y = y.cpu()
-		landa = np.linalg.inv(Sigma_prior)
+		##landa = np.linalg.inv(Sigma_prior)
 		#landa = torch.cholesky_inverse(Sigma_prior).cpu()
 		#previous_w=previous_w.cpu().detach().numpy()
 		w= cp.Variable(self.emb_dim)
@@ -52,7 +53,8 @@ class Updater:
 		objective_function= 0.5*cp.quad_form(w-previous_w, landa)
 		for i in range(len(X_all)):
 			var= (X_all[i]@w)*y[i]
-			objective_function += cp.logistic(-1*self.etta*var)
+			#objective_function += cp.logistic(-1*self.etta*var)
+			objective_function += cp.logistic(-1*var)
 		prob = cp.Problem(cp.Minimize(objective_function), constraints)
 		prob.solve()
 		return w.value , prob.value
@@ -69,19 +71,19 @@ class Updater:
 		#tensorW=torch.tensor(self.W)
 		logits= np.matmul(self.X,self.W)
 		#logits = torch.mv(self.X, tensorW.float())
-		probs1 = np.clip(expit(-1*self.y*logits*self.etta),1e-6,1-1e-6)
+		##probs1 = np.clip(expit(-1*self.y*logits*self.etta),1e-6,1-1e-6)
 		#probs1 = torch.sigmoid(-1*self.y*logits*self.etta).clamp(min=1e-6, max=1-1e-6)
 		probs = np.clip(expit(self.y*logits*self.etta),1e-6,1-1e-6)
 		#probs = torch.sigmoid(self.y*logits*self.etta).clamp(min=1e-6, max=1-1e-6)
-		nll = -1* np.sum(np.log(probs))
+		#nll = -1* np.sum(np.log(probs))
 		#nll= -1 * torch.sum(torch.log(probs))
 		#g: gradient of negative log likelihood
-		g= -1*np.matmul(np.transpose(self.X),self.y*probs1)
+		#g= -1*np.matmul(np.transpose(self.X),self.y*probs1)
 		#g= -1*torch.mv(self.X.t(),self.y*probs1)
 		H= np.matmul(np.matmul(np.transpose(self.X),np.diag((probs*(1-probs)))),self.X)
 
 		#H = torch.mm(torch.mm(self.X.t(), torch.diag((probs * (1 - probs)))), self.X)
-		return nll, g, H
+		return H
 
 
 
@@ -90,13 +92,15 @@ class Updater:
 		W_new, _ = self.SDR_cvxopt(self.Sigma_prior, self.X, self.y , self.W)
 		self.W = W_new
 		mu = self.W
-		_, _, H_map = self.log_likelihood()
-		prior_precision = self.lam
-		za , _ = sp.lapack.dpotrf(prior_precision + self.etta*H_map, False, False)
-		inv_A , _ = sp.lapack.dpotri(za)
-		Sigma = np.triu(inv_A) + np.triu(inv_A, k=1).T
-		#Sigma = np.linalg.inv(prior_precision + self.etta*H_map)
-		return mu, Sigma
+		H_map = self.log_likelihood()
+		prior_precision = self.Sigma_prior
+		za = prior_precision + self.etta*H_map
+		H_out=np.maximum(za,za.T)
+		##za , _ = sp.lapack.dpotrf(prior_precision + self.etta*H_map, False, False)
+		##inv_A , _ = sp.lapack.dpotri(za)
+		##Sigma = np.triu(inv_A) + np.triu(inv_A, k=1).T
+		##Sigma = np.linalg.inv(prior_precision + self.etta*H_map)
+		return mu, H_out
 
 
 

@@ -34,7 +34,6 @@ def get_parameter():
     parser.add_argument('-critique_target', default="object", type=str, help="Target of User's critique")
     parser.add_argument('-workers', default=8, type=int, help="threads for dataloader")
     parser.add_argument('-num_users', default=100, type=int, help="number of users")
-    parser.add_argument('-initial_Sigma', default=1e-2, type=float, help="initial prior precision")
     args = parser.parse_args()
     return args
 
@@ -48,14 +47,14 @@ if __name__ == '__main__':
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     model = torch.load(model_path, map_location='cpu')
     model.eval()
-
+    #users_list= dataset.users
+    #items_list= dataset.items
+    #users_likes= dataset.users_likes
    # wandb.login(key="d606ae06659873794e6a1a5fb4f55ffc72aac5a1")
    # wandb.init(project="critiquing",config={"lr": 0.1})
    # os.environ['WANDB_API_KEY']='d606ae06659873794e6a1a5fb4f55ffc72aac5a1'
    # os.environ['WANDB_USERNAME']='atoroghi'
   #  wandb.config.update(args)
-    wandb.init(project="critiquing",config={"lr": 0.1})
-    wandb.config.update(args,allow_val_change=True)
     items_list= loaddataset.rec_items
     num_items=len(items_list)
     users_likes= loaddataset.user_likes_map
@@ -113,16 +112,15 @@ if __name__ == '__main__':
     
     history={}
     
-    session_length=6
-    hitatone={0:[],1:[],2:[],3:[],4:[],5:[]}
-    hitatthree={0:[],1:[],2:[],3:[],4:[],5:[]}
-    hitatfive={0:[],1:[],2:[],3:[],4:[],5:[]}
-    hitatten={0:[],1:[],2:[],3:[],4:[],5:[]}
-    hitattwenty={0:[],1:[],2:[],3:[],4:[],5:[]}
+    session_length=2
+    hitatone={0:[],1:[]}
+    hitatthree={0:[],1:[]}
+    hitatfive={0:[],1:[]}
+    hitatten={0:[],1:[]}
+    hitattwenty={0:[],1:[]}
 
     MAR_pre=[]
     MAR_post=[]
-    MAR_post_all={1:[],2:[],3:[],4:[],5:[]}
   
 
 
@@ -217,7 +215,7 @@ if __name__ == '__main__':
             alpha= args.alpha
             etta= args.etta
             if session_no==1:
-              Sigma_prior= args.initial_Sigma*np.eye(args.emb_dim)
+              Sigma_prior= 0.01*np.eye(args.emb_dim)
             updater=Updater(X_true,y,user_posterior,Sigma_prior,user_posterior,args,etta,device)
             ##mu_prior, _ = updater.SDR_cvxopt(Sigma_prior, X_true, y, user_posterior)
   
@@ -226,9 +224,8 @@ if __name__ == '__main__':
             ##user_posterior_proj = np.multiply(mu_prior,likes_embedding)
             ###This is the covariance of the posterior
             ##_,Sigma_prior=updater.compute_laplace_approximation()
-            mu_prior,Sigma_out = updater.compute_laplace_approximation()
+            mu_prior,Sigma_prior = updater.compute_laplace_approximation()
             user_posterior=mu_prior
-            Sigma_prior=Sigma_out
             user_posterior_proj = np.multiply(mu_prior,likes_embedding)
 
             ###Make recommendation again (after Bayesian update)
@@ -237,7 +234,6 @@ if __name__ == '__main__':
             mar_post=(num_items-rank)/(num_items-1)
             MAR_post.append(mar_post)
             #history[user_id][ground_truth].append(rank)
-            MAR_post_all[session_no].append(mar_post)
             if rank<2:
               hitatone[session_no].append(1)
             else:
@@ -263,16 +259,6 @@ if __name__ == '__main__':
     print("MAR pre:",mean_MAR_pre)  
     mean_MAR_post=statistics.mean(MAR_post)
     print("MAR post:",mean_MAR_post)
-    mean_MAR_post1=statistics.mean(MAR_post_all[1])
-    mean_MAR_post2=statistics.mean(MAR_post_all[2])
-    mean_MAR_post3=statistics.mean(MAR_post_all[3])
-    mean_MAR_post4=statistics.mean(MAR_post_all[4])
-    mean_MAR_post5=statistics.mean(MAR_post_all[5])
-    print("MAR post 1:",mean_MAR_post1)
-    print("MAR post 2:",mean_MAR_post2)
-    print("MAR post 3:",mean_MAR_post3)
-    print("MAR post 4:",mean_MAR_post4)
-    print("MAR post 5:",mean_MAR_post5)
     hitatone0=statistics.mean(list(hitatone[0]))
     print("hits@1 session0",hitatone0)
     hitatthree0=statistics.mean(hitatthree[0])
@@ -293,55 +279,55 @@ if __name__ == '__main__':
     print("hits@10 session1",hitatten1)
     hitattwenty1=(statistics.mean(hitattwenty[1]))
     print("hits@20 session1",hitattwenty1)
-    hitatone2=(statistics.mean(list(hitatone[2])))
-    print("hits@1 session2",hitatone2)
-    hitatthree2=statistics.mean(hitatthree[2])
-    print("hits@3 session2",hitatthree2)
-    hitatfive2=statistics.mean(hitatfive[2])
-    print("hits@5 session2",hitatfive2)
-    hitatten2=statistics.mean(hitatten[2])
-    print("hits@10 session2",hitatten2)
-    hitattwenty2=statistics.mean(hitattwenty[2])
-    print("hits@20 session2",hitattwenty2)
-    hitatone3=(statistics.mean(list(hitatone[3])))
-    print("hits@1 session3",hitatone2)
-    hitatthree3=statistics.mean(hitatthree[3])
-    print("hits@3 session3",hitatthree3)
-    hitatfive3=statistics.mean(hitatfive[3])
-    print("hits@5 session3",hitatfive3)
-    hitatten3=statistics.mean(hitatten[3])
-    print("hits@10 session3",hitatten3)
-    hitattwenty3=statistics.mean(hitattwenty[3])
-    print("hits@20 session3",hitattwenty3)
-    hitatone4=(statistics.mean(list(hitatone[4])))
-    print("hits@1 session4",hitatone4)
-    hitatthree4=statistics.mean(hitatthree[4])
-    print("hits@3 session4",hitatthree4)
-    hitatfive4=statistics.mean(hitatfive[4])
-    print("hits@5 session4",hitatfive4)
-    hitatten4=statistics.mean(hitatten[4])
-    print("hits@10 session4",hitatten4)
-    hitattwenty4=statistics.mean(hitattwenty[4])
-    print("hits@20 session4",hitattwenty4)
-    hitatone5=(statistics.mean(list(hitatone[5])))
-    print("hits@1 session5",hitatone5)
-    hitatthree5=statistics.mean(hitatthree[5])
-    print("hits@3 session5",hitatthree5)
-    hitatfive5=statistics.mean(hitatfive[5])
-    print("hits@5 session5",hitatfive5)
-    hitatten5=statistics.mean(hitatten[5])
-    print("hits@10 session5",hitatten5)
-    hitattwenty5=statistics.mean(hitattwenty[5])
-    print("hits@20 session5",hitattwenty5)
+      #hitatone2=(statistics.mean(list(hitatone[2])))
+      #print("hits@1 session2",hitatone2)
+      #hitatthree2=statistics.mean(hitatthree[2])
+      #print("hits@3 session2",hitatthree2)
+      #hitatfive2=statistics.mean(hitatfive[2])
+      #print("hits@5 session2",hitatfive2)
+      #hitatten2=statistics.mean(hitatten[2])
+      #print("hits@10 session2",hitatten2)
+      #hitattwenty2=statistics.mean(hitattwenty[2])
+      #print("hits@20 session2",hitattwenty2)
+      #hitatone3=(statistics.mean(list(hitatone[3])))
+      #print("hits@1 session3",hitatone2)
+      #hitatthree3=statistics.mean(hitatthree[3])
+      #print("hits@3 session3",hitatthree3)
+      #hitatfive3=statistics.mean(hitatfive[3])
+      #print("hits@5 session3",hitatfive3)
+      #hitatten3=statistics.mean(hitatten[3])
+      #print("hits@10 session3",hitatten3)
+      #hitattwenty3=statistics.mean(hitattwenty[3])
+      #print("hits@20 session3",hitattwenty3)
+      #hitatone4=(statistics.mean(list(hitatone[4])))
+      #print("hits@1 session4",hitatone4)
+      #hitatthree4=statistics.mean(hitatthree[4])
+      #print("hits@3 session4",hitatthree4)
+      #hitatfive4=statistics.mean(hitatfive[4])
+      #print("hits@5 session4",hitatfive4)
+      #hitatten4=statistics.mean(hitatten[4])
+      #print("hits@10 session4",hitatten4)
+      #hitattwenty4=statistics.mean(hitattwenty[4])
+      #print("hits@20 session4",hitattwenty4)
+      #hitatone5=(statistics.mean(list(hitatone[5])))
+      #print("hits@1 session5",hitatone5)
+      #hitatthree5=statistics.mean(hitatthree[5])
+      #print("hits@3 session5",hitatthree5)
+      #hitatfive5=statistics.mean(hitatfive[5])
+      #print("hits@5 session5",hitatfive5)
+      #hitatten5=statistics.mean(hitatten[5])
+      #print("hits@10 session5",hitatten5)
+      #hitattwenty5=statistics.mean(hitattwenty[5])
+      #print("hits@20 session5",hitattwenty5)
 
-    wandb.log({
-        "hits@1 session0":hitatone0,"hits@3 session0":hitatthree0,"hits@5 session0":hitatfive0,"hits@10 session0":hitatten0,"hits@20 session0":hitattwenty0,
-"hits@1 session1":hitatone1,"hits@3 session1":hitatthree1,"hits@5 session1":hitatfive1,"hits@10 session1":hitatten1,"hits@20 session1":hitattwenty1,
-"hits@1 session2":hitatone2,"hits@3 session2":hitatthree2,"hits@5 session2":hitatfive2,"hits@10 session2":hitatten2,"hits@20 session2":hitattwenty2,
-"hits@1 session3":hitatone3,"hits@3 session3":hitatthree3,"hits@5 session3":hitatfive3,"hits@10 session3":hitatten3,"hits@20 session3":hitattwenty3,
-"hits@1 session4":hitatone4,"hits@3 session4":hitatthree4,"hits@5 session4":hitatfive4,"hits@10 session4":hitatten4,"hits@20 session4":hitattwenty4,
-"hits@1 session5":hitatone5,"hits@3 session5":hitatthree5,"hits@5 session5":hitatfive5,"hits@10 session5":hitatten5,"hits@20 session5":hitattwenty5
-      })
+  #    wandb.log({
+   #     "hits@1 session0":hitatone0,"hits@3 session0":hitatthree0,"hits@5 session0":hitatfive0,"hits@10 session0":hitatten0,"hits@20 session0":hitattwenty0,
+#"hits@1 session1":hitatone1,"hits@3 session1":hitatthree1,"hits@5 session1":hitatfive1,"hits@10 session1":hitatten1,"hits@20 session1":hitattwenty1,
+#"hits@1 session2":hitatone2,"hits@3 session2":hitatthree2,"hits@5 session2":hitatfive2,"hits@10 session2":hitatten2,"hits@20 session2":hitattwenty2,
+#"hits@1 session3":hitatone3,"hits@3 session3":hitatthree3,"hits@5 session3":hitatfive3,"hits@10 session3":hitatten3,"hits@20 session3":hitattwenty3,
+#"hits@1 session4":hitatone4,"hits@3 session4":hitatthree4,"hits@5 session4":hitatfive4,"hits@10 session4":hitatten4,"hits@20 session4":hitattwenty4,
+#"hits@1 session5":hitatone5,"hits@3 session5":hitatthree5,"hits@5 session5":hitatfive5,"hits@10 session5":hitatten5,"hits@20 session5":hitattwenty5
+#      })
 
           
 
