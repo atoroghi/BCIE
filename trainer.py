@@ -32,7 +32,7 @@ class Trainer:
         )
         dataloader = DataLoader(
             self.dataset, 
-            batch_size = self.args.workers, # each workers get batch_size / workers items 
+            batch_size = self.args.workers, # Don't touch this ever! 
             shuffle = True, 
             num_workers = self.args.workers
         )
