@@ -45,11 +45,12 @@ class Trainer:
             for x in dataloader:
                 x = x.to(self.device)
                 x = x.view(-1, 4)
+                print(x.shape)
                 optimizer.zero_grad()
 
                 # TODO: too many return values... this should be a class
                         # or just never return the embeddings...
-                score,_,_,_,_,_,_ = self.model(x[:,0],x[:,1],x[:,2])
+                score = self.model(x[:,0],x[:,1],x[:,2])
                 score_loss, reg_loss = self.model.loss(score, x)
                 loss = (score_loss + reg_loss)
 
@@ -75,4 +76,3 @@ class Trainer:
         if not os.path.exists(directory):
             os.makedirs(directory)
         torch.save(self.model, directory + str(chkpnt) + ".chkpnt")
-
