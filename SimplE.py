@@ -34,10 +34,12 @@ class SimplE(nn.Module):
         r_embs = self.rel_embs(rels)
         r_inv_embs = self.rel_inv_embs(rels)
 
+        #scores1 = torch.sum(hh_embs * r_embs * tt_embs, dim=1)
+        #scores2 = torch.sum(ht_embs * r_inv_embs * th_embs, dim=1)
         for_sim = hh_embs * r_embs * tt_embs
         inv_sim = ht_embs * r_inv_embs * th_embs
-        return torch.clamp((for_sim + inv_sim) / 2, -20, 20) , hh_embs , r_embs , tt_embs , ht_embs , r_inv_embs , th_embs
-
+        #return torch.clamp((scores1 + scores2) / 2, -20, 20) , hh_embs , r_embs , tt_embs , ht_embs , r_inv_embs , th_embs
+        return torch.clamp((for_sim + inv_sim) / 2, -20, 20) 
     def loss(self, score, x):
         labels = torch.unsqueeze(x[:,3], axis=1)
         loss = torch.sum(F.softplus(-labels * score))
