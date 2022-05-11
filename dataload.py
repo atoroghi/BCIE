@@ -1,4 +1,4 @@
-import os, pickle, sys
+import os, pickle, sys, time
 import numpy as np
 
 import torch
@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 
 class LoadDataset(Dataset):
     # mode is 'test' or 'train'
-    def __init__(self, mode, args, power=3/4):
+    def __init__(self, mode, args):
         self.name = args.dataset
         self.neg_ratio = int(args.neg_ratio)
         assert self.neg_ratio >= 1
@@ -41,8 +41,8 @@ class LoadDataset(Dataset):
         with open(os.path.join(path, 'user_likes_map.pkl'), 'rb') as f:
             self.user_likes_map = pickle.load(f)
 
-        # preprocessing for negative sampling
-
+        # class for negative sampling
+        self.sampler = Sample(self.data, power=args.neg_power)
         
         # for self.print_triplet 
         with open(os.path.join(path, 'item_map.pkl'), 'rb') as f:
@@ -55,8 +55,8 @@ class LoadDataset(Dataset):
             pos = self.data[index : index + self.par_batch]
         else:
             pos = self.data[index :]
+
         neg = self.get_negatives(pos)
-        
         data = np.concatenate((pos, neg), axis=0)
         
         # add label information in col 4
@@ -71,33 +71,19 @@ class LoadDataset(Dataset):
         return self.data.shape[0] // (self.par_batch)
 
     # negative sampling
-    # TODO: make this parallel?
+    # TODO: fast way to remove positive samples..?
     def get_negatives(self, pos):
-        for i in range(pos.shape[0]):
-            neg = np.ones((self.neg_ratio, 3), dtype=np.int32)
-            neg[:] *= pos[i]
-            
-            for j in range(self.neg_ratio):
-                ind = 0 if np.random.rand() < 0.5 else 2 # flip head or tail
-                neg[j, ind] = self.replace_item(pos[i, ind])
+        n = self.neg_ratio * pos.shape[0] # number of neg samples
+        neg = np.repeat(np.copy(pos), self.neg_ratio, axis=0)
+        
+        mask = np.random.randint(0, 2, size=(n))
+        mask = np.vstack((mask, np.ones(n), 1 - mask)).T
 
-            if i == 0:
-                final_neg = neg
-            else:
-                final_neg = np.concatenate((final_neg, neg), axis=0)
-        return final_neg
+        samples = self.sampler.sample(n)
+        samples = np.vstack((samples, np.zeros(n), samples)).T
 
-    def replace_item(self, item):
-        while True:
-            # fast for uniform sample
-            if self.power == 0:
-                sample = np.random.randint(self.num_items)
-            # discrete inverse sampling
-            else:
-                print()
-
-            if sample != item: break
-        return sample
+        neg = neg * mask + samples * (1 - mask)
+        return neg
 
     # prints human-readable triplets from rec or kg triplets
     def print_triplet(self, triplet):
@@ -114,3 +100,32 @@ class LoadDataset(Dataset):
         else:
             o = 'Freebase ID: {}'.format(triplet[2])
         print('<{} -- {} -- {}>'.format(s,r,o))
+
+class Sample:
+    def __init__(self, data, power=0):
+        assert power >= 0 and power <= 1
+        self.power = power
+        self.total = np.concatenate((data[:,0], data[:,2]))
+        self.num_items = np.max(self.total)
+
+        # otherwise uniform sampling
+        if self.power != 0:
+            self.dist = np.zeros(self.num_items + 1)
+
+            for i in range(self.total.shape[0]):
+                index = self.total[i]
+                self.dist[index] += 1
+
+            self.dist = np.power(self.dist, self.power)
+            self.dist = self.dist / np.sum(self.dist)
+            self.dist = self.dist.astype(np.double)
+    
+    def sample(self, n):
+        # efficient uniform sampling
+        if self.power == 0:
+            sample = np.random.randint(self.num_items + 1, size=(n))
+        # discrete inverse sampling
+        else:
+            sample = np.random.choice(self.num_items + 1, size=(n), p=self.dist)
+
+        return sample
