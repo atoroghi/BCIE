@@ -11,18 +11,17 @@ import wandb
 
 
 class Tester:
-    def __init__(self, dataset, model_path, valid_or_test,loaddataset,emb_dim,args):
+    def __init__(self, model_path, valid_or_test, dataset, args):
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         self.model = torch.load(model_path, map_location = 'cpu')
         self.model.eval()
-        self.dataset = dataset
         self.valid_or_test = valid_or_test
         #self.all_facts_as_set_of_tuples = set(self.allFactsAsTuples())
-        self.emb_dim=emb_dim
+        self.emb_dim=args.emb_dim
         self.model_path=model_path
-        self.loaddataset=loaddataset
-        self.items_list=loaddataset.rec_items
-        self.users_likes= loaddataset.user_likes_map
+        self.dataset=dataset
+        self.items_list=dataset.rec_items
+        self.users_likes=dataset.user_likes_map
         #self.users_list=self.users_likes.keys()
         self.users_list=list(self.users_likes.keys())
         self.items_embeddings_head=np.zeros([len(self.items_list),self.emb_dim])
@@ -70,7 +69,7 @@ class Tester:
         user_posterior=torch.ones(self.emb_dim).to(self.device)
         for user_id in tqdm(self.users_list):
             ground_truth=0
-            recommender= Recommender(self.loaddataset,self.model,user_id,ground_truth,"pre",user_posterior,self.items_embeddings_head,self.items_embeddings_tail,self.users_embeddings_head_proj[user_id-self.users_list[0]],self.users_embeddings_tail_proj[user_id-self.users_list[0]])
+            recommender= Recommender(self.dataset,self.model,user_id,ground_truth,"pre",user_posterior,self.items_embeddings_head,self.items_embeddings_tail,self.users_embeddings_head_proj[user_id-self.users_list[0]],self.users_embeddings_tail_proj[user_id-self.users_list[0]])
             ranked_indices = recommender.pre_critiquing_new()
 
             for ground_truth in self.users_likes[user_id]:

@@ -39,13 +39,12 @@ class Trainer:
 
         # main training loop
         loss_track = []
-        for epoch in tqdm(range(self.args.ne+1)):
+        for epoch in range(self.args.ne+1):
             
             loss_temp = []
             for x in dataloader:
                 x = x.to(self.device)
                 x = x.view(-1, 4)
-                print(x.shape)
                 optimizer.zero_grad()
 
                 # TODO: too many return values... this should be a class

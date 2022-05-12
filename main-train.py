@@ -63,7 +63,7 @@ if __name__ == '__main__':
     # temp!!!! take away the -1 before push to github
     model_path = 'models/' + args.dataset + '/' + str(args.ne - 1) + '.chkpnt'
     dataset = LoadDataset('test', args)
-    tester = Tester(model_path, 'valid', dataset,args.emb_dim, args)
+    tester = Tester(model_path, 'valid', dataset, args)
     
     hone, hthree, hfive, hten, htwenty = tester.evaluate_precritiquing()
     print('pre-critiquing hit@1:')
