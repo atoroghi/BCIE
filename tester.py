@@ -1,97 +1,62 @@
 import torch
-from dataset import Dataset
+import os, sys
 import numpy as np
-import os
-from os import listdir
-from os.path import isfile, join
-from dataload import LoadDataset
-from tqdm import tqdm
-from recommender import Recommender
-import wandb
+from dataset import Dataset
+from utils.plots import rank_save
 
+def test(dataset, args, device):
+    # load model
+    path = os.path.join('results', args.test_name)
+    load_path = os.path.join(path, 'models', 'epoch {}.chkpnt'.format(args.ne))
+    model = torch.load(load_path, map_location = 'cpu')
 
-class Tester:
-    def __init__(self, model_path, valid_or_test, dataset, args):
-        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-        self.model = torch.load(model_path, map_location = 'cpu')
-        self.model.eval()
-        self.valid_or_test = valid_or_test
-        #self.all_facts_as_set_of_tuples = set(self.allFactsAsTuples())
-        self.emb_dim=args.emb_dim
-        self.model_path=model_path
-        self.dataset=dataset
-        self.items_list=dataset.rec_items
-        self.users_likes=dataset.user_likes_map
-        #self.users_list=self.users_likes.keys()
-        self.users_list=list(self.users_likes.keys())
-        self.items_embeddings_head=np.zeros([len(self.items_list),self.emb_dim])
-        self.items_embeddings_tail=np.zeros([len(self.items_list),self.emb_dim])
-        self.items_index=dict(zip(self.items_list,list(range(0,len(self.items_list)))))
-        self.items_index_inverse=dict(zip(list(range(0,len(self.items_list))),self.items_list))
-        self.users_embeddings_head_proj=np.zeros([np.max(self.users_list)-self.users_list[0]+1,self.emb_dim])
-        self.users_embeddings_tail_proj=np.zeros([np.max(self.users_list)-self.users_list[0]+1,self.emb_dim])
-        #os.environ['WANDB_API_KEY']='d606ae06659873794e6a1a5fb4f55ffc72aac5a1'
-        #os.environ['WANDB_USERNAME']='atoroghi'
-        #wandb.login(key="d606ae06659873794e6a1a5fb4f55ffc72aac5a1")
-        #wandb.init(project="pre-critiquing",config={"lr": 0.1},settings=wandb.Settings(start_method="fork"))
-        wandb.init(project="pre-critiquing",config={"lr": 0.1})
-        #os.environ['WANDB_API_KEY']='d606ae06659873794e6a1a5fb4f55ffc72aac5a1'
-        #os.environ['WANDB_USERNAME']='atoroghi'
-        wandb.config.update(args,allow_val_change=True)
+    # get items and users 
+    items = dataset.items.tolist()
+    users = dataset.users.tolist()
+    users_likes = dataset.user_likes_map
 
-        for item in self.items_list:
-            t = torch.tensor([item]).long()
-            item_embedding_head = self.model.ent_h_embs(t)
-            item_embedding_tail = self.model.ent_t_embs(t)
-            to_head=(item_embedding_head.detach().numpy()).reshape((1,self.emb_dim))
-            to_tail=(item_embedding_tail.detach().numpy()).reshape((1,self.emb_dim))
-            index=self.items_index[item]
-            self.items_embeddings_head[index]=to_head
-            self.items_embeddings_tail[index]=to_tail
-        for user in self.users_list:
-            h = torch.tensor([user]).long()
-            r=torch.tensor([47]).long()
-            users_embedding_head = self.model.ent_h_embs(h)
-            users_embedding_tail = self.model.ent_t_embs(h)
-            likes_embedding = self.model.rel_embs(r)
-            likes_embedding_inv = self.model.rel_inv_embs(r)
-            self.users_embeddings_head_proj[user-self.users_list[0]]=np.multiply((users_embedding_head.detach().numpy()),(likes_embedding.detach().numpy()))
-            self.users_embeddings_tail_proj[user-self.users_list[0]]=np.multiply((users_embedding_tail.detach().numpy()),(likes_embedding_inv.detach().numpy()))
+    # to store embeddings and projected embeddings (head and tail)
+    items_h = np.zeros([len(items), args.emb_dim])
+    items_t = np.zeros([len(items), args.emb_dim])
+    users_hp = np.zeros([len(users), args.emb_dim])
+    users_tp = np.zeros([len(users), args.emb_dim])
 
-    def evaluate_precritiquing(self):
-        hitatone=0
-        hitatthree=0
-        hitatfive=0
-        hitatten=0
-        hitattwenty=0
-        counter=0
-        user_counter=0
-        user_posterior=torch.ones(self.emb_dim).to(self.device)
-        for user_id in tqdm(self.users_list):
-            ground_truth=0
-            recommender= Recommender(self.dataset,self.model,user_id,ground_truth,"pre",user_posterior,self.items_embeddings_head,self.items_embeddings_tail,self.users_embeddings_head_proj[user_id-self.users_list[0]],self.users_embeddings_tail_proj[user_id-self.users_list[0]])
-            ranked_indices = recommender.pre_critiquing_new()
+    # to map id to array location
+    id2index = dict(zip(items, list(range(0, len(items)))))
 
-            for ground_truth in self.users_likes[user_id]:
-                rank = int(np.where(ranked_indices==self.items_index[ground_truth])[0])
-                if rank<2:
-                    hitatone +=1
-                if rank<4:
-                    hitatthree += 1
-                if rank<6:
-                    hitatfive += 1
-                if rank<11:
-                    hitatten += 1
-                if rank<21:
-                    hitattwenty +=1
-                counter += 1
-            user_counter += 1
+    # save embeddings in array
+    for item in items:
+        index = id2index[item]
+        item_t = torch.tensor([item]).long()
 
-            wandb.log({"step":user_counter})
-        hitatone_normalized= hitatone/counter
-        hitatthree_normalized= hitatthree/counter
-        hitatfive_normalized= hitatfive/counter
-        hitatten_normalized= hitatten/counter
-        hitattwenty_normalized= hitattwenty/counter
-        wandb.log({"hit@1":hitatone_normalized,"hit@3":hitatthree_normalized,"hit@5":hitatfive_normalized,"hit@10":hitatten_normalized,"hit@20":hitattwenty_normalized})
-        return hitatone_normalized, hitatthree_normalized, hitatfive_normalized, hitatten_normalized, hitattwenty_normalized
+        items_h[index] = model.ent_h_embs(item_t).detach().numpy()
+        items_t[index] = model.ent_t_embs(item_t).detach().numpy()
+    
+    r = torch.tensor([dataset.likes_link]).long()
+    likes_f = model.rel_embs(r).detach().numpy()
+    likes_inv = model.rel_inv_embs(r).detach().numpy()
+    for user in users:
+        index = user - users[0]
+        user_t = torch.tensor([user]).long()
+        
+        new_h = model.ent_h_embs(user_t).detach().numpy()
+        new_t = model.ent_t_embs(user_t).detach().numpy()
+        
+        users_hp[index] = np.multiply(new_h, likes_f)
+        users_tp[index] = np.multiply(new_t, likes_inv)
+
+    # main test loop
+    #################################################################
+    rank_track = []
+    for user in users:
+        index = user - users[0]
+        for_prod = np.multiply(users_hp[index], items_t)
+        inv_prod = np.multiply(users_tp[index], items_h)
+        scores = np.clip(np.sum(for_prod + inv_prod, axis=1), -40, 40)
+        ranked = scores.argsort()[::-1]
+
+        for ground_truth in users_likes[user]:
+            rank = int(np.where(ranked == id2index[ground_truth])[0])
+            rank_track.append(rank)
+
+    rank_save(rank_track, args.test_name)

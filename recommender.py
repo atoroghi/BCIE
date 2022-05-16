@@ -4,7 +4,7 @@ from SimplE import SimplE
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-import os
+import os, sys
 import numpy as np
 import random
 import operator
@@ -18,8 +18,8 @@ class Recommender:
         self.model.eval()
         self.dataset = loaddataset
         self.user_id = user_id
-        self.items_list = self.dataset.rec_items
-        self.items_index=dict(zip(self.items_list,list(range(0,len(self.items_list)))))
+        self.items_list = self.dataset.items
+        self.items_index = dict(zip(self.items_list,list(range(0,len(self.items_list)))))
         self.items_index_inverse=dict(zip(list(range(0,len(self.items_list))),self.items_list))
         self.ground_truth = ground_truth
         self.pre_or_post = pre_or_post
@@ -30,12 +30,11 @@ class Recommender:
         self.user_embedding_tail_proj = user_embeddings_tail_proj
 
 
-    # self.user_id=self.dataset.ent2id[user_no]
-    # self.items_list=self.dataset.eligible_items[self.user_id]
-
     def pre_critiquing_new(self):
-      scores=np.clip(np.sum(np.multiply(self.user_embedding_head_proj ,self.items_embeddings_tail)+np.multiply(self.user_embedding_tail_proj ,self.items_embeddings_head),axis=1),-40,40)
-      ranked_items_indices=scores.argsort()[::-1]
+      m1 = np.multiply(self.user_embedding_head_proj ,self.items_embeddings_tail)
+      m2 = np.multiply(self.user_embedding_tail_proj ,self.items_embeddings_head)
+      scores = np.clip(np.sum(m1 + m2, axis=1),-40,40)
+      ranked_items_indices = scores.argsort()[::-1]
       return ranked_items_indices
 
 
@@ -135,107 +134,6 @@ class Recommender:
             object , critique_fact = None, None
       return object , critique_fact
 
-
- #   def select_critique(self,data,critique_mode,recommended_items):
- #       global critique
- #       gt_facts_head = data[np.where((data[:, 0] == self.ground_truth))]
- #       gt_facts_tail = data[np.where((data[:, 2] == self.ground_truth))]
- #       rec_facts_head = np.array([])
- #       rec_facts_tail = np.array([])
- #       for item in recommended_items:
- #           rec_facts_head = np.vstack(
- #               [rec_facts_head, data[
- #                   (np.where((data[:, 0] == item) ))]]) if rec_facts_head.size \
- #               else data[(np.where((data[:, 0] == item)))]
- #           rec_facts_tail = np.vstack(
- #               [rec_facts_tail, data[
- #                   (np.where((data[:, 2] == item)))]]) if rec_facts_tail.size \
- #               else data[(np.where((data[:, 2] == item)))]
- #       facts_diff_head={}
- #       facts_diff_tail={}
- #       for fact in gt_facts_head:
- #           condition = (fact[1] == rec_facts_head[:, 1]) & (fact[2] == rec_facts_head[:, 2])
- #           facts_diff_head[tuple(fact[1:])]=np.count_nonzero(condition)
- #       for fact in gt_facts_tail:
- #           condition= (fact[1] == rec_facts_tail[:, 1]) & (fact[0] == rec_facts_tail[:, 0])
- #           facts_diff_tail[tuple(fact[:2])] = np.count_nonzero(condition)
- #       if critique_mode=="random":
- #           critique_candidates={}
- #           if bool(facts_diff_tail):
- #             candidate_facts_tail=dict((k, v) for k, v in facts_diff_tail.items() if v <len(recommended_items))
- #             tail_candidate=(0,0)
- #             if list(candidate_facts_tail):
- #               tail_candidate=random.choice(list(candidate_facts_tail))
- #             critique_candidates["tail"]=tail_candidate
- #           if bool(facts_diff_head):
- #             candidate_facts_head=dict((k, v) for k, v in facts_diff_head.items() if v <len(recommended_items))
- #             head_candidate=(0,0)
- #             if list(candidate_facts_head):
- #               head_candidate=random.choice(list(candidate_facts_head))
- #             critique_candidates["head"]=head_candidate
- #           critique_facts=(0,0)
- #           while critique_facts==(0,0):
- #             selected_end=random.choice(list(critique_candidates))
- #             critique=critique_candidates[selected_end], selected_end
- #             critique_facts=critique[0]
- #       if critique_mode=="pop":
- #           critique_candidates={}
- #           most_famous_repeats_tail=0
- #           most_famous_repeats_head=0
- #           if bool(facts_diff_tail):
- #             candidate_facts_tail=dict((k, v) for k, v in facts_diff_tail.items() if v <len(recommended_items))
- #             freq_candidates_list_tail={}
- #             for candidate in candidate_facts_tail:
- #               freq_candidates_list_tail[candidate]=((data[:,0]==candidate[0]) | (data[:,2]==candidate[0])).sum()
- #               most_famous_repeats_tail = max(freq_candidates_list_tail.values())
- #               tail_candidate = [k for k, v in freq_candidates_list_tail.items() if v == most_famous_repeats_tail][0]
- #               critique_candidates["tail"]=tail_candidate
- #           if bool(facts_diff_head):
- #             candidate_facts_head=dict((k, v) for k, v in facts_diff_head.items() if v <len(recommended_items))
- #             freq_candidates_list_head={}
- #             for candidate in candidate_facts_head:
- #               freq_candidates_list_head[candidate]=((data[:,0]==candidate[1]) | (data[:,2]==candidate[1])).sum()
- #               most_famous_repeats_head = max(freq_candidates_list_head.values())
- #               head_candidate = [k for k, v in freq_candidates_list_head.items() if v == most_famous_repeats_head][0]
- #               critique_candidates["head"]=head_candidate
- #           if most_famous_repeats_tail>most_famous_repeats_head:
- #             critique=critique_candidates["tail"],"tail"
- #           else:
- #             critique=critique_candidates["head"],"head"
- #       if critique_mode=="diff":
- #         if bool(facts_diff_tail):
- #           minval_tail=min(facts_diff_tail.values())
- #         else:
- #           minval_tail=0
- #         if bool(facts_diff_head):
- #           minval_head=min(facts_diff_head.values())
- #         else:
- #           minval_head=0
- #         if minval_tail<minval_head and minval_tail>0:
- #           candidates_list = [k for k, v in facts_diff_tail.items() if v == minval_tail]
- #           if len(candidates_list)>1:
- #             freq_candidates_list={}
- #             for candidate in candidates_list:
- #               freq_candidates_list[candidate]=((data[:,0]==candidate[0]) | (data[:,2]==candidate[0])).sum()
- #               most_famous_repeats = max(freq_candidates_list.values())
- #               critique = [k for k, v in freq_candidates_list.items() if v == most_famous_repeats][0],"tail"
- #           else:
- #             critique=candidates_list[0],"tail"
- #         else:
- #           candidates_list = [k for k, v in facts_diff_head.items() if v == minval_head]
- #           if len(candidates_list)>1:
- #             freq_candidates_list = {}
- #             for candidate in candidates_list:
- #               freq_candidates_list[candidate] = ((data[:, 0] == candidate[1]) | (data[:, 2] == candidate[1])).sum()
- #               most_famous_repeats = max(freq_candidates_list.values())
- #               critique = [k for k, v in freq_candidates_list.items() if v == most_famous_repeats][0],"head"
- #           else:
- #             critique=candidates_list[0],"head"
-
-  #      print(critique)
-
-   #     return critique
-
     def remove_chosen_critiques(self, critiquing_candidate, previous_critiques):
         for end in ["head", "tail"]:
             for record in previous_critiques[end]:
@@ -243,13 +141,6 @@ class Recommender:
                     critiquing_candidate[end].remove(record)
 
         return critiquing_candidate
-
-   # def get_direct_embeddings(self, head, rel, tail):
-    #    h = torch.tensor([head]).long().to(self.device)
-     #   r = torch.tensor([rel]).long().to(self.device)
-      #  t = torch.tensor([tail]).long().to(self.device)
-       # _, head_embedding, relation_embedding, tail_embedding, _, _, _ = self.model(h, r, t)
-       # return head_embedding, relation_embedding, tail_embedding
 
     def obj2item(self,obj,data):
       objkg=data[np.where((data[:, 0] == obj) | (data[:, 2] == obj))]

@@ -32,11 +32,12 @@ class LoadDataset(Dataset):
         # info about users, items and total kg items
         # TODO: make this loss data specific (this is dependent of data format)
         self.users = np.unique(rec[:,0])
-        self.rec_items = np.unique(rec[:,2])
+        self.items = np.unique(rec[:,2])
         self.last_index = self.data.shape[0] // self.par_batch
         
         self.num_items = np.max(rec)
         self.num_rel = rec[0,1]
+        self.likes_link = rec[0,1]
 
         with open(os.path.join(path, 'user_likes_map.pkl'), 'rb') as f:
             self.user_likes_map = pickle.load(f)
