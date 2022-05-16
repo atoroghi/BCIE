@@ -35,13 +35,14 @@ def get_parameter():
     parser.add_argument('-workers', default=8, type=int, help="threads for dataloader")
     parser.add_argument('-num_users', default=100, type=int, help="number of users")
     parser.add_argument('-initial_Sigma', default=1e-2, type=float, help="initial prior precision")
+    parser.add_argument('-neg_power', default=0, type=float, help="power for neg sampling disribution")
     args = parser.parse_args()
     return args
 
 if __name__ == '__main__':
     args = get_parameter()
     #dataset = Dataset(args.dataset)
-    loaddataset=LoadDataset(args.dataset,"test",args)
+    loaddataset=LoadDataset('test', args)
     model_path="models/" + args.dataset + "/" + str(args.num_run)+"/"+str(args.ne) + ".chkpnt"
     #model_path="models/" + "ML" + "/" + "10000" + ".chkpnt"
     data_path="datasets/" + args.dataset
