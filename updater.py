@@ -35,8 +35,8 @@ class Updater:
 		self.emb_dim=args.emb_dim
 		self.device = device
 		self.session_no = session_no
-		#self.etta_dict={1:0.00001,2:0.1,3:0.5,4:1,5:10}
-		self.etta_cvx = session_no
+		self.etta_dict={1:0.00001,2:0.1,3:0.5,4:1,5:10}
+		#self.etta_cvx = session_no
 
 
 
@@ -58,8 +58,8 @@ class Updater:
 		for i in range(len(X_all)):
 			var= (X_all[i]@w)*y[i]
 			#objective_function += cp.logistic(-1*self.etta*var)
-			#objective_function += self.etta_dict[self.session_no]*cp.logistic(-1*var)
-			objective_function += self.etta_cvx*cp.logistic(-1*var)
+			objective_function += self.etta_dict[self.session_no]*cp.logistic(-1*var)
+			#objective_function += self.etta_cvx*cp.logistic(-1*var)
 		prob = cp.Problem(cp.Minimize(objective_function), constraints)
 		prob2 = cp.Problem(cp.Minimize(1000*objective_function),constraints)
 		try:
