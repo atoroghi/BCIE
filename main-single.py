@@ -34,13 +34,14 @@ def get_parameter():
     parser.add_argument('-critique_target', default="object", type=str, help="Target of User's critique")
     parser.add_argument('-workers', default=8, type=int, help="threads for dataloader")
     parser.add_argument('-num_users', default=100, type=int, help="number of users")
+    parser.add_argument('-neg_power', default=0, type=float, help="power for neg sampling disribution")
     args = parser.parse_args()
     return args
 
 if __name__ == '__main__':
     args = get_parameter()
     #dataset = Dataset(args.dataset)
-    loaddataset=LoadDataset(args.dataset,"test",args)
+    loaddataset=LoadDataset("test",args)
     model_path="models/" + args.dataset + "/" + str(args.num_run)+"/"+str(args.ne) + ".chkpnt"
     #model_path="models/" + "ML" + "/" + "10000" + ".chkpnt"
     data_path="datasets/" + args.dataset
@@ -108,6 +109,11 @@ if __name__ == '__main__':
         users_embeddings_tail[user-users_list[0]]=to_tail
         users_embeddings_head_proj[user-users_list[0]]=np.multiply((to_head),(likes_embedding))
         users_embeddings_tail_proj[user-users_list[0]]=np.multiply((to_tail),(likes_embedding_inv))
+    print("first user emb head:",user_embedding_head[-1])
+    print("first user emb tail:",user_embedding_tail[-1])
+    print("likes embedding:",likes_embedding)
+    print("last item embedding head:",item_embedding_head[-1])
+    print("last item embedding tail:",item_embedding_tail[-1])
 
     
     history={}
@@ -134,9 +140,14 @@ if __name__ == '__main__':
       ### Before critiquing begins, get the recommendation and ground truth (gt) rank
       ranked_indices_pre = recommender.pre_critiquing_new()
       recommended_items_pre = [items_index_inverse[k] for k in ranked_indices_pre[0:20]]
+      ###Find the ground truth with worst pre-critiquing rank
+      users_likes_indices = np.array([items_index[k] for k in users_likes[user_id]])
+      ground_truth_ranks = [i for i,e in np.ndenumerate(ranked_indices_pre) if e in users_likes_indices][-1:]
+      ground_truth_indices = [ranked_indices_pre[k] for k in ground_truth_ranks]
+      ground_truth_list = [items_index_inverse[k] for k in ground_truth_indices]
 
       ### each user likes a number of items. Each time, one of the items that the user likes will be deemed as the ground truth
-      for ground_truth in users_likes[user_id]:
+      for ground_truth in ground_truth_list:
         user_posterior=users_embeddings_head[user_id-users_list[0]]
         history[user_id][ground_truth]=[]
 
@@ -146,6 +157,7 @@ if __name__ == '__main__':
         
         ### we make a pre-critiquing recommendation. Output the list of initially recommended items, and the rank of ground truth
         initial_rank= int(np.where(ranked_indices_pre==items_index[ground_truth])[0])
+        #initial_rank = ground_truth_rank
         mar=(num_items-initial_rank)/(num_items-1)
         MAR_pre.append(mar)
         recommended_items=recommended_items_pre
@@ -216,7 +228,7 @@ if __name__ == '__main__':
             etta= args.etta
             if session_no==1:
               Sigma_prior= 0.01*np.eye(args.emb_dim)
-            updater=Updater(X_true,y,user_posterior,Sigma_prior,user_posterior,args,etta,device)
+            updater=Updater(X_true,y,user_posterior,Sigma_prior,user_posterior,args,etta,device,session_no)
             ##mu_prior, _ = updater.SDR_cvxopt(Sigma_prior, X_true, y, user_posterior)
   
             ###This is the user posterior that will be used as the prior for the next session
