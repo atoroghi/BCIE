@@ -23,9 +23,6 @@ class SimplE(nn.Module):
         nn.init.uniform_(self.rel_embs.weight.data, -sqrt_size, sqrt_size)
         nn.init.uniform_(self.rel_inv_embs.weight.data, -sqrt_size, sqrt_size)
         
-    def l2_loss(self):
-        return ((torch.norm(self.ent_h_embs.weight, p=2) ** 2) + (torch.norm(self.ent_t_embs.weight, p=2) ** 2) + (torch.norm(self.rel_embs.weight, p=2) ** 2) + (torch.norm(self.rel_inv_embs.weight, p=2) ** 2)) / 2
-
     def forward(self, heads, rels, tails):
         hh_embs = self.ent_h_embs(heads)
         ht_embs = self.ent_h_embs(tails)
@@ -34,14 +31,14 @@ class SimplE(nn.Module):
         r_embs = self.rel_embs(rels)
         r_inv_embs = self.rel_inv_embs(rels)
 
-        for_prod = hh_embs * r_embs * tt_embs
-        inv_prod = ht_embs * r_inv_embs * th_embs
+        for_prod = torch.sum(hh_embs * r_embs * tt_embs, dim=1)
+        inv_prod = torch.sum(ht_embs * r_inv_embs * th_embs, dim=1)
 
         return torch.clamp((for_prod + inv_prod) / 2, -20, 20) 
 
-    def loss(self, score, x):
-        labels = torch.unsqueeze(x[:,3], axis=1)
-        loss = torch.sum(F.softplus(-labels * score))
+    def loss(self, scores, x):
+        labels = x[:,3]
+        loss = torch.sum(F.softplus(-labels * scores))
         return loss, self.reg_loss()
 
     def reg_loss(self):
