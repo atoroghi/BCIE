@@ -9,32 +9,17 @@ class Dataset:
         self.dir = "datasets/" + ds_name + "/"
         self.ent2id = {}
         self.rel2id = {}
-        self.items = []
-        self.users = []
-        self.users_likes = {}
         self.data = {spl: self.read(self.dir + spl + ".txt") for spl in ["train", "valid", "test"]}
         self.batch_index = 0
+        print(self.data['train'].shape)
        
     def read(self, file_path):
         with open(file_path, "r") as f:
             lines = f.readlines()
         
-        triples = np.zeros((len(lines), 3),dtype=int)
+        triples = np.zeros((len(lines), 3))
         for i, line in enumerate(lines):
-            triples[i] = np.array(self.triple2ids(line.strip().split("\t")),dtype=int)
-
-            if triples[i][1] == 0:
-                if triples[i][0] not in self.users:
-                    self.users.append(triples[i][0])
-                if triples[i][0] not in self.users_likes:
-                    self.users_likes[triples[i][0]]=[]
-                else:
-                    if file_path!=self.dir + "valid.txt":
-                        if triples[i][2] not in self.users_likes[triples[i][0]]:
-                            self.users_likes[triples[i][0]].append(triples[i][2])
-                if triples[i][2] not in self.items:
-                    self.items.append(triples[i][2])
-
+            triples[i] = np.array(self.triple2ids(line.strip().split("\t")))
         return triples
     
     def num_ent(self):
@@ -44,7 +29,6 @@ class Dataset:
         return len(self.rel2id)
                      
     def triple2ids(self, triple):
-        ret = [self.get_ent_id(triple[0]), self.get_rel_id(triple[1]), self.get_ent_id(triple[2])]
         return [self.get_ent_id(triple[0]), self.get_rel_id(triple[1]), self.get_ent_id(triple[2])]
                      
     def get_ent_id(self, ent):
@@ -98,5 +82,4 @@ class Dataset:
 
     def num_batch(self, batch_size):
         return int(math.ceil(float(len(self.data["train"])) / batch_size))
-
 

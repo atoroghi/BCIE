@@ -1,13 +1,14 @@
 import torch
 import torch.nn as nn
-import math
+import numpy as np
+import sys 
 import torch.nn.functional as F
 
 class SimplE(nn.Module):
     def __init__(self, num_ent, num_rel, emb_dim, reg_lambda, device):
         super(SimplE, self).__init__()
-        self.num_ent = num_ent+1
-        self.num_rel = num_rel+1
+        self.num_ent = num_ent
+        self.num_rel = num_rel
         self.emb_dim = emb_dim
         self.reg_lambda = reg_lambda
         self.device = device
@@ -17,7 +18,7 @@ class SimplE(nn.Module):
         self.rel_embs     = nn.Embedding(self.num_rel, emb_dim).to(device)
         self.rel_inv_embs = nn.Embedding(self.num_rel, emb_dim).to(device)
 
-        sqrt_size = 6.0 / math.sqrt(self.emb_dim)
+        sqrt_size = 6.0 / np.sqrt(self.emb_dim)
         nn.init.uniform_(self.ent_h_embs.weight.data, -sqrt_size, sqrt_size)
         nn.init.uniform_(self.ent_t_embs.weight.data, -sqrt_size, sqrt_size)
         nn.init.uniform_(self.rel_embs.weight.data, -sqrt_size, sqrt_size)
@@ -36,9 +37,11 @@ class SimplE(nn.Module):
 
         return torch.clamp((for_prod + inv_prod) / 2, -20, 20) 
 
-    def loss(self, scores, x):
+    def loss(self, score, x):
         labels = x[:,3]
-        loss = torch.sum(F.softplus(-labels * scores))
+        out = F.softplus(-labels * score)
+
+        loss = torch.sum(out)
         return loss, self.reg_loss()
 
     def reg_loss(self):

@@ -1,47 +1,33 @@
 import os, pickle, sys, time
+import torch
 import numpy as np
 
-import torch
-from torch.utils.data import Dataset
-from torch.utils.data import DataLoader
-
-class LoadDataset(Dataset):
-    # mode is 'test' or 'train'
-    def __init__(self, mode, args):
+class DataLoader:
+    def __init__(self, args):
         self.name = args.dataset
         self.neg_ratio = int(args.neg_ratio)
         self.sample_type = args.sample_type
-        assert self.neg_ratio >= 1
-
-        self.noise = args.ni
-        self.workers = args.workers
         self.batch_size = args.batch_size
-        self.par_batch = self.batch_size // self.workers
 
         # load datasets and info mappings
         path = os.path.join('datasets', self.name)
+        self.rec_train = np.load(os.path.join(path, 'rec_train.npy'), allow_pickle=True)
+        self.kg = np.load(os.path.join(path, 'kg.npy'), allow_pickle=True)
+        self.data = np.concatenate((self.rec_train, self.kg))
+
+        # info about users etc...
         rec = np.load(os.path.join(path, 'rec.npy'), allow_pickle=True)
-
-        if mode == 'train': 
-            self.rec_train = np.load(os.path.join(path, 'rec_train.npy'), allow_pickle=True)
-            self.kg = np.load(os.path.join(path, 'kg.npy'), allow_pickle=True)
-            self.data = np.concatenate((self.rec_train, self.kg), axis=0) # must shuffle dataloader!
-
-        elif mode == 'test':
-            self.data = np.load(os.path.join(path, 'rec_test.npy'), allow_pickle=True)
-            
-        # info about users, items and total kg items
-        # TODO: make this loss data specific (this is dependent of data format)
         self.users = np.unique(rec[:,0])
         self.items = np.unique(rec[:,2])
-        self.last_index = self.data.shape[0] // self.par_batch
+        self.max_item = np.max(self.data) + 1
+        self.likes_link = np.max(rec[:,1])
+        self.num_rel = self.likes_link + 1
+        
+        self.n_batches = int(np.ceil(self.data.shape[0] / args.batch_size))
 
-        self.num_items = np.max(rec)
-        self.num_rel = rec[0,1]
-        self.likes_link = rec[0,1]
-
+        # user likes map for testing
         with open(os.path.join(path, 'user_likes_map.pkl'), 'rb') as f:
-            self.user_likes_map = pickle.load(f)
+            self.user_likes_map = pickle.load(f)       
 
         # class for negative sampling
         if self.sample_type == 'single':
@@ -49,17 +35,14 @@ class LoadDataset(Dataset):
         elif self.sample_type == 'double':
             self.sampler = DoubleSample(self.data, power=args.neg_power)
 
-        # for self.print_triplet 
-        with open(os.path.join(path, 'item_map.pkl'), 'rb') as f:
-            self.item_map = pickle.load(f)
-        with open(os.path.join(path, 'rel_map.pkl'), 'rb') as f:
-            self.link_map = pickle.load(f)
+    def shuffle(self):
+        self.data = np.random.permutation(self.data)
 
-    def __getitem__(self, index):
-        if index != self.last_index:
-            pos = self.data[index : index + self.par_batch]
+    def get_batch(self, i):
+        if i != self.n_batches - 1:
+            pos = self.data[i * self.batch_size : (i + 1) * self.batch_size]
         else:
-            pos = self.data[index :]
+            pos = self.data[i * self.batch_size : ]
 
         neg = self.get_negatives(pos)
         data = np.concatenate((pos, neg), axis=0)
@@ -70,10 +53,6 @@ class LoadDataset(Dataset):
         data = np.hstack((data, labels))
 
         return torch.from_numpy(data).long()
-
-    def __len__(self):
-        # each worker selects (batch / num workers)
-        return self.data.shape[0] // (self.par_batch)
 
     # negative sampling
     def get_negatives(self, pos):
@@ -92,22 +71,6 @@ class LoadDataset(Dataset):
 
         neg = neg * mask + samples * (1 - mask)
         return neg
-
-    # prints human-readable triplets from rec or kg triplets
-    def print_triplet(self, triplet):
-        # subject 
-        if triplet[0] in self.item_map:
-            s = self.item_map[triplet[0]]
-        else:
-            s = 'Freebase ID: {}'.format(triplet[0])
-        # relationship
-        r = self.link_map[triplet[1]]
-        # object
-        if triplet[2] in self.item_map:
-            o = self.item_map[triplet[2]]
-        else:
-            o = 'Freebase ID: {}'.format(triplet[2])
-        print('<{} -- {} -- {}>'.format(s,r,o))
 
 # treats head and tail as single dist
 class SingleSample:
@@ -175,9 +138,19 @@ class DoubleSample:
         if self.power == 0:
             head_sample = np.random.randint(self.num_items_head + 1, size=(n))
             tail_sample = np.random.randint(self.num_items_tail + 1, size=(n))
-        # discrete inverse sampling
-        else:
-            head_sample = np.random.choice(self.num_items_head + 1, size=(n), p=self.head_dist)
-            tail_sample = np.random.choice(self.num_items_tail + 1, size=(n), p=self.tail_dist)
+        # discrete inverse sampling    def get_negatives(self, pos):
+        n = self.neg_ratio * pos.shape[0] # number of neg samples
+        neg = np.repeat(np.copy(pos), self.neg_ratio, axis=0)
+        
+        mask = np.random.randint(0, 2, size=(n))
+        mask = np.vstack((mask, np.ones(n), 1 - mask)).T
 
-        return head_sample, tail_sample
+        if self.sample_type == 'single':
+            samples = self.sampler.sample(n)
+            samples = np.vstack((samples, np.zeros(n), samples)).T
+        elif self.sample_type == 'double':
+            head_samples, tail_samples = self.sampler.sample(n)
+            samples = np.vstack((tail_samples, np.zeros(n), head_samples)).T
+
+        neg = neg * mask + samples * (1 - mask)
+        return ne
