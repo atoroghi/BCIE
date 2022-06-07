@@ -35,6 +35,18 @@ class DataLoader:
         elif self.sample_type == 'double':
             self.sampler = DoubleSample(self.data, power=args.neg_power)
 
+        # load data for printing relation
+        with open(os.path.join(path, 'item_map.pkl'), 'rb') as f:
+            self.item_map = pickle.load(f)
+        with open(os.path.join(path, 'rel_map.pkl'), 'rb') as f:
+            self.rel_map = pickle.load(f)
+
+    def print_triple(self, triple):
+        head = self.item_map[triple[0]]
+        rel = self.rel_map[triple[1]]
+        tail = self.item_map[triple[2]]
+        print('{}, {}, {}'.format(head, rel, tail))
+
     def shuffle(self):
         self.data = np.random.permutation(self.data)
 
