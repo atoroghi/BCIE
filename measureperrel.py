@@ -103,14 +103,16 @@ class Measureperrel:
                 print("")
         plt.figure(figsize=(24,18))
         sns.barplot(x=rels, y=hitones)
-        plt.savefig(os.path.join(self.dir, 'perrel1.jpg'))
+        plt.savefig(self.dir + 'perrel1.jpg')
         sns.barplot(x=rels, y=hitthrees)
-        plt.savefig(os.path.join(self.dir, 'perrel3.jpg'))
+        plt.savefig(self.dir  + 'perrel3.jpg')
         sns.barplot(x=rels, y=hittens)
-        plt.savefig(os.path.join(self.dir, 'perrel10.jpg'))
+        plt.savefig(self.dir + 'perrel10.jpg')
         sns.barplot(x=rels, y=mrs)
-        plt.savefig(os.path.join(self.dir, 'perrelmr.jpg'))
+        plt.savefig(self.dir+ 'perrelmr.jpg')
         sns.barplot(x=rels, y=mrrs)
-        plt.savefig(os.path.join(self.dir, 'perrelmrr.jpg'))
+        plt.savefig(self.dir+ 'perrelmrr.jpg')
+
+        return self.hit1['fil'][47], self.hit3['fil'][47], self.hit10['fil'][47], self.mr['fil'][47], self.mrr['fil'][47]
             
     

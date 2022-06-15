@@ -10,6 +10,8 @@ import argparse
 import time
 import torch
 import pickle
+import seaborn as sns
+import matplotlib.pyplot as plt 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-test_name', default='dev', type=str, help="folder for test results")
@@ -82,7 +84,39 @@ if __name__ == '__main__':
 
     #print("Best epoch: " + best_epoch)
 
-    print("~~~~ Testing on the best epoch ~~~~")
-    best_model_path ="results/" + args.test_name + "/models/" +str(args.epochs) + ".chkpnt"
-    tester = Testerperreloptimized(dataloader, best_model_path, "test",args)
-    tester.test()
+    hitones=[]
+    hitthrees=[]
+    hittens=[]
+    mrs=[]
+    mrrs=[]
+
+    epochs=[5,20]
+
+    print("~~~~ Testing on different relations ~~~~")
+    for epoch in epochs:
+        #best_model_path ="results/perrels/" + args.test_name + "/models/" +str(args.epochs) + ".chkpnt"
+        best_model_path ="results/perrels/" + args.test_name + str(epoch)+ "/models/" + str(epoch) + ".chkpnt"
+        tester = Testerperreloptimized(dataloader, best_model_path, "test",args,epoch)
+        hit1,hit3,hit10,mr,mrr = tester.test()
+        hitones.append(hit1)
+        hitthrees.append(hit3)
+        hittens.append(hit10)
+        mrs.append(mr)
+        mrrs.append(mrr)
+    def plot_save(x, y1, name):
+        plt.style.use('seaborn')
+        fig, ax = plt.subplots(figsize=(12, 10), dpi=300)
+        ax.errorbar(x, y1, fmt='-o')
+        plt.rcParams.update({'font.size': 20})
+        ax.set_xlabel('Epochs', fontsize=20)
+        ax.set_ylabel(name, fontsize=20)
+        plt.tight_layout()
+        plt.savefig('results/perrels'+name+ '.jpg')
+        plt.clf()
+    
+
+    plot_save(epochs,mrs,'MR')
+    plot_save(epochs,mrrs,'MRR')
+    plot_save(epochs,hitones,'hit@1')
+    plot_save(epochs,hitthrees,'hit@3')
+    plot_save(epochs,hittens,'hit@10')

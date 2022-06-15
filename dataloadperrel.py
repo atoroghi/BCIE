@@ -14,16 +14,16 @@ class DataLoader:
         self.rec_train = np.load(os.path.join(path, 'rec_train.npy'), allow_pickle=True)
         self.rec_test = np.load(os.path.join(path, 'rec_test.npy'), allow_pickle=True)
         self.kg = np.load(os.path.join(path, 'kg.npy'), allow_pickle=True)
-        np.random.shuffle(self.kg)
+        #np.random.shuffle(self.kg)
         self.kg_train = self.kg[:610317]
-        self.kg_test = self.kg[610317:]
+        self.kg_test = self.kg[610317:610318]
         if self.kg_inclusion:
             self.data = np.concatenate((self.rec_train, self.kg_train))
             #self.data = np.concatenate((self.rec_train, self.kg))
         else:
             self.data = self.rec_train
-        np.random.shuffle(self.rec_test)
-        self.data_test=np.concatenate((self.rec_test[0:1],self.kg_test))
+        #np.random.shuffle(self.rec_test)
+        self.data_test=np.concatenate((self.rec_test[100000:100001],self.kg_test))
         
         #self.data_test=self.rec_test
         all_ents=np.concatenate(((np.delete(self.data,1,axis=1),np.delete(self.kg[610317:],1,axis=1),np.delete(self.rec_test,1,axis=1))))

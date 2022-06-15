@@ -10,21 +10,24 @@ import copy
 from tqdm import tqdm
 
 class Testerperreloptimized:
-    def __init__(self, dataset, model_path, valid_or_test,args):
+    def __init__(self, dataset, model_path, valid_or_test,args,epoch):
         self.device = torch.device('cpu')
+        self.args=args
         self.model = torch.load(model_path, map_location = self.device)
         self.model.eval()
+        self.epoch=epoch
         self.dataset = dataset
         self.valid_or_test = valid_or_test
         self.path = os.path.join('datasets', self.dataset.name)
-        self.measure = Measureperrel(self.path)
-        #self.all_facts_as_set_of_tuples = set(self.allFactsAsTuples())
+        self.results_path = 'results/perrels/'+args.test_name
+        self.measure = Measureperrel('results/perrels/'+self.args.test_name+str(self.epoch)+'/')
         self.facts_count={}
         self.num_ent=self.dataset.num_ent
         self.num_rel=self.dataset.num_rel
         self.ents=self.dataset.ents
         self.rels=self.dataset.rels
-        self.args=args
+        
+        
     def test(self):
         # to store embeddings and projected embeddings (head and tail)
         with open(self.path+'/heads_filtering.pkl', 'rb') as f:
@@ -104,6 +107,6 @@ class Testerperreloptimized:
 
         for rel_num in range(0,self.num_rel):
             self.measure.normalize(rel_num,self.facts_count[rel_num])
-        self.measure.print_()
-        return self.measure.mrr["fil"]
+        hit1,hit3,hit10,mr,mrr=self.measure.print_()
+        return hit1,hit3,hit10,mr,mrr
 
