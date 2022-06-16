@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import numpy as np
-import sys 
 import torch.nn.functional as F
 
 class SimplE(nn.Module):
@@ -37,17 +36,16 @@ class SimplE(nn.Module):
 
         return torch.clamp((for_prod + inv_prod) / 2, -20, 20) 
 
-    def loss(self, score, x):
-        labels = x[:,3]
+    def loss(self, score, labels):
         out = F.softplus(-labels * score)
-
         loss = torch.sum(out)
-        return loss, self.reg_loss()
+        return loss
 
     def reg_loss(self):
-        return self.reg_lambda * (
-            (torch.norm(self.ent_h_embs.weight, p=2) ** 2) \
+        norm_val = ((torch.norm(self.ent_h_embs.weight, p=2) ** 2) \
             + (torch.norm(self.ent_t_embs.weight, p=2) ** 2) \
             + (torch.norm(self.rel_embs.weight, p=2) ** 2) \
             + (torch.norm(self.rel_inv_embs.weight, p=2) ** 2)
         )
+        return norm_val
+

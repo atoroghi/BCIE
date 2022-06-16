@@ -12,24 +12,30 @@ class DataLoader:
         # load datasets and info mappings
         path = os.path.join('datasets', self.name)
         self.rec_train = np.load(os.path.join(path, 'rec_train.npy'), allow_pickle=True)
+
+        # info about users etc
+        self.rec_test = np.load(os.path.join(path, 'rec_test.npy'), allow_pickle=True)
+        rec = np.concatenate((self.rec_train, self.rec_test))
+        self.users = np.unique(rec[:,0])
+        self.test_users = np.unique(rec[:,0])
+        self.items = np.unique(rec[:,2])
+        self.likes_link = 0 # hard coded
+        self.first_userid = np.min(self.users) # used for printing triplets        
+        
+        # load data for training
         if args.kg == 'kg':
             self.kg = np.load(os.path.join(path, 'kg.npy'), allow_pickle=True)
             self.data = np.concatenate((self.rec_train, self.kg))
+            self.num_item = np.max(self.data) + 1
+            self.num_rel = np.max(self.kg[:,1]) + 1
         elif args.kg == 'no_kg':
             self.data = self.rec_train
+            self.num_item = np.max(rec) + 1
+            self.num_rel = 1
         else:
-            print('not valid ', args.kg)
+            print('not valid: ', args.kg)
             sys.exit()
 
-        # info about users etc...
-        rec = np.load(os.path.join(path, 'rec.npy'), allow_pickle=True)
-        self.users = np.unique(rec[:,0])
-        self.items = np.unique(rec[:,2])
-        self.max_item = np.max(self.data) + 1 # for embeddings
-        self.likes_link = np.max(rec[:,1])
-        self.num_rel = self.likes_link + 1
-
-        self.first_userid = np.min(self.users) # used for printing triplets        
         self.n_batches = int(np.ceil(self.data.shape[0] / args.batch_size))
 
         # user likes map for testing
