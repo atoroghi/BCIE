@@ -32,10 +32,10 @@ def train(dataloader, args, device='cuda'):
         for i in range(dataloader.n_batches):
             x = dataloader.get_batch(i)
             x = x.to(device)
-
             optimizer.zero_grad()
 
             score = model(x[:,0], x[:,1], x[:,2])
+            dataloader.print_triple(x[0].detach().cpu().numpy())
 
             score_loss, reg_loss = model.loss(score, x)
             loss = (score_loss + reg_loss)

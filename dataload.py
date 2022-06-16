@@ -12,17 +12,24 @@ class DataLoader:
         # load datasets and info mappings
         path = os.path.join('datasets', self.name)
         self.rec_train = np.load(os.path.join(path, 'rec_train.npy'), allow_pickle=True)
-        self.kg = np.load(os.path.join(path, 'kg.npy'), allow_pickle=True)
-        self.data = np.concatenate((self.rec_train, self.kg))
+        if args.kg == 'kg':
+            self.kg = np.load(os.path.join(path, 'kg.npy'), allow_pickle=True)
+            self.data = np.concatenate((self.rec_train, self.kg))
+        elif args.kg == 'no_kg':
+            self.data = self.rec_train
+        else:
+            print('not valid ', args.kg)
+            sys.exit()
 
         # info about users etc...
         rec = np.load(os.path.join(path, 'rec.npy'), allow_pickle=True)
         self.users = np.unique(rec[:,0])
         self.items = np.unique(rec[:,2])
-        self.max_item = np.max(self.data) + 1
+        self.max_item = np.max(self.data) + 1 # for embeddings
         self.likes_link = np.max(rec[:,1])
         self.num_rel = self.likes_link + 1
-        
+
+        self.first_userid = np.min(self.users) # used for printing triplets        
         self.n_batches = int(np.ceil(self.data.shape[0] / args.batch_size))
 
         # user likes map for testing
@@ -36,13 +43,16 @@ class DataLoader:
             self.sampler = DoubleSample(self.data, power=args.neg_power)
 
         # load data for printing relation
-        with open(os.path.join(path, 'item_map.pkl'), 'rb') as f:
+        with open(os.path.join(path, 'id2html.pkl'), 'rb') as f:
             self.item_map = pickle.load(f)
         with open(os.path.join(path, 'rel_map.pkl'), 'rb') as f:
             self.rel_map = pickle.load(f)
 
     def print_triple(self, triple):
-        head = self.item_map[triple[0]]
+        try:
+            head = self.item_map[triple[0]]
+        except:
+            head = 'User {}'.format(triple[0] - self.first_userid)
         rel = self.rel_map[triple[1]]
         tail = self.item_map[triple[2]]
         print('{}, {}, {}'.format(head, rel, tail))

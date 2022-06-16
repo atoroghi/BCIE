@@ -1,7 +1,13 @@
-import os, sys
+import os, sys, re
 import numpy as np
 import matplotlib.pyplot as plt
 plt.style.use('seaborn')
+
+def atoi(text):
+    return int(text) if text.isdigit() else text
+
+def natural_keys(text):
+    return [ atoi(c) for c in re.split(r'(\d+)', text) ]
 
 # count hits at each k
 # kth index is total hits at k
@@ -28,23 +34,33 @@ if __name__ == '__main__':
     else:
         print('this is not implimented yet...')
         sys.exit()
-    
+    load_files.sort(key=natural_keys)
+
     # make plot
-    fig = plt.figure(figsize=(6,6))
+    fig = plt.figure(figsize=(8,8))
     ax = fig.add_subplot(111)
 
+    # color maker
+    #f = 0.3
+    #colors = []
+    #for i in range(4):
+        #colors.append((0, f*i, 1))
+    #for i in range(5):
+        #colors.append((1, 0, f/1.2*i))
+
     # load and plot cdf for all results
-    for f in load_files:
+    for i, f in enumerate(load_files):
         rank = np.load(os.path.join(path, f, 'rank.npy'), allow_pickle=True)
         
         # kth element gives % of hits at k
-        hit_count =  get_hit_count(rank, 50) / rank.shape[0]
+        hit_count =  get_hit_count(rank, 100) / rank.shape[0]
         hit_cdf = np.cumsum(hit_count)
         
-        ax.plot(hit_cdf)
+        ax.plot(hit_cdf)#, color=colors[i])
+
     plt.title('CDF Hits at K')
     plt.xlabel('Rank')
-    plt.ylabel('Hits')
-    plt.savefig('results/cdf_hits.jpg')
-
+    plt.ylabel('Cumulative Hits')
+    plt.legend(load_files)
+    plt.savefig('results/cdf_hits.pdf')
     plt.show()
