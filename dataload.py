@@ -166,10 +166,8 @@ class DoubleSample:
         if self.power == 0:
             head_sample = np.random.randint(self.num_items_head + 1, size=(n))
             tail_sample = np.random.randint(self.num_items_tail + 1, size=(n))
-        # discrete inverse sampling    def get_negatives(self, pos):
-        n = self.neg_ratio * pos.shape[0] # number of neg samples
-        neg = np.repeat(np.copy(pos), self.neg_ratio, axis=0)
         
+        # discrete inverse sampling    
         mask = np.random.randint(0, 2, size=(n))
         mask = np.vstack((mask, np.ones(n), 1 - mask)).T
 
@@ -181,4 +179,4 @@ class DoubleSample:
             samples = np.vstack((tail_samples, np.zeros(n), head_samples)).T
 
         neg = neg * mask + samples * (1 - mask)
-        return ne
+        return neg

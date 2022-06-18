@@ -3,7 +3,7 @@ import os, sys
 import numpy as np
 from utils.plots import rank_save
 
-def test(model, dataloader, args, device):
+def test(model, dataloader, epoch, args, device):
     # get items and users 
     items = dataloader.items.tolist()
     users = dataloader.test_users.tolist()
@@ -46,7 +46,7 @@ def test(model, dataloader, args, device):
     # main test loop
     rank_track = []
     for i, user in enumerate(user_likes.keys()):
-        if i > 100: break
+        if i > 1000: break
         index = user - users[0]
 
         for_prod = np.sum(users_hp[index] * items_t, axis=1)
@@ -59,4 +59,4 @@ def test(model, dataloader, args, device):
             rank = int(np.where(ranked == item_id2index[item])[0])
             rank_track.append(rank)
 
-    rank_save(rank_track, args.test_name, shuffle=True)
+    rank_save(rank_track, args.test_name, epoch)

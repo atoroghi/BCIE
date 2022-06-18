@@ -67,12 +67,21 @@ def train(dataloader, args, device='cuda'):
         # save and test
         if epoch % args.save_each == 0 and epoch != 0:
             print('testing')
-            test(model.cpu(), dataloader, args, device='cpu')
+            test(model.cpu(), dataloader, epoch, args, device='cpu')
             model.to(device)
 
             print('saving model')
             save_path = os.path.join(path, 'models/epoch_{}.chkpnt'.format(epoch))
             torch.save(model, save_path)
 
+            # loss saving 
+            loss_save(rec_score_track, kg_score_track, reg_track, args.test_name)
 
-    loss_save(rec_score_track, kg_score_track, reg_track, args.test_name)
+            # check for early stopping
+            epoch_rank = np.load(os.path.join('results', args.test_name, 'epoch_rank.npy'))
+            best = np.argmax(epoch_rank)
+
+            if epoch_rank.shape[0] - (best + 1) >= args.stop_width:
+                print('early stopping')
+                break 
+
