@@ -1,1 +1,1 @@
-from utils.plots import loss_save, rank_save
+from utils.plots import loss_save, rank_save, perrel_save
