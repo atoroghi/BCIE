@@ -12,7 +12,6 @@ class DataLoader:
         # load datasets and info mappings
         path = os.path.join('datasets', self.name)
         self.rec_train = np.load(os.path.join(path, 'rec_train.npy'), allow_pickle=True)
-
         # info about users etc
         self.rec_test = np.load(os.path.join(path, 'rec_test.npy'), allow_pickle=True)
         rec = np.concatenate((self.rec_train, self.rec_test))
@@ -20,21 +19,35 @@ class DataLoader:
         self.test_users = np.unique(rec[:,0])
         self.items = np.unique(rec[:,2])
         self.likes_link = 0 # hard coded
-        self.first_userid = np.min(self.users) # used for printing triplets        
+        self.first_userid = np.min(self.users) # used for printing triplets
+        self.kg = np.load(os.path.join(path, 'kg.npy'), allow_pickle=True)        
         
         # load data for training
-        if args.kg == 'kg':
-            self.kg = np.load(os.path.join(path, 'kg.npy'), allow_pickle=True)
-            self.data = np.concatenate((self.rec_train, self.kg))
+        if args.kg_inclusion:
+            
+            self.kg_train = self.kg[:610317]
+            self.kg_test = self.kg[610317:615317]
+            self.data = np.concatenate((self.rec_train, self.kg_train))
+            self.data_test=np.concatenate((self.rec_test[100000:105000],self.kg_test))
             self.num_item = np.max(self.data) + 1
             self.num_rel = np.max(self.kg[:,1]) + 1
-        elif args.kg == 'no_kg':
+        elif not args.kg_inclusion:
             self.data = self.rec_train
+            self.data_test=self.rec_test[100000:105000]
             self.num_item = np.max(rec) + 1
             self.num_rel = 1
         else:
             print('not valid: ', args.kg)
             sys.exit()
+        all_ents=np.concatenate(((np.delete(self.data,1,axis=1),np.delete(self.kg[610317:],1,axis=1),np.delete(self.rec_test,1,axis=1))))
+        self.ents=np.unique(all_ents)
+        self.num_ent = len(self.ents)
+        self.rels=np.unique(np.concatenate((self.data[:,1],self.rec_test[:,1],self.kg[:,1])))
+        rec = np.load(os.path.join(path, 'rec.npy'), allow_pickle=True)
+        self.users = np.unique(rec[:,0])
+        self.items = np.unique(rec[:,2])
+        self.max_item = np.max(self.data) + 1
+        self.likes_link = np.max(rec[:,1])
 
         self.n_batches = int(np.ceil(self.data.shape[0] / args.batch_size))
 

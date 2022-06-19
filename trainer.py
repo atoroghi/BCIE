@@ -1,12 +1,15 @@
 import os, time, sys
 from SimplE import SimplE
-from utils import loss_save
+from utils import loss_save, perrel_save
 import numpy as np
 from tqdm import tqdm
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from tester import test
+from testerperreloptimized import Testerperreloptimized
+from measureperrel import Measureperrel
+from dataload import DataLoader
 
 def train(dataloader, args, device='cuda'):
     # get model, dataset and optimizer
@@ -27,6 +30,10 @@ def train(dataloader, args, device='cuda'):
     # main training loop
     # TODO: clean up all the tracking code (it's a bit sloppy)
     rec_score_track, kg_score_track, reg_track = [], [], []
+    hit1s, hit3s, hit10s, mrs, mrrs = {}, {}, {}, {}, {}
+    for rel in range(0,dataloader.num_rel):
+        hit1s[rel], hit3s[rel], hit10s[rel], mrs[rel], mrrs[rel]= [],[],[],[],[]
+
     for epoch in range(args.epochs + 1):
         rec_score_temp, kg_score_temp, reg_temp = [], [], []
 
@@ -68,6 +75,14 @@ def train(dataloader, args, device='cuda'):
         if epoch % args.save_each == 0 and epoch != 0:
             print('testing')
             test(model.cpu(), dataloader, epoch, args, device='cpu')
+            #performing test on other relations with the filtered setting
+            hit1,hit3,hit10,mr,mrr = Testerperreloptimized(dataloader,model.cpu(),args,epoch)
+            for rel in range(0,dataloader.num_rel):
+                hit1s[rel].append(hit1[rel])
+                hit3s[rel].append(hit3[rel])
+                hit10s[rel].append(hit10[rel])
+                mrs[rel].append(mr[rel])
+                mrrs[rel].append(mrr[rel])
             model.to(device)
 
             print('saving model')
@@ -76,6 +91,7 @@ def train(dataloader, args, device='cuda'):
 
             # loss saving 
             loss_save(rec_score_track, kg_score_track, reg_track, args.test_name)
+            perrel_save(hit1s,hit3s,hit10s,mrs,mrrs,args.test_name)
 
             # check for early stopping
             epoch_rank = np.load(os.path.join('results', args.test_name, 'epoch_rank.npy'))
@@ -84,4 +100,3 @@ def train(dataloader, args, device='cuda'):
             if epoch_rank.shape[0] - (best + 1) >= args.stop_width:
                 print('early stopping')
                 break 
-

@@ -23,7 +23,7 @@ def get_args():
     parser.add_argument('-reg_lambda', default=1e-3, type=float, help="kg loss reg term")
     parser.add_argument('-kg_lambda', default=1, type=float, help="l2 regularization parameter")
 
-    parser.add_argument('-kg', default='kg', type=str, help="kg or no_kg")
+    parser.add_argument('-kg_inclusion', default=True, type=bool, help="kg or no_kg")
     parser.add_argument('-stop_width', default=5, type=int, help="number of SAVES where test is worse for early stopping")
 
     args = parser.parse_args()
@@ -64,4 +64,3 @@ if __name__ == '__main__':
     # this trains and tests
     print('training')
     train(dataloader, args, device)
-

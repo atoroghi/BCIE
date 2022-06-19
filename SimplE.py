@@ -48,4 +48,3 @@ class SimplE(nn.Module):
             + (torch.norm(self.rel_inv_embs.weight, p=2) ** 2)
         )
         return norm_val
-
