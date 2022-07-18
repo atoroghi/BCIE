@@ -10,18 +10,20 @@ from tester import test
 from testerperreloptimized import Testerperreloptimized
 from measureperrel import Measureperrel
 from dataload import DataLoader
+from testermine import test
 
 def train(dataloader, args, device='cuda'):
     # get model, dataset and optimizer
     model = SimplE(
         dataloader.num_item, dataloader.num_rel, 
-        args.emb_dim, args.reg_lambda, device
+        args.emb_dim, args.reg_lambda, device, args.likelihood
     )
 
-    optimizer = torch.optim.Adagrad(
-        model.parameters(), lr = args.lr,
-        weight_decay = 0, initial_accumulator_value = 0.1 
-    )
+    #optimizer = torch.optim.Adagrad(
+    #    model.parameters(), lr = args.lr,
+    #    weight_decay = 0, initial_accumulator_value = 0.1 
+    #)
+    optimizer = torch.optim.SGD(model.parameters(), lr = args.lr)
 
     path = os.path.join('results', args.test_name)
     os.makedirs(path, exist_ok=True)
@@ -55,7 +57,7 @@ def train(dataloader, args, device='cuda'):
             kg_score_loss = args.kg_lambda * model.loss(kg_score, kg_x[:,3])
             reg_loss = args.reg_lambda * model.reg_loss()
 
-            loss = (rec_score_loss + kg_score_loss + reg_loss)
+            loss = (rec_score_loss + kg_score_loss + reg_loss).to(torch.float32)
 
             # step
             loss.backward()
@@ -74,15 +76,19 @@ def train(dataloader, args, device='cuda'):
         # save and test
         if epoch % args.save_each == 0 and epoch != 0:
             print('testing')
-            test(model.cpu(), dataloader, epoch, args, device='cpu')
-            #performing test on other relations with the filtered setting
-            hit1,hit3,hit10,mr,mrr = Testerperreloptimized(dataloader,model.cpu(),args,epoch)
-            for rel in range(0,dataloader.num_rel):
-                hit1s[rel].append(hit1[rel])
-                hit3s[rel].append(hit3[rel])
-                hit10s[rel].append(hit10[rel])
-                mrs[rel].append(mr[rel])
-                mrrs[rel].append(mrr[rel])
+            #Griffin's original code
+            #test(model.cpu(), dataloader, epoch, args, device='cpu')
+            #performing test on other relations with the filtered setting (my version)
+            #hit1,hit3,hit10,mr,mrr = Testerperreloptimized(dataloader,model.cpu(),args,epoch)
+            #for rel in range(0,dataloader.num_rel):
+            #    hit1s[rel].append(hit1[rel])
+            #    hit3s[rel].append(hit3[rel])
+            #    hit10s[rel].append(hit10[rel])
+            #    mrs[rel].append(mr[rel])
+            #    mrrs[rel].append(mrr[rel])
+            
+            #my tester using cupy
+            test(model, dataloader, args)
             model.to(device)
 
             print('saving model')
@@ -94,9 +100,9 @@ def train(dataloader, args, device='cuda'):
             perrel_save(hit1s,hit3s,hit10s,mrs,mrrs,args.test_name)
 
             # check for early stopping
-            epoch_rank = np.load(os.path.join('results', args.test_name, 'epoch_rank.npy'))
-            best = np.argmax(epoch_rank)
+            #epoch_rank = np.load(os.path.join('results', args.test_name, 'epoch_rank.npy'))
+            #best = np.argmax(epoch_rank)
 
-            if epoch_rank.shape[0] - (best + 1) >= args.stop_width:
-                print('early stopping')
-                break 
+            #if epoch_rank.shape[0] - (best + 1) >= args.stop_width:
+            #    print('early stopping')
+            #    break 

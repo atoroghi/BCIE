@@ -4,13 +4,14 @@ import numpy as np
 import torch.nn.functional as F
 
 class SimplE(nn.Module):
-    def __init__(self, num_ent, num_rel, emb_dim, reg_lambda, device):
+    def __init__(self, num_ent, num_rel, emb_dim, reg_lambda, device, likelihood):
         super(SimplE, self).__init__()
         self.num_ent = num_ent
         self.num_rel = num_rel
         self.emb_dim = emb_dim
         self.reg_lambda = reg_lambda
         self.device = device
+        self.likelihood = likelihood
 
         self.ent_h_embs   = nn.Embedding(self.num_ent, emb_dim).to(device)
         self.ent_t_embs   = nn.Embedding(self.num_ent, emb_dim).to(device)
@@ -30,14 +31,21 @@ class SimplE(nn.Module):
         tt_embs = self.ent_t_embs(tails)
         r_embs = self.rel_embs(rels)
         r_inv_embs = self.rel_inv_embs(rels)
+        #r_embs = torch.ones_like(hh_embs)
+        #r_inv_embs = torch.ones_like(hh_embs)
 
         for_prod = torch.sum(hh_embs * r_embs * tt_embs, dim=1)
         inv_prod = torch.sum(ht_embs * r_inv_embs * th_embs, dim=1)
 
         return torch.clamp((for_prod + inv_prod) / 2, -20, 20) 
-
+    # in order to change the likelihood to gaussian, I use MSE loss instead of our former logistic one
     def loss(self, score, labels):
-        out = F.softplus(-labels * score)
+        if self.likelihood == 'logistic':
+           out = F.softplus(-labels * score)
+        elif self.likelihood == 'gaussian':
+            labels = labels.to(torch.float32)
+            l = nn.MSELoss()
+            out = l(score,labels)
         loss = torch.sum(out)
         return loss
 

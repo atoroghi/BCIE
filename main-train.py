@@ -11,6 +11,7 @@ def get_args():
     parser.add_argument('-batch_size', default=4096, type=int, help="batch size")
     parser.add_argument('-neg_ratio', default=10, type=int, help="number of negative examples per positive example")
     parser.add_argument('-neg_power', default=0.0, type=float, help="power for neg sampling disribution")
+    parser.add_argument('-likelihood', default='logistic', type=str, help= "logistic or gaussian")
     parser.add_argument('-sample_type', default='single', type=str, help="single or double (double treats head and tail dists differently)")
 
     parser.add_argument('-epochs', default=20, type=int, help="number of epochs")
@@ -23,8 +24,8 @@ def get_args():
     parser.add_argument('-reg_lambda', default=1e-3, type=float, help="kg loss reg term")
     parser.add_argument('-kg_lambda', default=1, type=float, help="l2 regularization parameter")
 
-    parser.add_argument('-kg_inclusion', default=True, type=bool, help="kg or no_kg")
-    parser.add_argument('-stop_width', default=5, type=int, help="number of SAVES where test is worse for early stopping")
+    parser.add_argument('-kg_inclusion', default='True', type= str , help="kg or no_kg")
+    parser.add_argument('-stop_width', default= 5, type= int, help="number of SAVES where test is worse for early stopping")
 
     args = parser.parse_args()
     return args
