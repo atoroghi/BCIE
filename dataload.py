@@ -12,60 +12,51 @@ class DataLoader:
         # load datasets and info mappings
         path = os.path.join('datasets', self.name)
         self.rec_train = np.load(os.path.join(path, 'rec_train.npy'), allow_pickle=True)
-        # info about users etc
         self.rec_test = np.load(os.path.join(path, 'rec_test.npy'), allow_pickle=True)
-        rec = np.concatenate((self.rec_train, self.rec_test))
-        self.users = np.unique(rec[:,0])
-        self.test_users = np.unique(rec[:,0])
-        self.items = np.unique(rec[:,2])
-        self.likes_link = 0 # hard coded
-        self.first_userid = np.min(self.users) # used for printing triplets
-        self.kg = np.load(os.path.join(path, 'kg.npy'), allow_pickle=True)        
-        
+        self.rec = np.concatenate((self.rec_train, self.rec_test))
+
         # load data for training
-        if args.kg_inclusion:
-            
-            self.kg_train = self.kg[:610317]
-            self.kg_test = self.kg[610317:615317]
-            self.data = np.concatenate((self.rec_train, self.kg_train))
-            self.data_test=np.concatenate((self.rec_test[100000:105000],self.kg_test))
-            self.num_item = np.max(self.data) + 1
+        if args.kg == 'kg':
+            self.kg_train = np.load(os.path.join(path, 'kg_train.npy'), allow_pickle=True)        
+            self.kg_test = np.load(os.path.join(path, 'kg_test.npy'), allow_pickle=True)        
+            self.kg = np.concatenate((self.kg_train, self.kg_test))
+        
+            self.train_data = np.concatenate((self.rec_train, self.kg_train))    
+            self.num_item = np.max(self.train_data) + 1 # TODO: max from test and train
             self.num_rel = np.max(self.kg[:,1]) + 1
-        elif not args.kg_inclusion:
-            self.data = self.rec_train
-            self.data_test=self.rec_test[100000:105000]
-            self.num_item = np.max(rec) + 1
+            self.all_rel = np.unique(self.kg[:,1])
+        elif args.kg == 'no_kg':
+            self.kg_train = np.load(os.path.join(path, 'kg_train.npy'), allow_pickle=True)        
+            self.kg_test = np.load(os.path.join(path, 'kg_test.npy'), allow_pickle=True)        
+            self.kg = np.concatenate((self.kg_train, self.kg_test))
+
+            self.train_data = self.rec_train
+            self.num_item = np.max(self.rec) + 1 # TODO: max from test and train
             self.num_rel = 1
         else:
-            print('not valid: ', args.kg)
+            print('kg mode not valid')
             sys.exit()
-        all_ents=np.concatenate(((np.delete(self.data,1,axis=1),np.delete(self.kg[610317:],1,axis=1),np.delete(self.rec_test,1,axis=1))))
-        self.ents=np.unique(all_ents)
-        self.num_ent = len(self.ents)
-        self.rels=np.unique(np.concatenate((self.data[:,1],self.rec_test[:,1],self.kg[:,1])))
-        rec = np.load(os.path.join(path, 'rec.npy'), allow_pickle=True)
-        self.users = np.unique(rec[:,0])
-        self.items = np.unique(rec[:,2])
-        self.max_item = np.max(self.data) + 1
-        self.likes_link = np.max(rec[:,1])
 
-        self.n_batches = int(np.ceil(self.data.shape[0] / args.batch_size))
-
-        # user likes map for testing
-        with open(os.path.join(path, 'user_likes_map.pkl'), 'rb') as f:
-            self.user_likes_map = pickle.load(f)       
+        # useful information about data
+        self.n_batches = int(np.ceil(self.train_data.shape[0] / args.batch_size))
+        self.likes_link = 0 # hard coded
+        #self.first_userid = np.min(self.users) # used for printing triplets
 
         # class for negative sampling
         if self.sample_type == 'single':
-            self.sampler = SingleSample(self.data, power=args.neg_power)
+            self.sampler = SingleSample(self.train_data, power=args.neg_power)
         elif self.sample_type == 'double':
-            self.sampler = DoubleSample(self.data, power=args.neg_power)
+            self.sampler = DoubleSample(self.train_data, power=args.neg_power)
+
+        # user likes
+        with open(os.path.join(path, 'user_likes_test.pkl'), 'rb') as f:
+            self.user_likes_map = pickle.load(f)
 
         # load data for printing relation
-        with open(os.path.join(path, 'id2html.pkl'), 'rb') as f:
-            self.item_map = pickle.load(f)
-        with open(os.path.join(path, 'rel_map.pkl'), 'rb') as f:
-            self.rel_map = pickle.load(f)
+        #with open(os.path.join(path, 'id2html.pkl'), 'rb') as f:
+        #    self.item_map = pickle.load(f)
+        #with open(os.path.join(path, 'rel_map.pkl'), 'rb') as f:
+        #    self.rel_map = pickle.load(f)
 
     def print_triple(self, triple):
         try:
@@ -77,13 +68,13 @@ class DataLoader:
         print('{}, {}, {}'.format(head, rel, tail))
 
     def shuffle(self):
-        self.data = np.random.permutation(self.data)
+        self.train_data = np.random.permutation(self.train_data)
 
     def get_batch(self, i):
         if i != self.n_batches - 1:
-            pos = self.data[i * self.batch_size : (i + 1) * self.batch_size]
+            pos = self.train_data[i * self.batch_size : (i + 1) * self.batch_size]
         else:
-            pos = self.data[i * self.batch_size : ]
+            pos = self.train_data[i * self.batch_size : ]
 
         neg = self.get_negatives(pos)
         data = np.concatenate((pos, neg), axis=0)
@@ -113,10 +104,10 @@ class DataLoader:
         neg = neg * mask + samples * (1 - mask)
         return neg
 
+# TODO: merge these into a single class
 # treats head and tail as single dist
 class SingleSample:
     def __init__(self, data, power=0):
-        #assert power >= 0 and power <= 1
         self.power = power
         self.total = np.concatenate((data[:,0], data[:,2]))
         self.num_items = np.max(self.total)
@@ -140,13 +131,11 @@ class SingleSample:
         # discrete inverse sampling
         else:
             sample = np.random.choice(self.num_items + 1, size=(n), p=self.dist)
-
         return sample
 
 # looks at head and tail seperately
 class DoubleSample:
     def __init__(self, data, power=0):
-        #assert power >= 0 and power <= 1
         self.power = power
         self.head = data[:,0]
         self.tail = data[:,2]
@@ -177,19 +166,10 @@ class DoubleSample:
     def sample(self, n):
         # efficient uniform sampling
         if self.power == 0:
-            head_sample = np.random.randint(self.num_items_head + 1, size=(n))
-            tail_sample = np.random.randint(self.num_items_tail + 1, size=(n))
-        
-        # discrete inverse sampling    
-        mask = np.random.randint(0, 2, size=(n))
-        mask = np.vstack((mask, np.ones(n), 1 - mask)).T
-
-        if self.sample_type == 'single':
-            samples = self.sampler.sample(n)
-            samples = np.vstack((samples, np.zeros(n), samples)).T
-        elif self.sample_type == 'double':
-            head_samples, tail_samples = self.sampler.sample(n)
-            samples = np.vstack((tail_samples, np.zeros(n), head_samples)).T
-
-        neg = neg * mask + samples * (1 - mask)
-        return neg
+            head_samples = np.random.randint(self.num_items_head + 1, size=(n))
+            tail_samples = np.random.randint(self.num_items_tail + 1, size=(n))
+        # discrete inverse sampling
+        else:
+            head_samples = np.random.choice(self.num_items_head + 1, size=(n), p=self.head_dist)
+            tail_samples = np.random.choice(self.num_items_tail + 1, size=(n), p=self.tail_dist)
+        return head_samples, tail_samples

@@ -13,32 +13,28 @@ from dataload import DataLoader
 
 def train(dataloader, args, device='cuda'):
     # get model, dataset and optimizer
-    model = SimplE(
-        dataloader.num_item, dataloader.num_rel, 
-        args.emb_dim, args.reg_lambda, device
-    )
+    model = SimplE(dataloader, args, device)
 
-    optimizer = torch.optim.Adagrad(
-        model.parameters(), lr = args.lr,
-        weight_decay = 0, initial_accumulator_value = 0.1 
-    )
+    if args.optim_type == 'adagrad':
+        optimizer = torch.optim.Adagrad(
+            model.parameters(), lr=args.lr, initial_accumulator_value=0.1)
+    elif args.optim_type == 'adam':
+        optimizer = torch.optim.Adagrad(model.parameters(), lr = args.lr)
 
     path = os.path.join('results', args.test_name)
     os.makedirs(path, exist_ok=True)
     os.makedirs(os.path.join(path, 'models'), exist_ok=True)
 
     # main training loop
-    # TODO: clean up all the tracking code (it's a bit sloppy)
     rec_score_track, kg_score_track, reg_track = [], [], []
-    hit1s, hit3s, hit10s, mrs, mrrs = {}, {}, {}, {}, {}
-    for rel in range(0,dataloader.num_rel):
-        hit1s[rel], hit3s[rel], hit10s[rel], mrs[rel], mrrs[rel]= [],[],[],[],[]
-
     for epoch in range(args.epochs + 1):
         rec_score_temp, kg_score_temp, reg_temp = [], [], []
 
         dataloader.shuffle()
-        for i in tqdm(range(dataloader.n_batches)):
+        for i in range(dataloader.n_batches):
+            # ~ 3 million triplets
+            #if i * dataloader.batch_size >= 500000: break
+
             x = dataloader.get_batch(i)
             x = x.to(device)
             optimizer.zero_grad()
@@ -69,34 +65,25 @@ def train(dataloader, args, device='cuda'):
         rec_score_track.append(np.mean(rec_score_temp))
         kg_score_track.append(np.mean(kg_score_temp))
         reg_track.append(np.mean(reg_temp))
-        print('epoch: {}\trec score: {:.3f}\tkg score: {:.3f}\treg: {:.3f}'.format(epoch, rec_score_track[-1], kg_score_track[-1], reg_track[-1]))
+
+        #print('epoch: {}\trec score: {:.3f}\tkg score: {:.3f}\treg: {:.3f}'.format(epoch, rec_score_track[-1], kg_score_track[-1], reg_track[-1]))
 
         # save and test
-        if epoch % args.save_each == 0 and epoch != 0:
-            print('testing')
+        if epoch % args.save_each == 0:
+            #print('saving model')
+            #save_path = os.path.join(path, 'models/epoch_{}.chkpnt'.format(epoch))
+            #torch.save(model, save_path)
+            
             test(model.cpu(), dataloader, epoch, args, device='cpu')
-            #performing test on other relations with the filtered setting
-            hit1,hit3,hit10,mr,mrr = Testerperreloptimized(dataloader,model.cpu(),args,epoch)
-            for rel in range(0,dataloader.num_rel):
-                hit1s[rel].append(hit1[rel])
-                hit3s[rel].append(hit3[rel])
-                hit10s[rel].append(hit10[rel])
-                mrs[rel].append(mr[rel])
-                mrrs[rel].append(mrr[rel])
             model.to(device)
-
-            print('saving model')
-            save_path = os.path.join(path, 'models/epoch_{}.chkpnt'.format(epoch))
-            torch.save(model, save_path)
-
+            
             # loss saving 
             loss_save(rec_score_track, kg_score_track, reg_track, args.test_name)
-            perrel_save(hit1s,hit3s,hit10s,mrs,mrrs,args.test_name)
 
             # check for early stopping
-            epoch_rank = np.load(os.path.join('results', args.test_name, 'epoch_rank.npy'))
+            epoch_rank = np.load(os.path.join('results', args.test_name, 'metric.npy'))
+            
             best = np.argmax(epoch_rank)
-
             if epoch_rank.shape[0] - (best + 1) >= args.stop_width:
                 print('early stopping')
                 break 
