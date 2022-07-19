@@ -10,6 +10,7 @@ from tester import test
 from testerperreloptimized import Testerperreloptimized
 from measureperrel import Measureperrel
 from dataload import DataLoader
+from testermine import test
 
 def train(dataloader, args, device='cuda'):
     # get model, dataset and optimizer
@@ -51,7 +52,7 @@ def train(dataloader, args, device='cuda'):
             kg_score_loss = args.kg_lambda * model.loss(kg_score, kg_x[:,3])
             reg_loss = args.reg_lambda * model.reg_loss()
 
-            loss = (rec_score_loss + kg_score_loss + reg_loss)
+            loss = (rec_score_loss + kg_score_loss + reg_loss).to(torch.float32)
 
             # step
             loss.backward()

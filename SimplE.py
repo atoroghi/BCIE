@@ -39,18 +39,21 @@ class SimplE(nn.Module):
         tt_embs = self.ent_t_embs(tails)
         r_embs = self.rel_embs(rels)
         r_inv_embs = self.rel_inv_embs(rels)
+        #r_embs = torch.ones_like(hh_embs)
+        #r_inv_embs = torch.ones_like(hh_embs)
 
         for_prod = torch.sum(hh_embs * r_embs * tt_embs, dim=1)
         inv_prod = torch.sum(ht_embs * r_inv_embs * th_embs, dim=1)
         return torch.clamp((for_prod + inv_prod) / 2, -20, 20) 
-
+    # in order to change the likelihood to gaussian, I use MSE loss instead of our former logistic one
     def loss(self, score, labels):
         if self.loss_type == 'softplus':
             out = F.softplus(-labels * score)
             loss = torch.sum(out)
 
         elif self.loss_type == 'gauss':
-            out = torch.sigmoid(-labels * score)
+            # TODO: check this...
+            out = nn.MSE(labels, score)
             loss = torch.mean(out)
 
         return loss
