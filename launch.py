@@ -18,14 +18,15 @@ def get_args():
     parser.add_argument('-kg_lambda', default=1, type=float, help="l2 regularization parameter")   
     parser.add_argument('-neg_ratio', default=10, type=int, help="number of negative examples per positive example")
     parser.add_argument('-neg_power', default=0.0, type=float, help="power for neg sampling disribution")
-    parser.add_argument('-init_scale', default=1.0, type=float, help="std for normal, gain for uniform")
+    parser.add_argument('-init_scale', default=None, type=float, help="std for normal, gain for uniform")
     
     # other hyper-params
-    parser.add_argument('-reg_type', default='gauss', type=str, help="tilt or gauss")
-    parser.add_argument('-loss_type', default='softplus', type=str, help="softplus or sigmoid")
-    parser.add_argument('-optim_type', default='adagrad', type=str, help="adam or sgd")
+    parser.add_argument('-reg_type', default='tilt', type=str, help="tilt or gauss")
+    parser.add_argument('-loss_type', default='gauss', type=str, help="softplus or gauss")
+    parser.add_argument('-reduce_type', default='mean', type=str, help="sum or mean")
+    parser.add_argument('-optim_type', default='adam', type=str, help="adagrad or adam")
     parser.add_argument('-sample_type', default='double', type=str, help="single or double (double treats head and tail dists differently)")
-    parser.add_argument('-init_type', default='uniform', type=str, help="embedding initialization")
+    parser.add_argument('-init_type', default='uniform', type=str, help="uniform or normal")
     parser.add_argument('-kg', default='kg', type=str, help="kg or no_kg")
 
     # optimization and saving
@@ -49,10 +50,14 @@ def save_hyperparams(path, args):
 
 def main(args):
     assert args.sample_type in ['single', 'double']
-    assert args.reg_type in ['gauss', 'tilt_mean', 'tilt_sum']
+    assert args.reg_type in ['gauss', 'tilt', 'tilt']
     assert args.loss_type in ['softplus', 'gauss']
     assert args.optim_type in ['adagrad', 'adam']
     assert args.init_type in ['uniform', 'normal']
+
+    if args.init_scale == None: 
+        print('manual init scale')
+        args.init_scale = sqrt_size = 6.0 / np.sqrt(args.emb_dim)
 
     if args.save_each is None:
         args.save_each = args.epochs

@@ -10,7 +10,6 @@ class DataLoader:
         self.neg_ratio = int(args.neg_ratio)
         self.sample_type = args.sample_type
         self.batch_size = args.batch_size
-        self.likelihood = args.likelihood
 
         # load datasets and info mappings
         path = os.path.join('datasets', self.name)
@@ -79,52 +78,23 @@ class DataLoader:
         else:
             pos = self.train_data[i * self.batch_size : ]
 
-        #elif self.likelihood == 'gaussian':
-            #neg = self.get_negatives_mf(pos)
-        #if neg.shape[0]>0:
-            #data = np.concatenate((pos, neg), axis=0)
-        #else:
-            #data = pos
+        neg = self.get_negatives(pos)
+        data = np.vstack((pos, neg))
         
         # add label information in col 4
         labels = -np.ones((data.shape[0], 1))
         labels[:pos.shape[0]] = 1
         data = np.hstack((data, labels))
 
-        #return torch.from_numpy(data).long()
-        return torch.as_tensor(data).long()
+        return torch.from_numpy(data).long()
 
-    # negative sampling the new style
-    # previously, we were doing negative sampling by changing either head or tail of the (user,likes,item) triple
-    # in WRMF or SVD though, we have a sparse matrix in which every non-observed interaction is deemed as a negative interation (example)
-    # this was what Scott told me to change in our neg sampling but adding all these facts to the rec matrix makes it insanely large (although now I 
-    # think I should change the code to use a sparse matrix and I am trying that now)
-    # What I'm doing here is for each positive example, select an item randomly (with probabilities proportionate to frequency) from the ones the user
-    #  hasn't interacted with and add it as a negative example. This way we don't cover all negative examples, but use a number of them in training.
-
-    def get_negatives_mf(self,pos):
-        neg_samples = []
-        #for example in pos:
-        #    dislikes = list(set(self.items)-set(self.user_likes_train[example[0]]))
-        #    neg_items = random.sample(dislikes, self.neg_ratio)
-        #    for item in neg_items:
-        #        neg_samples.append([example[0],0,item])
-        for example in pos:
-            neg=[]
-            while len(neg)<self.neg_ratio:
-                dis = (np.random.choice(self.items, size = 1, p= self.freqs)[0])
-                #dis = random.choice(self.items)
-                if dis not in self.user_likes_train[example[0]]:
-                    neg.append([example[0],0,dis])
-            neg_samples += neg
-        
-        return np.array(neg_samples)
 
     # negative sampling
     def get_negatives(self, pos):
         n = self.neg_ratio * pos.shape[0] # number of neg samples
-        neg = np.repeat(np.copy(pos), self.neg_ratio, axis=0)
+        pos = np.repeat(np.copy(pos), self.neg_ratio, axis=0)
         
+        # TODO: switch to only modify tail (to make similar to svd)
         mask = np.random.randint(0, 2, size=(n))
         mask = np.vstack((mask, np.ones(n), 1 - mask)).T
 
@@ -135,7 +105,7 @@ class DataLoader:
             head_samples, tail_samples = self.sampler.sample(n)
             samples = np.vstack((tail_samples, np.zeros(n), head_samples)).T
 
-        neg = neg * mask + samples * (1 - mask)
+        neg = pos * mask + samples * (1 - mask)
         return neg
 
 # TODO: merge these into a single class

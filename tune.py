@@ -69,7 +69,7 @@ if __name__  == '__main__':
     epochs = 100
     dim = 8
     n = 1000
-    batch = 4
+    batch = 4 # 2 are thompson sampled, 2 are random sampled
 
     args = get_args()
     tune = Tune_Param(args)
