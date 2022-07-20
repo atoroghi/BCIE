@@ -20,6 +20,7 @@ def get_args():
     parser.add_argument('-neg_ratio', default=10, type=int, help="number of negative examples per positive example")
     parser.add_argument('-neg_power', default=0.0, type=float, help="power for neg sampling disribution")
     parser.add_argument('-init_scale', default=None, type=float, help="std for normal, gain for uniform")
+    parser.add_argument('-hinge_margin', default=1, type=float, help="in case of margin loss, margin")
     
     # other hyper-params
     parser.add_argument('-reg_type', default='tilt', type=str, help="tilt or gauss")
@@ -52,7 +53,7 @@ def save_hyperparams(path, args):
 def main(args):
     assert args.sample_type in ['single', 'double']
     assert args.reg_type in ['gauss', 'tilt', 'tilt']
-    assert args.loss_type in ['softplus', 'gauss']
+    assert args.loss_type in ['softplus', 'gauss', 'hinge', 'PSL']
     assert args.optim_type in ['adagrad', 'adam']
     assert args.init_type in ['uniform', 'normal']
 

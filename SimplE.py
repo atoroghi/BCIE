@@ -13,6 +13,7 @@ class SimplE(nn.Module):
         self.reg_type = args.reg_type
         self.loss_type = args.loss_type
         self.device = device
+        self.hinge_margin = args.hinge_margin
 
         self.ent_h_embs   = nn.Embedding(self.num_ent, args.emb_dim).to(device)
         self.ent_t_embs   = nn.Embedding(self.num_ent, args.emb_dim).to(device)
@@ -57,6 +58,17 @@ class SimplE(nn.Module):
 
         elif self.loss_type == 'gauss':
             out = torch.square(score - labels)
+        elif self.loss_type == 'hinge':
+            l = (-labels * score + self.hinge_margin)
+            zeros = torch.zeros(l.shape, device= self.device)
+            mask = l > zeros
+            out = l[mask]
+        elif self.loss_type == 'PSL':
+            l = (-labels * score + self.hinge_margin)
+            zeros = torch.zeros(l.shape, device= self.device)
+            mask = l > zeros
+            l = l[mask]
+            out = 0.5 * torch.square(l)
 
         return self.reduce(out)
 
