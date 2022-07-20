@@ -82,6 +82,19 @@ split = int(0.7*rec.shape[0])
 rec_train = rec[:split]
 rec_test = rec[split:]
 
+# Deleting users and items that are not included in training from test
+users = np.unique(rec_train[:,0])
+train_items=np.unique(rec_train[:,2])
+test_items=np.unique(rec_test[:,2])
+invalid_items=[item for item in test_items if item not in train_items]
+for invalid_item in invalid_items:
+  rec_test=np.delete(rec_test,np.where(rec_test[:,2]==invalid_item),axis=0)
+train_users=np.unique(rec_train[:,0])
+test_users=np.unique(rec_test[:,0])
+invalid_users=[user for user in test_users if user not in train_users]
+for invalid_user in invalid_users:
+  rec_test=np.delete(rec_test,np.where(rec_test[:,0]==invalid_user),axis=0)
+
 np.random.shuffle(kg)
 kg_train = kg[:split]
 kg_test = kg[split:]
@@ -102,6 +115,11 @@ for i in range(rec_train.shape[0]):
     else:
         if rec_train[i,2] not in user_likes_train[rec_train[i,0]]:
             user_likes_train[rec_train[i,0]].append(rec_train[i,2])
+
+user_likes_whole = {}
+for i in list(user_likes_train.keys()):
+    user_likes_whole[i] = user_likes_train[i] + user_likes_test[i]
+
 
 # TODO: rename some things here?
 # make kg dictionaries
@@ -133,3 +151,5 @@ with open('datasets/ML_FB/user_likes_train.pkl', 'wb') as f:
     pickle.dump(user_likes_train, f) 
 with open('datasets/ML_FB/user_likes_test.pkl', 'wb') as f:
     pickle.dump(user_likes_test, f) 
+with open('datasets/ML_FB/user_likes_whole.pkl', 'wb') as f:
+    pickle.dump(user_likes_whole, f) 

@@ -53,6 +53,8 @@ class DataLoader:
         # user likes
         with open(os.path.join(path, 'user_likes_test.pkl'), 'rb') as f:
             self.user_likes_map = pickle.load(f)
+        with open(os.path.join(path, 'user_likes_whole.pkl'), 'rb') as f:
+            self.user_likes_whole = pickle.load(f)
 
         # load data for printing relation
         #with open(os.path.join(path, 'id2html.pkl'), 'rb') as f:
