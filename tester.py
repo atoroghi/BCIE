@@ -168,4 +168,5 @@ def test(model, dataloader, epoch, args, device):
                 ranks = get_rank(ranked, test_gt, all_gt, id2index[i])
                 rank_track.update(ranks, rel)
         
-    rank_save(rank_track, args.test_name, epoch, k=10)
+    rank_at_k = rank_save(rank_track, args.test_name, epoch, k=10)
+    return rank_at_k
