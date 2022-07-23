@@ -46,6 +46,7 @@ class GetGT:
         path = 'datasets/ML_FB'
         names = ['kg_head_test', 'kg_head_train', 'kg_tail_test', 'kg_tail_train',
                  'user_likes_test', 'user_likes_train']
+        #names = ['user_likes_test' , 'user_likes_train']
         self.maps = []
         for n in names:
             with open(os.path.join(path, n + '.pkl'), 'rb') as f:
@@ -109,7 +110,7 @@ def test(model, dataloader, epoch, args, device):
     # get arrays with all items for link prediction
     # special array for < user, likes, ? >
     rec_h, rec_t, rec_id2index = get_array(model, dataloader, args, rec=True)
-    #kg_h, kg_t, kg_id2index = get_array(model, dataloader, args, rec=False)
+    kg_h, kg_t, kg_id2index = get_array(model, dataloader, args, rec=False)
     kg_id2index = {}
     id2index = (rec_id2index, kg_id2index)
 
@@ -132,11 +133,14 @@ def test(model, dataloader, epoch, args, device):
     rank_track = RankTrack()
 
     t0 = time.time()
+
+    ranks_all = []
     # main test loop
     for i, test_items in enumerate((users, kg_triples)):
         if i == 1 and args.kg == 'no_kg': break
         if i == 1: break
-        item_emb = (rec_h, rec_t) if i == 0 else (kg_h, kg_t)
+        #item_emb = (rec_h, rec_t) if i == 0 else (kg_h, kg_t)
+        item_emb = (rec_h, rec_t)
 
         for j, test_item in enumerate(test_items):
             #if j%100 == 0: print('{:.5f} {:.5f}'.format(j/test_items.shape[0], (time.time()-t0) / 60))
@@ -151,6 +155,7 @@ def test(model, dataloader, epoch, args, device):
                 if test_gt == None: continue
                 ranks = get_rank(ranked, test_gt, all_gt, id2index[i])
                 rank_track.update(ranks, 0)
+                ranks_all.append(ranks)
             
             else:
                 rel = test_item[1]
@@ -169,3 +174,4 @@ def test(model, dataloader, epoch, args, device):
                 rank_track.update(ranks, rel)
         
     rank_save(rank_track, args.test_name, epoch)
+    return ((ranks_all<11).sum())/len(ranks)

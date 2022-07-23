@@ -83,7 +83,7 @@ def train(dataloader, args, device='cuda'):
                 #save_path = os.path.join(path, 'models/epoch_{}.chkpnt'.format(epoch))
                 #torch.save(model, save_path)
                 
-                test(model.cpu(), dataloader, epoch, args, device='cpu')
+                hits10 = test(model.cpu(), dataloader, epoch, args, device='cpu')
                 model.to(device)
                 
                 # loss saving 
