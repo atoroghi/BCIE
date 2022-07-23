@@ -1,14 +1,17 @@
-import os, sys
+import os, sys, pickle, re
 import seaborn as sns
 import matplotlib.pyplot as plt 
 import numpy as np
+
+def natural_key(string_):
+    return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
 
 # class to save all rank infomation to plot and save
 class RankTrack:
     def __init__(self):
         self.info = {}
     
-    def update(self, rank, rel):
+    def update(self, rank, rel, k=10):
         if rel not in self.info:
             self.info.update({rel : rank})
         else:
@@ -16,6 +19,95 @@ class RankTrack:
 
     def items(self):
         return self.info.items()
+
+# plots metics over the training sequence
+def temporal_plot(test_name, k):
+    # get all folders
+    path = os.path.join('results', test_name)
+    folders = [f for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
+    folders = sorted(folders, key=natural_key)
+
+    # TODO: generalize when test not on each epoch
+    fig = plt.figure(figsize=(12,5))
+    ax1 = fig.add_subplot(121)
+    ax2 = fig.add_subplot(122)
+
+    # loop through each epoch
+    hit_map = {}
+    for epoch in folders:
+        if 'epoch' not in epoch: continue # don't look in models folder
+        
+        # get rank_track object
+        with open(os.path.join(path, epoch, 'metric_track.pkl'), 'rb') as f_:
+            rank_track = pickle.load(f_)
+
+        # calculate metrics and plot 
+        for rel, rank in rank_track.items():
+            if rel not in hit_map:
+                hit_map.update({rel : []})
+
+            rank_at_k = np.where(rank < k)[0].shape[0] / rank.shape[0]       
+            hit_map[rel].append(rank_at_k)
+
+    for rel, hit in hit_map.items():
+        if rel == 0: # likes relationship
+            print(hit)
+            ax1.plot(hit)
+        else:
+            ax2.plot(hit)
+
+    ax1.set_title('Rec Hits@{}'.format(k))
+    ax2.set_title('KG Hits@{}'.format(k))
+    ax1.set_xlabel('Epoch')
+    ax2.set_xlabel('Epoch')
+    ax1.set_ylabel('Hits %')
+    ax2.set_ylabel('Hits %')
+
+    plt.tight_layout() 
+    plt.savefig(os.path.join(path, 'hits_epoch.jpg'))
+    plt.close()
+
+# plot distribution of ranks and line plot of hits @ k per epoch
+def rank_save(rank_track, test_name, epoch, k=10):
+    save_path = os.path.join('results', test_name, 'epoch {}'.format(epoch)) 
+    os.makedirs(save_path, exist_ok=True)
+
+    # save metric_track for eval performance over training
+    with open(os.path.join(save_path, 'metric_track.pkl'), 'wb') as f:
+        pickle.dump(rank_track, f)
+
+    # distribution
+    plt.style.use('seaborn')
+    fig = plt.figure(figsize=(12,5))
+    ax1 = fig.add_subplot(121)
+    ax2 = fig.add_subplot(122)
+
+    color = sns.color_palette('Set2')
+    for k, v in rank_track.items():
+        if k == 0:
+            rank_at_10 = np.where(v < k)[0].shape[0] / v.shape[0]
+            stop_metric_path = os.path.join('results', test_name, 'stop_metric.npy')  
+            if epoch != 0:
+                scores = np.load(stop_metric_path, allow_pickle=True)
+                np.save(stop_metric_path, np.append(scores, rank_at_10))
+            else:
+                np.save(stop_metric_path, np.array([rank_at_10]))
+
+            sns.histplot(v, bins=40, ax=ax1)
+        else:
+            a = k % 7
+            sns.histplot(v, bins=40, ax=ax2, color=color[a])
+
+    ax1.set_title('Rec Rank Distribution')
+    ax2.set_title('KG Rank Distribution')
+    ax1.set_xlabel('Rank')
+    ax2.set_xlabel('Rank')
+    ax1.set_ylabel('Hits')
+    ax2.set_ylabel('Hits')
+
+    plt.tight_layout() 
+    plt.savefig(os.path.join(save_path, 'rank_hist.jpg'))
+    plt.close()
 
 # plot loss
 def loss_save(rec, kg, reg, test_name):
@@ -44,80 +136,6 @@ def loss_save(rec, kg, reg, test_name):
     np.save(os.path.join('results', test_name, 'rec_loss.npy'), np.array(rec), allow_pickle=True)
     np.save(os.path.join('results', test_name, 'kg_loss.npy'), np.array(kg), allow_pickle=True)
     np.save(os.path.join('results', test_name, 'reg_loss.npy'), np.array(reg), allow_pickle=True)
-
-# plot distribution of ranks and line plot of hits @ k per epoch
-def rank_save(rank_track, test_name, epoch, k=100):
-    save_path = os.path.join('results', test_name, 'epoch {}'.format(epoch)) 
-    os.makedirs(save_path, exist_ok=True)
-
-    # distribution
-    plt.style.use('seaborn')
-    fig = plt.figure(figsize=(12,5))
-    ax1 = fig.add_subplot(121)
-    ax2 = fig.add_subplot(122)
-
-    color = sns.color_palette('Set2')
-    for k, v in rank_track.items():
-        if k == 0:
-            #rank_at_1 = np.where(v < 1)[0].shape[0]
-            #rank_at_3 = np.where(v < 3)[0].shape[0]
-            #print('rank at 1: {}'.format(rank_at_1 / v.shape[0]))
-            #print('rank at 3: {}'.format(rank_at_3 / v.shape[0]))
-            rank_at_10 = np.where(v < 10)[0].shape[0] / v.shape[0]
-            #print('rank at 10: {}'.format(rank_at_10))
-            metric_path = os.path.join('results', test_name, 'metric.npy')  
-            if epoch != 0:
-                scores = np.load(metric_path, allow_pickle=True)
-                print(np.max(scores))
-                np.save(metric_path, np.append(scores, rank_at_10))
-            else:
-                np.save(metric_path, np.array([rank_at_10]))
-
-            sns.histplot(v, bins=40, ax=ax1)
-        else:
-            a = k % 7
-            sns.histplot(v, bins=40, ax=ax2, color=color[a])
-
-    ax1.set_title('Rec Rank Distribution')
-    ax2.set_title('KG Rank Distribution')
-    ax1.set_xlabel('Rank')
-    ax2.set_xlabel('Rank')
-    ax1.set_ylabel('Hits')
-    ax2.set_ylabel('Hits')
-
-    plt.tight_layout() 
-    plt.savefig(os.path.join(save_path, 'rank_hist.jpg'))
-    plt.close()
-
-# TODO: are either of these used?
-#def rank_plot():
-    ## line plot
-    #files = os.listdir(os.path.join('results', test_name))
-    #if 'epoch_rank.npy' in files:
-        #epoch_rank = np.load(os.path.join('results', test_name, 'epoch_rank.npy'))
-        #rank_at_n = np.where(rank < 100)[0].shape[0]
-        #epoch_rank = np.append(epoch_rank, rank_at_n)
-
-        ## plotting
-        #fig = plt.figure(figsize=(6,5))
-        #fig1 = fig.add_subplot(111)
-
-        ## x axis must be aligned to the epoch save number
-        #fig1.plot(epoch * np.linspace(0, 1, epoch_rank.shape[0]), epoch_rank)
-
-        #fig1.set_title('Hits @ 100 per Epoch')
-        #fig1.set_xlabel('Epoch')
-        #fig1.set_ylabel('Hits')
-
-        #plt.tight_layout() 
-        #plt.savefig(os.path.join('results', test_name, 'hit_plot.jpg'))
-        #np.save(os.path.join(save_path, 'rank.npy'), np.array(rank), allow_pickle=True)
-        #plt.close()
-
-        #np.save(os.path.join('results', test_name, 'epoch_rank.npy'), epoch_rank)
-    #else: 
-        #epoch_rank = np.array([np.where(rank < 100)[0].shape[0]])
-        #np.save(os.path.join('results', test_name, 'epoch_rank.npy'), epoch_rank)
 
 def perrel_save(hit1s,hit3s,hit10s,mrs,mrrs,test_name):
     epoch_list=np.arange(1,1+len(hit1s[0]))
