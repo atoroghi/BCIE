@@ -26,7 +26,14 @@ class Tune_Param:
     def train(self, p):
         p = p.numpy()
         po = np.empty_like(p)
-        
+
+        # make fold folder
+        path = os.path.join('results', self.tune_name, 'fold_{}'.format(self.fold_num))
+        os.makedirs(path, exist_ok=True)
+
+        folders = sorted(os.listdir(path), key=natural_key)
+        folders = [f for f in folders if 'train' in f]
+
         subs = []
         for i in range(p.shape[0]): 
             # convert params from [0, 1] to inputs
@@ -38,13 +45,6 @@ class Tune_Param:
             self.args.init_scale, po[i,5] = normal2param(self.init_range, p[i,5], float, base=10)
             self.args.neg_ratio, po[i,6] = normal2param(self.ratio_range, p[i,6], int)
             self.args.neg_power, po[i,7] = normal2param(self.power_range, p[i,7], float)
-
-            # make fold folder
-            path = os.path.join('results', self.tune_name, 'fold_{}'.format(self.fold_num))
-            os.makedirs(path, exist_ok=True)
-
-            folders = sorted(os.listdir(path), key=natural_key)
-            folders = [f for f in folders if 'train' in f]
 
             # don't include results in this path 
             save_path = os.path.join(self.tune_name, 'fold_{}'.format(self.fold_num), 'train_{}'.format(len(folders) + i))
@@ -94,7 +94,7 @@ def tuner(fold_num, epochs, batch, n, tune_name):
         begin = True
 
     # main loop
-    for e in range(epochs):
+    for e in range(11, epochs):
         # train models and update points
         if begin:
             begin = False
