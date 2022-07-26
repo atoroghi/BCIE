@@ -5,9 +5,11 @@ from tester import test
 from dataload import DataLoader
 import ray
 from ray import tune
+from ray.tune import CLIReporter
 from ray.tune.schedulers import ASHAScheduler
 import argparse
 import os
+ray.init()
 
 def config_to_args(config):
     if isinstance(config, dict):
@@ -16,23 +18,28 @@ def config_to_args(config):
         raise TypeError(f"expecting type dict or argparser.Namespace, got {type(config)}")
     return args
 
-def train_func(config):
+def train_func(config, checkpoint_dir=None):
     os.chdir('/home/admin/Desktop/BK-KGE')
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     args_new = config_to_args(config)
     dataloader = DataLoader(args_new)
     hits10 = train(dataloader, args_new, device)
+    print((hits10))
+    tune.report(hits10=hits10)
 
-def main():  
+def main(): 
+    reporter = CLIReporter(
+        # parameter_columns=["l1", "l2", "lr", "batch_size"],
+        metric_columns=["hits10", "training_iteration"])
     result = tune.run(
     tune.with_parameters(train_func),
-    resources_per_trial={"cpu": 2, "gpu": 1},
+    resources_per_trial={ "gpu": 1},
     config = {
         "test_name" : tune.choice(['dev']),
         "model_type" : tune.choice(['Simple']),
         "lr" : tune.choice([0.1]),
         "batch_size" : tune.choice([64]),
-        "emb_dim" : tune.choice([32,64]),
+        "emb_dim" : tune.choice([32]),
         "reg_lambda" : tune.choice([0.1]),
         "kg_lambda" : tune.choice([0.1]),
         "reg_lambda" : tune.choice([0.1]),
@@ -48,24 +55,31 @@ def main():
         "sample_type" : tune.choice(['double']),
         "init_type" : tune.choice(['uniform']),
         "kg" : tune.choice(['no_kg']),
-        "epochs" : tune.choice([10]),
-        "save_each" : tune.choice([10]),
+        "epochs" : tune.choice([1]),
+        "save_each" : tune.choice([1]),
         "dataset" : tune.choice(['ML_FB']),
-        "stop_width" : tune.choice([4])               
+        "stop_width" : tune.choice([1])               
         #"lr": tune.loguniform(1e-4, 1e-1),
     },
+    num_samples=1,
+    scheduler = ASHAScheduler(max_t=1),
+    progress_reporter=reporter,
     metric = "hits10",
-    mode = "max",
-    search_alg = "optuna"
+    mode = "max"
+    
+    #search_alg = "optuna"
     )
-    best_trial = result.get_best_trial("loss", "min", "last")
+    best_trial = result.get_best_trial("hits10", "max", "last")
     print("Best trial config: {}".format(best_trial.config))
 
-    print("Best trial final validation loss: {}".format(
+    print("Best trial final hits10: {}".format(
         best_trial.last_result["hits10"]))
+
+    #print("best config: ", result.get_best_config(metric="hits10", mode="max"))
 
 if __name__ == '__main__':
     main()
+    ray.shutdown()
 
 
 
