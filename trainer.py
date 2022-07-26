@@ -9,15 +9,17 @@ import torch.nn.functional as F
 from tester import test
 from dataload import DataLoader
 from PureSVD import PureSVD
-from utils.plots import rank_save, RankTrack
+from utils.plots import rank_save, RankTrack, temporal_plot
 
 def train(dataloader, args, device='cuda'):
     # get model, dataset and optimizer
-
     if args.model_type == 'svd':
-        model = PureSVD(dataloader,args)
+        # train model
+        model = PureSVD(dataloader, args)
         matrix_U , matrix_V = model.train_model()
         ranks = model.test_model(matrix_U, matrix_V)
+
+        # save ranks for tester
         rank_track = RankTrack()
         rank_track.update(ranks, 0)
         rank_save(rank_track, args.test_name, 0)
@@ -35,6 +37,7 @@ def train(dataloader, args, device='cuda'):
         os.makedirs(os.path.join(path, 'models'), exist_ok=True)
 
         # main training loop
+        # TODO: track these metrics using a class
         rec_score_track, kg_score_track, reg_track = [], [], []
         for epoch in range(args.epochs + 1):
             rec_score_temp, kg_score_temp, reg_temp = [], [], []
@@ -79,20 +82,23 @@ def train(dataloader, args, device='cuda'):
 
             # save and test
             if epoch % args.save_each == 0:
-                #print('saving model')
-                #save_path = os.path.join(path, 'models/epoch_{}.chkpnt'.format(epoch))
-                #torch.save(model, save_path)
-                
-                hits10 = test(model.cpu(), dataloader, epoch, args, device='cpu')
-                model.to(device)
-                
+                test(model, dataloader, epoch, args, 'val')
+
                 # loss saving 
                 loss_save(rec_score_track, kg_score_track, reg_track, args.test_name)
 
                 # check for early stopping
-                epoch_rank = np.load(os.path.join('results', args.test_name, 'metric.npy'))
-                
-                best = np.argmax(epoch_rank)
-                if epoch_rank.shape[0] - (best + 1) >= args.stop_width:
-                    print('early stopping')
+                stop_metric = np.load(os.path.join('results', args.test_name, 'stop_metric.npy'))
+                best = np.argmax(stop_metric)
+
+                # if most recent epoch is best, save model
+                if stop_metric.shape[0] - (best + 1) == 0:
+                    print('saving model')
+                    save_path = os.path.join(path, 'models/best_model.pt')
+                    torch.save(model, save_path)
+
+                if stop_metric.shape[0] - (best + 1) >= args.stop_width or epoch == args.epochs:
                     break 
+
+        # when finished, save metric over epoch plot
+        temporal_plot(args.test_name, k=10)

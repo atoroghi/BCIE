@@ -58,11 +58,13 @@ class SimplE(nn.Module):
 
         elif self.loss_type == 'gauss':
             out = torch.square(score - labels)
+
         elif self.loss_type == 'hinge':
             l = (-labels * score + self.hinge_margin)
             zeros = torch.zeros(l.shape, device= self.device)
             mask = l > zeros
             out = l[mask]
+
         elif self.loss_type == 'PSL':
             l = (-labels * score + self.hinge_margin)
             zeros = torch.zeros(l.shape, device= self.device)

@@ -8,8 +8,10 @@ def natural_key(string_):
     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
 
 class Tune_Param:
-    def __init__(self, args):
+    def __init__(self, args, tune_name, fold_num):
         self.args = args
+        self.tune_name = tune_name
+        self.fold_num = fold_num
 
         self.lr_range = [-2, 1] # 10 ^ lr_range
         self.batch_range = [11, 14] # 2 ^ batch_range
@@ -28,24 +30,29 @@ class Tune_Param:
         subs = []
         for i in range(p.shape[0]): 
             # convert params from [0, 1] to inputs
+            self.args.lr, po[i,0] = normal2param(self.lr_range, p[i,0], float, base=10)
+            self.args.batch_size, po[i,1] = normal2param(self.batch_range, p[i,1], int, base=2)
+            self.args.emb_dim, po[i,2] = normal2param(self.emb_range, p[i,2], int, base=2)
+            self.args.reg_lambda, po[i,3] = normal2param(self.reg_range, p[i,3], float, base=10)
+            self.args.kg_lambda, po[i,4] = normal2param(self.kg_range, p[i,4], float, base=10)
+            self.args.init_scale, po[i,5] = normal2param(self.init_range, p[i,5], float, base=10)
+            self.args.neg_ratio, po[i,6] = normal2param(self.ratio_range, p[i,6], int)
+            self.args.neg_power, po[i,7] = normal2param(self.power_range, p[i,7], float)
 
-            args.lr, po[i,0] = normal2param(self.lr_range, p[i,0], float, base=10)
-            args.batch_size, po[i,1] = normal2param(self.batch_range, p[i,1], int, base=2)
-            args.emb_dim, po[i,2] = normal2param(self.emb_range, p[i,2], int, base=2)
-            args.reg_lambda, po[i,3] = normal2param(self.reg_range, p[i,3], float, base=10)
-            args.kg_lambda, po[i,4] = normal2param(self.kg_range, p[i,4], float, base=10)
-            args.init_scale, po[i,5] = normal2param(self.init_range, p[i,5], float, base=10)
-            args.neg_ratio, po[i,6] = normal2param(self.ratio_range, p[i,6], int)
-            args.neg_power, po[i,7] = normal2param(self.power_range, p[i,7], float)
+            # make fold folder
+            path = os.path.join('results', self.tune_name, 'fold_{}'.format(self.fold_num))
+            os.makedirs(path, exist_ok=True)
 
-            # name folder
-            folders = sorted(os.listdir('results'), key=natural_key)
+            folders = sorted(os.listdir(path), key=natural_key)
             folders = [f for f in folders if 'train' in f]
-            args.test_name = 'train{}'.format(len(folders) + i)
+
+            # don't include results in this path 
+            save_path = os.path.join(self.tune_name, 'fold_{}'.format(self.fold_num), 'train_{}'.format(len(folders) + i))
+            self.args.test_name = save_path 
             
             # make string to pass arguments
             proc_input = ['python', 'launch.py']
-            for k, v in vars(args).items():
+            for k, v in vars(self.args).items():
                 proc_input.append('-{}'.format(k))
                 proc_input.append('{}'.format(v))
             #print(proc_input)
@@ -59,26 +66,28 @@ class Tune_Param:
         # get recall at k
         best_hits = torch.empty(p.shape[0])
         for i in range(p.shape[0]):
-            hits = np.load(os.path.join('results', 'train{}'.format(len(folders) + i), 'metric.npy'))
+            load_path = os.path.join(path, 'train_{}'.format(len(folders) + i), 'stop_metric.npy')
+            hits = np.load(load_path)
             best_hits[i] = np.max(hits)
 
         return torch.from_numpy(po), best_hits 
 
-# all parameter optimization
-if __name__  == '__main__':
-    epochs = 100
-    dim = 8
-    n = 1000
-    batch = 4 # 2 are thompson sampled, 2 are random sampled
-
+def tuner(fold_num, epochs, batch, n, tune_name):
     args = get_args()
-    tune = Tune_Param(args)
+    args.fold = fold_num
+    tune = Tune_Param(args, tune_name, fold_num)
+    dim = 8
 
     # load training data
-    if os.path.isfile('gp/x_train.pt'):
+    path = os.path.join('gp', tune_name)
+    os.makedirs(path, exist_ok=True)
+    gp_path = os.path.join(path, 'fold {}'.format(fold_num)) 
+    os.makedirs(gp_path, exist_ok=True)
+
+    if os.path.isfile(os.path.join(gp_path, 'x_train.pt')):
         begin = False
-        x_train = torch.load('gp/x_train.pt')
-        y_train = torch.load('gp/y_train.pt')
+        x_train = torch.load(os.path.join(gp_path, 'x_train.pt'))
+        y_train = torch.load(os.path.join(gp_path, 'y_train.pt'))
         print(x_train)
         print(y_train)
     else:
@@ -103,8 +112,12 @@ if __name__  == '__main__':
             y_train = torch.cat((y_train, score))
 
             # save training examples to file
-            torch.save(x_train, 'gp/x_train.pt')
-            torch.save(y_train, 'gp/y_train.pt')
+            torch.save(x_train, os.path.join(gp_path, 'x_train.pt'))
+            torch.save(y_train, os.path.join(gp_path, 'y_train.pt'))
+
+if __name__  == '__main__':
+    print('not implimented')
+    sys.exit()
 
 # independent dims
 #if __name__ == '__main__':

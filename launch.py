@@ -1,15 +1,14 @@
-from ossaudiodev import SNDCTL_SYNTH_REMOVESAMPLE
 from trainer import train
 from tester import test
 from dataload import DataLoader
 
-import torch, argparse, time, os, sys, yaml
+import torch, argparse, time, os, sys, yaml, math
 import numpy as np
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-test_name', default='dev', type=str, help="folder for test results")
-    parser.add_argument('-model_type', default='Simple', type=str, help="model type (svd, Simple, etc)")
+    parser.add_argument('-model_type', default='simple', type=str, help="model type (svd, Simple, etc)")
 
     # hyper-parameters (optimized)
     parser.add_argument('-lr', default=1, type=float, help="learning rate")
@@ -23,19 +22,20 @@ def get_args():
     parser.add_argument('-hinge_margin', default=1, type=float, help="in case of margin loss, margin")
     
     # other hyper-params
-    parser.add_argument('-reg_type', default='tilt', type=str, help="tilt or gauss")
-    parser.add_argument('-loss_type', default='gauss', type=str, help="softplus or gauss")
-    parser.add_argument('-reduce_type', default='mean', type=str, help="sum or mean")
-    parser.add_argument('-optim_type', default='adam', type=str, help="adagrad or adam")
+    parser.add_argument('-reg_type', default='gauss', type=str, help="tilt or gauss")
+    parser.add_argument('-loss_type', default='softplus', type=str, help="softplus or gauss")
+    parser.add_argument('-reduce_type', default='sum', type=str, help="sum or mean")
+    parser.add_argument('-optim_type', default='adagrad', type=str, help="adagrad or adam")
     parser.add_argument('-sample_type', default='double', type=str, help="single or double (double treats head and tail dists differently)")
     parser.add_argument('-init_type', default='uniform', type=str, help="uniform or normal")
     parser.add_argument('-kg', default='kg', type=str, help="kg or no_kg")
 
-    # optimization and saving
-    parser.add_argument('-epochs', default=20, type=int, help="number of epochs")
+    # optimization, saving and data
+    parser.add_argument('-epochs', default=30, type=int, help="number of epochs")
     parser.add_argument('-save_each', default=1, type=int, help="validate every k epochs")
     parser.add_argument('-dataset', default='ML_FB', type=str, help="dataset name")
     parser.add_argument('-stop_width', default=4, type=int, help="number of SAVES where test is worse for early stopping")
+    parser.add_argument('-fold', default=0, type=int, help="fold to use data from")
 
     args = parser.parse_args()
     return args
@@ -59,7 +59,7 @@ def main(args):
 
     if args.init_scale == None: 
         print('manual init scale')
-        args.init_scale = sqrt_size = 6.0 / np.sqrt(args.emb_dim)
+        args.init_scale = 6.0 / math.sqrt(args.emb_dim)
 
     if args.save_each is None:
         args.save_each = args.epochs
@@ -75,8 +75,7 @@ def main(args):
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     
     # print important hyperparameters
-    #print('epochs: {}, batch size: {}, reg kg: {}, reg lambda: {}, device: {}'. format(
-    #      args.epochs, args.batch_size, args.kg_lambda, args.reg_lambda, device))
+    #print('fold {}, device: {}'. format(args.fold, device))
 
     dataloader = DataLoader(args)
     

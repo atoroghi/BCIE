@@ -5,7 +5,7 @@ from utils.plots import rank_save, RankTrack
 # make array of all items to suggest (rec or all possible head tail)
 def get_array(model, dataloader, args, rec):
     if rec:
-        all_items = torch.tensor(dataloader.rec[:,2]).to('cuda')
+        all_items = torch.tensor(dataloader.rec_train[:,2]).to('cuda')
         items = torch.unique(all_items, sorted=False)
     else:
         print('error, kg tester not implimented')
@@ -40,13 +40,16 @@ def get_scores(test_emb, rel_emb, item_emb, dataloader):
     ranked = torch.argsort(scores, descending=True)
     return ranked
 
-# get gt
+# get ground truth
 # TODO: comment this 
 class GetGT:
-    def __init__(self):
-        path = 'datasets/ML_FB'
-        names = ['kg_head_test', 'kg_head_train', 'kg_tail_test', 'kg_tail_train',
-                 'user_likes_test', 'user_likes_train']
+    def __init__(self, fold, mode):
+        path = os.path.join('datasets', 'ML_FB', 'fold {}'.format(fold))
+        #names = ['kg_head_test', 'kg_head_train', 'kg_tail_test', 'kg_tail_train',
+        #         'user_likes_test', 'user_likes_train']
+        if mode == 'test': names = ['ul_train', 'ul_test']
+        if mode == 'val': names = ['ul_train', 'ul_val']
+        
         self.maps = []
         for n in names:
             with open(os.path.join(path, n + '.pkl'), 'rb') as f:
@@ -54,13 +57,12 @@ class GetGT:
 
     def get(self, test_item, rel, head=True, rec=False):
         if rec:
-            test_gt = self.maps[4][test_item]
-            try:
-                train_gt = self.maps[5][test_item]
-            except:
-                #print('skip: ', test_item)
-                return None, None
+            test_gt = self.maps[1][test_item]
+            train_gt = self.maps[0][test_item]
+        
         else:
+            print('get GT for kg not implimented')
+            sys.exit()
             if head:
                 key = (test_item, rel)
                 test_gt = self.maps[0][key]
@@ -69,6 +71,7 @@ class GetGT:
                 key = (rel, test_item)
                 test_gt = self.maps[2][key]
                 train_gt = self.maps[3][key]
+
         return test_gt, test_gt + train_gt
 
 # get final rank to show performance
@@ -104,12 +107,13 @@ def get_emb(test_item, model):
 
     return test_emb
 
-def test(model, dataloader, epoch, args, device):
-    model.to('cuda')
+def test(model, dataloader, epoch, args, mode):
+    assert mode in ['test', 'val']
     # get arrays with all items for link prediction
     # special array for < user, likes, ? >
-    rec_h, rec_t, rec_id2index = get_array(model, dataloader, args, rec=True)
+    
     #kg_h, kg_t, kg_id2index = get_array(model, dataloader, args, rec=False)
+    rec_h, rec_t, rec_id2index = get_array(model, dataloader, args, rec=True)
     kg_id2index = {}
     id2index = (rec_id2index, kg_id2index)
 
@@ -123,25 +127,25 @@ def test(model, dataloader, epoch, args, device):
         rel_emb = torch.permute(rel_emb, (1,0,2))
 
     # all users to test rec on and all test triples to test kg on
-    all_users = torch.tensor(dataloader.rec_test[:,0]).to('cuda')
+    data = dataloader.rec_test if mode == 'test' else dataloader.rec_val
+
+    all_users = torch.tensor(data[:,0]).to('cuda')
     users = torch.unique(all_users, sorted=False)
-    kg_triples = 'idk' #dataloader.kg_test 
+    kg_triples = None #dataloader.kg_test 
 
     # load gt info and track rank scores classes
-    get_gt = GetGT()
+    get_gt = GetGT(dataloader.fold, mode)
     rank_track = RankTrack()
 
     # NOTICE: KG IS NOT BEING USED 
     # main test loop
     for i, test_items in enumerate((users, kg_triples)):
-        if i == 1 and args.kg == 'no_kg': break
         if i == 1: break
-        item_emb = (rec_h, rec_t) if i == 0 else (kg_h, kg_t)
+        #if i == 1 and args.kg == 'no_kg': break
+        item_emb = (rec_h, rec_t) #if i == 0 else (kg_h, kg_t)
 
         for j, test_item in enumerate(test_items):
             #if j%100 == 0: print('{:.5f} {:.5f}'.format(j/test_items.shape[0], (time.time()-t0) / 60))
-            if i == 0 and j >= 500: break
-            if i == 1 and j >= 10: break 
 
             # for rec testing
             if i == 0:
