@@ -1,155 +1,167 @@
 import os, sys, re, pickle
 import numpy as np
+from numpy.random import default_rng
 
-kg_path = 'datasets/www_data/www_data/Movielens/kg/train.dat'
-rec_path = 'datasets/www_data/www_data/Movielens/rs/ratings.txt'
-kg = np.genfromtxt(kg_path, delimiter='\t', dtype=np.int32)
-rec = np.genfromtxt(rec_path, delimiter='\t', dtype=np.int32)
+# remove items from test and val that aren't in train
+def remove_new(test, val, train):
+    testval = (test, val)
+    axis = (0, 2)
 
-rec = rec[:,:3] # remove time col.
+    out = []
+    # iterate through test or val triplets
+    for tv in testval:    
+        # remove both users and items that haven't been seen
+        for a in axis:
+            train_items = np.unique(train[:, a])
+            tv_items = np.unique(tv[:, a])
+            rm_tv = [item for item in tv_items if item not in train_items]
+            for rm in rm_tv:
+                tv = np.delete(tv, np.where(tv[:, a] == rm), axis=0)
 
-rec[:,2] = rec[:,2] >= 4 # binary ratings, 0 if [0, 4), 1 if [4, 5] 
-rec = rec[rec[:,2] == 1] # select only positive ratings
-rec[:,2] = 0 # set redundant col to relationship 0
-kg[:,1] += 1 # offset
-rec = rec[:, [0,2,1]] # <user, likes, item> format
-print(np.unique(rec[:, 2]).shape)
+        out.append(tv)
+    return (out[0], out[1])
 
-TOTAL_FB_IDS = np.max(kg) # total number of default kg pairs (# rel << # entities)
+# user likes for dicts
+def user_likes(test, val, train):
+    tvt = (test, val, train)
 
-# paths for converting data
-item2kg_path = 'datasets/www_data/www_data/Movielens/rs/i2kg_map.tsv'
-emap_path = 'datasets/www_data/www_data/Movielens/kg/e_map.dat'
+    ul = []
+    for data in tvt:
+        user_likes = {}
+        for i in range(data.shape[0]):
+            if data[i,0] not in user_likes:
+                user_likes.update({data[i,0]: [data[i,2]]})
+            else:
+                if data[i,2] not in user_likes[data[i,0]]:
+                    user_likes[data[i,0]].append(data[i,2])
+        ul.append(user_likes)
 
-# maps movie lense id's to free base html links
-ml2fb_map = {}
-with open(item2kg_path) as f:
-    for line in f:
-        ml_id = re.search('(.+?)\t', line)
-        fb_http = re.search('\t(.+?)\n', line)
+    return (ul[0], ul[1], ul[2]) 
+
+# only for splitting rec currently
+# assume inner loop has 1 fold
+def dataset_fold(num_fold, val_ratio=0.005):
+    # split dataset according to the split required
+    main_path = 'datasets/ML_FB/'
+    rec = np.load(os.path.join(main_path, 'rec.npy'))
+
+    rec = np.random.permutation(rec) # shuffle data 
+    fold_len = rec.shape[0] // num_fold # get sizes of each fold
+
+    # make and save each of the folds
+    rng = default_rng()
+    for i in range(num_fold):
+        if i < num_fold - 1: test_inds = np.arange(i * fold_len, (i+1) * fold_len)
+        else: test_inds = np.arange(i * fold_len, rec.shape[0])
         
-        ml2fb_map.update({int(ml_id.group(1)) : fb_http.group(1)})
+        test = rec[test_inds]
+        other = np.delete(rec, test_inds, axis=0) # train + valid data
 
-# maps free base html links to free base id's (final format)
-id2html_map = {}
-fb2id_map = {}
-with open(emap_path) as f:
-    for kg_id, line in enumerate(f):
-        fb_http = re.search('\t(.+?)\n', line)
+        # get train and valid from random split
+        val_len = int(val_ratio * other.shape[0])
+        val_inds = rng.choice(other.shape[0], size=val_len, replace=False)
         
-        fb2id_map.update({fb_http.group(1) : kg_id})
-        id2html_map.update({kg_id : fb_http.group(1)})
+        val = other[val_inds]
+        train = np.delete(other, val_inds, axis=0)
 
-# convert movielens id's to freebase id's
-i = 0
-while True:
-    if i == rec.shape[0]:
-        break
+        # remove users + items from test and val that aren't in train
+        (test, val) = remove_new(test, val, train)
 
-    if rec[i,2] in ml2fb_map: 
-        # get correct freebase id from data
-        fb_http = ml2fb_map[rec[i,2]]
-        fb_id = fb2id_map[fb_http]
-        # TODO: is this right
-        rec[i,2] = fb_id
-        i += 1
-    # remove from rec (only use movies that are in kg)
-    else:
-        rec = np.delete(rec, i, axis=0)
+        # build user likes maps
+        (ul_test, ul_val, ul_train) = user_likes(test, val, train)
 
-umap_path = 'datasets/www_data/www_data/Movielens/rs/u_map.dat'
+        # save data
+        print('saving fold: ', i)
+        path = os.path.join(main_path, 'fold {}'.format(i))
+        os.makedirs(path, exist_ok=True)
 
-# maps movielens user id's to freebase id's
-userid2fbid_map = {}
-new_ids = 0
-with open(umap_path) as f:
-    for line in f:
+        np.save(os.path.join(path, 'train.npy'), train, allow_pickle=True)
+        np.save(os.path.join(path, 'test.npy'), test, allow_pickle=True)
+        np.save(os.path.join(path, 'val.npy'), val, allow_pickle=True)
 
-        ml_id = re.search('\t(.+?)\n', line)
-        if int(ml_id.group(1)) in rec[:,0]:
-            new_ids += 1
-            userid2fbid_map.update({int(ml_id.group(1)) : TOTAL_FB_IDS + new_ids})
+        with open(os.path.join(path, 'ul_train.pkl'), 'wb') as f:
+            pickle.dump(ul_train, f) 
+        with open(os.path.join(path, 'ul_test.pkl'), 'wb') as f:
+            pickle.dump(ul_test, f) 
+        with open(os.path.join(path, 'ul_val.pkl'), 'wb') as f:
+            pickle.dump(ul_val, f) 
 
-# convert movielens user id's into freebase id's
-for i in range(rec.shape[0]):
-    rec[i,0] = userid2fbid_map[rec[i,0]]
+# for getting main rec and kg
+if __name__ == '__main__':
+    kg_path = 'datasets/www_data/www_data/Movielens/kg/train.dat'
+    rec_path = 'datasets/www_data/www_data/Movielens/rs/ratings.txt'
+    kg = np.genfromtxt(kg_path, delimiter='\t', dtype=np.int32)
+    rec = np.genfromtxt(rec_path, delimiter='\t', dtype=np.int32)
 
-NEW_USER_IDS = new_ids
+    rec = rec[:,:3] # remove time col.
+    rec[:,2] = rec[:,2] >= 4 # binary ratings, 0 if [0, 4), 1 if [4, 5] 
+    rec = rec[rec[:,2] == 1] # select only positive ratings
+    rec[:,2] = 0 # set redundant col to relationship 0
+    kg[:,1] += 1 # offset
+    rec = rec[:, [0,2,1]] # <user, likes, item> format
 
-# split rec and kg
-np.random.shuffle(rec)
-split = int(0.7*rec.shape[0])
-rec_train = rec[:split]
-rec_test = rec[split:]
+    TOTAL_FB_IDS = np.max(kg) # total number of default kg pairs (# rel << # entities)
 
-# Deleting users and items that are not included in training from test
-users = np.unique(rec_train[:,0])
-train_items=np.unique(rec_train[:,2])
-test_items=np.unique(rec_test[:,2])
-invalid_items=[item for item in test_items if item not in train_items]
-for invalid_item in invalid_items:
-  rec_test=np.delete(rec_test,np.where(rec_test[:,2]==invalid_item),axis=0)
-train_users=np.unique(rec_train[:,0])
-test_users=np.unique(rec_test[:,0])
-invalid_users=[user for user in test_users if user not in train_users]
-for invalid_user in invalid_users:
-  rec_test=np.delete(rec_test,np.where(rec_test[:,0]==invalid_user),axis=0)
+    # paths for converting data
+    item2kg_path = 'datasets/www_data/www_data/Movielens/rs/i2kg_map.tsv'
+    emap_path = 'datasets/www_data/www_data/Movielens/kg/e_map.dat'
 
-np.random.shuffle(kg)
-kg_train = kg[:split]
-kg_test = kg[split:]
+    # maps movie lense id's to free base html links
+    ml2fb_map = {}
+    with open(item2kg_path) as f:
+        for line in f:
+            ml_id = re.search('(.+?)\t', line)
+            fb_http = re.search('\t(.+?)\n', line)
+            
+            ml2fb_map.update({int(ml_id.group(1)) : fb_http.group(1)})
 
-# user like maps
-user_likes_test = {}
-for i in range(rec_test.shape[0]):
-    if rec_test[i,0] not in user_likes_test:
-        user_likes_test.update({rec_test[i,0]: [rec_test[i,2]]})
-    else:
-        if rec_test[i,2] not in user_likes_test[rec_test[i,0]]:
-            user_likes_test[rec_test[i,0]].append(rec_test[i,2])
+    # maps free base html links to free base id's (final format)
+    id2html_map = {}
+    fb2id_map = {}
+    with open(emap_path) as f:
+        for kg_id, line in enumerate(f):
+            fb_http = re.search('\t(.+?)\n', line)
+            
+            fb2id_map.update({fb_http.group(1) : kg_id})
+            id2html_map.update({kg_id : fb_http.group(1)})
 
-user_likes_train = {}
-for i in range(rec_train.shape[0]):
-    if rec_train[i,0] not in user_likes_train:
-        user_likes_train.update({rec_train[i,0]: [rec_train[i,2]]})
-    else:
-        if rec_train[i,2] not in user_likes_train[rec_train[i,0]]:
-            user_likes_train[rec_train[i,0]].append(rec_train[i,2])
+    # convert movielens id's to freebase id's
+    i = 0
+    while True:
+        if i == rec.shape[0]:
+            break
 
-user_likes_whole = {}
-for i in list(user_likes_train.keys()):
-    user_likes_whole[i] = user_likes_train[i] + user_likes_test[i]
-
-
-# TODO: rename some things here?
-# make kg dictionaries
-name = ['test', 'train']
-heads_test, tails_test = {}, {}
-for i, kg in enumerate([kg_test, kg_train]):
-    for j, fact in enumerate(kg):
-        headkey = tuple(fact[1:])
-        tailkey = tuple(fact[:2])
-        if headkey in heads_test.keys():
-            heads_test[headkey].append(fact[0])
+        if rec[i,2] in ml2fb_map: 
+            # get correct freebase id from data
+            fb_http = ml2fb_map[rec[i,2]]
+            fb_id = fb2id_map[fb_http]
+            # TODO: is this right
+            rec[i,2] = fb_id
+            i += 1
+        # remove from rec (only use movies that are in kg)
         else:
-            heads_test[headkey] = [fact[0]]
-        if tailkey in tails_test.keys():
-            tails_test[tailkey].append(fact[2])
-        else:
-            tails_test[tailkey] = [fact[2]]
-    with open('datasets/ML_FB/kg_tail_{}.pkl'.format(name[i]), 'wb') as f:
-       pickle.dump(heads_test, f)   
-    with open('datasets/ML_FB/kg_head_{}.pkl'.format(name[i]), 'wb') as f:
-       pickle.dump(tails_test, f)
+            rec = np.delete(rec, i, axis=0)
 
-np.save('datasets/ML_FB/rec_train.npy', rec_train, allow_pickle=True)
-np.save('datasets/ML_FB/rec_test.npy', rec_test, allow_pickle=True)
-np.save('datasets/ML_FB/kg_train.npy', kg_train, allow_pickle=True)
-np.save('datasets/ML_FB/kg_test.npy', kg_test, allow_pickle=True)
+    umap_path = 'datasets/www_data/www_data/Movielens/rs/u_map.dat'
 
-with open('datasets/ML_FB/user_likes_train.pkl', 'wb') as f:
-    pickle.dump(user_likes_train, f) 
-with open('datasets/ML_FB/user_likes_test.pkl', 'wb') as f:
-    pickle.dump(user_likes_test, f) 
-with open('datasets/ML_FB/user_likes_whole.pkl', 'wb') as f:
-    pickle.dump(user_likes_whole, f) 
+    # maps movielens user id's to freebase id's
+    userid2fbid_map = {}
+    new_ids = 0
+    with open(umap_path) as f:
+        for line in f:
+
+            ml_id = re.search('\t(.+?)\n', line)
+            if int(ml_id.group(1)) in rec[:,0]:
+                new_ids += 1
+                userid2fbid_map.update({int(ml_id.group(1)) : TOTAL_FB_IDS + new_ids})
+
+    # convert movielens user id's into freebase id's
+    for i in range(rec.shape[0]):
+        rec[i,0] = userid2fbid_map[rec[i,0]]
+
+    NEW_USER_IDS = new_ids
+
+    # save full kg and rec
+    # break up into train / test / val later..
+    np.save('datasets/ML_FB/rec.npy', rec, allow_pickle=True)
+    np.save('datasets/ML_FB/kg.npy', kg, allow_pickle=True)

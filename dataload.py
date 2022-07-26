@@ -3,43 +3,40 @@ import torch
 import numpy as np
 import random
 
-
 class DataLoader:
     def __init__(self, args):
         self.name = args.dataset
         self.neg_ratio = int(args.neg_ratio)
         self.sample_type = args.sample_type
         self.batch_size = args.batch_size
+        self.fold = args.fold
 
         # load datasets and info mappings
-        path = os.path.join('datasets', self.name)
-        self.rec_train = np.load(os.path.join(path, 'rec_train.npy'), allow_pickle=True)
-        self.rec_test = np.load(os.path.join(path, 'rec_test.npy'), allow_pickle=True)
-        self.rec = np.concatenate((self.rec_train, self.rec_test))
+        path = os.path.join('datasets', self.name, 'fold {}'.format(self.fold))
+        self.rec_train = np.load(os.path.join(path, 'train.npy'), allow_pickle=True)
+        self.rec_test = np.load(os.path.join(path, 'test.npy'), allow_pickle=True)
+        self.rec_val = np.load(os.path.join(path, 'val.npy'), allow_pickle=True)
 
         # load data for training
         if args.kg == 'kg':
-            self.kg_train = np.load(os.path.join(path, 'kg_train.npy'), allow_pickle=True)        
-            self.kg_test = np.load(os.path.join(path, 'kg_test.npy'), allow_pickle=True)        
-            self.kg = np.concatenate((self.kg_train, self.kg_test))
+            self.kg = np.load(os.path.join('datasets', self.name, 'kg.npy'), allow_pickle=True)        
         
-            self.train_data = np.concatenate((self.rec_train, self.kg_train))    
-            self.num_item = np.max(self.train_data) + 1 # TODO: max from test and train
+            self.train_data = np.concatenate((self.rec_train, self.kg))    
             self.num_rel = np.max(self.kg[:,1]) + 1
             self.all_rel = np.unique(self.kg[:,1])
         elif args.kg == 'no_kg':
-            self.kg_train = np.load(os.path.join(path, 'kg_train.npy'), allow_pickle=True)        
-            self.kg_test = np.load(os.path.join(path, 'kg_test.npy'), allow_pickle=True)        
-            self.kg = np.concatenate((self.kg_train, self.kg_test))
+            #self.kg_train = np.load(os.path.join(path, 'kg_train.npy'), allow_pickle=True)        
+            #self.kg_test = np.load(os.path.join(path, 'kg_test.npy'), allow_pickle=True)        
+            #self.kg = np.concatenate((self.kg_train, self.kg_test))
 
             self.train_data = self.rec_train
-            self.num_item = np.max(self.rec) + 1 # TODO: max from test and train
             self.num_rel = 1
         else:
             print('kg mode not valid')
             sys.exit()
 
         # useful information about data
+        self.num_item = np.max(self.train_data) + 1
         self.n_batches = int(np.ceil(self.train_data.shape[0] / args.batch_size))
         self.likes_link = 0 # hard coded
         #self.first_userid = np.min(self.users) # used for printing triplets
@@ -51,10 +48,11 @@ class DataLoader:
             self.sampler = DoubleSample(self.train_data, power=args.neg_power)
 
         # user likes
-        with open(os.path.join(path, 'user_likes_test.pkl'), 'rb') as f:
-            self.user_likes_map = pickle.load(f)
-        with open(os.path.join(path, 'user_likes_whole.pkl'), 'rb') as f:
-            self.user_likes_whole = pickle.load(f)
+        #with open(os.path.join(path, 'user_likes_test.pkl'), 'rb') as f:
+        #    self.user_likes_map = pickle.load(f)
+
+        #with open(os.path.join(path, 'user_likes_whole.pkl'), 'rb') as f:
+        #    self.user_likes_whole = pickle.load(f)
 
         # load data for printing relation
         #with open(os.path.join(path, 'id2html.pkl'), 'rb') as f:
@@ -89,7 +87,6 @@ class DataLoader:
         data = np.hstack((data, labels))
 
         return torch.from_numpy(data).long()
-
 
     # negative sampling
     def get_negatives(self, pos):
