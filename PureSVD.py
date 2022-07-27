@@ -9,6 +9,7 @@ import statistics
 import scipy.sparse as sp
 from scipy.sparse import vstack
 from sklearn.utils.extmath import randomized_svd
+from torch.linalg import svd
 import cupy as cp
 
 class PureSVD:
@@ -50,12 +51,19 @@ class PureSVD:
         col=rec_train_pd['item_id'].values
         data=np.ones(np.shape(row)[0])
         matrix_input=coo_matrix((data, (row, col)))
-        seed=2
-        P, sigma, Qt = randomized_svd(matrix_input,
-                                            n_components=self.rank,
-                                            n_iter=self.epochs,
-                                            power_iteration_normalizer='QR',
-                                            random_state=seed)
+        values = matrix_input.data
+        indices = np.vstack((matrix_input.row, matrix_input.col))
+        i = torch.LongTensor(indices)
+        v = torch.FloatTensor(values)
+        shape = matrix_input.shape
+        tensor_input = torch.sparse.FloatTensor(i, v, torch.Size(shape))
+        P, sigma, Qt = torch.linalg.svd(tensor_input)
+        #seed=2
+        #P, sigma, Qt = randomized_svd(matrix_input,
+        #                                    n_components=self.rank,
+        #                                    n_iter=self.epochs,
+        #                                    power_iteration_normalizer='QR',
+        #                                    random_state=seed)
 
         RQ = matrix_input.dot(sp.csc_matrix(Qt).T)
         matrix_U , Yt, bias = np.array(RQ.todense()), Qt, None
