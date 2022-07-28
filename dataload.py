@@ -47,12 +47,15 @@ class DataLoader:
         elif self.sample_type == 'double':
             self.sampler = DoubleSample(self.train_data, power=args.neg_power)
 
-        # user likes
-        #with open(os.path.join(path, 'user_likes_test.pkl'), 'rb') as f:
-        #    self.user_likes_map = pickle.load(f)
 
-        #with open(os.path.join(path, 'user_likes_whole.pkl'), 'rb') as f:
-        #    self.user_likes_whole = pickle.load(f)
+        # user likes
+        with open(os.path.join(path, 'ul_test.pkl'), 'rb') as f:
+            self.user_likes_map = pickle.load(f)
+
+        with open(os.path.join(path, 'ul_whole.pkl'), 'rb') as f:
+            self.user_likes_whole = pickle.load(f)
+        
+
 
         # load data for printing relation
         #with open(os.path.join(path, 'id2html.pkl'), 'rb') as f:

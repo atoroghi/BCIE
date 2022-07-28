@@ -9,15 +9,21 @@ import torch.nn.functional as F
 from tester import test
 from dataload import DataLoader
 from PureSVD import PureSVD
-from utils.plots import rank_plot, RankTrack, temporal_plot, save_metrics
-from proc import adj_matrix
-from svd import svd
+from utils.plots import rank_save, RankTrack, temporal_plot
 
 def train(dataloader, args, device='cuda'):
     # get model, dataset and optimizer
     if args.model_type == 'svd':
-        svd(dataloader, args, 'val', device)
+        # train model
+        model = PureSVD(dataloader, args)
+        matrix_U , matrix_V = model.train_model()
+        ranks = model.test_model(matrix_U, matrix_V)
+        hits10 = np.sum(ranks<11)/ranks.shape[0]
 
+        # save ranks for tester
+        #rank_track = RankTrack()
+        #rank_track.update(ranks, 0)
+        #rank_save(rank_track, str(args.test_name), 0)
     else:
         model = SimplE(dataloader, args, device)
 
@@ -27,7 +33,7 @@ def train(dataloader, args, device='cuda'):
         elif args.optim_type == 'adam':
             optimizer = torch.optim.Adagrad(model.parameters(), lr = args.lr)
 
-        path = os.path.join('results', args.test_name)
+        path = os.path.join('results', str(args.test_name))
         os.makedirs(path, exist_ok=True)
         os.makedirs(os.path.join(path, 'models'), exist_ok=True)
 
@@ -77,13 +83,14 @@ def train(dataloader, args, device='cuda'):
 
             # save and test
             if epoch % args.save_each == 0:
-                test(model, dataloader, epoch, args, 'val')
+                hits10 = test(model, dataloader, epoch, args, 'val')
+                
 
                 # loss saving 
-                loss_save(rec_score_track, kg_score_track, reg_track, args.test_name)
+                loss_save(rec_score_track, kg_score_track, reg_track, str(args.test_name))
 
                 # check for early stopping
-                stop_metric = np.load(os.path.join('results', args.test_name, 'stop_metric.npy'))
+                stop_metric = np.load(os.path.join('results', str(args.test_name), 'stop_metric.npy'))
                 best = np.argmax(stop_metric)
 
                 # if most recent epoch is best, save model
@@ -96,4 +103,5 @@ def train(dataloader, args, device='cuda'):
                     break 
 
         # when finished, save metric over epoch plot
-        temporal_plot(args.test_name, k=10)
+        #temporal_plot(args.test_name, k=10)
+    return hits10

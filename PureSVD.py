@@ -1,3 +1,4 @@
+
 import os, pickle, sys, time
 import torch
 import numpy as np
@@ -8,9 +9,9 @@ import statistics
 import scipy.sparse as sp
 from scipy.sparse import vstack
 from sklearn.utils.extmath import randomized_svd
-from torch.linalg import svd
 import cupy as cp
-
+from proc import adj_matrix
+#from torch.linalg import svd
 class PureSVD:
     def __init__(self, dataloader, args):
         self.rec_train = dataloader.rec_train
@@ -25,6 +26,8 @@ class PureSVD:
         self.epochs = args.epochs
         self.item2index = dict(zip(self.items, list(range(0, len(self.items)))))
         self.user2index = dict(zip(self.users, list(range(0, len(self.users)))))
+        self.device = 'cuda'
+        self.args = args
 
     def train_model(self):
         user_ids_train=[]
@@ -50,25 +53,34 @@ class PureSVD:
         col=rec_train_pd['item_id'].values
         data=np.ones(np.shape(row)[0])
         matrix_input=coo_matrix((data, (row, col)))
+        #
         values = matrix_input.data
         indices = np.vstack((matrix_input.row, matrix_input.col))
         i = torch.LongTensor(indices)
         v = torch.FloatTensor(values)
         shape = matrix_input.shape
         tensor_input = torch.sparse.FloatTensor(i, v, torch.Size(shape))
-        P, sigma, Qt = torch.linalg.svd(tensor_input)
-        #seed=2
-        #P, sigma, Qt = randomized_svd(matrix_input,
-        #                                    n_components=self.rank,
-        #                                    n_iter=self.epochs,
-        #                                    power_iteration_normalizer='QR',
-        #                                    random_state=seed)
+        seed=2
+        P, sigma, Qt = randomized_svd(matrix_input,
+                                            n_components=self.rank,
+                                            n_iter=self.epochs,
+                                            power_iteration_normalizer='QR',
+                                            random_state=seed)
 
         RQ = matrix_input.dot(sp.csc_matrix(Qt).T)
         matrix_U , Yt, bias = np.array(RQ.todense()), Qt, None
         matrix_V =Yt.T
         matrix_U = cp.array(matrix_U)
         matrix_V = cp.array(matrix_V)
+        #a = adj_matrix(self.args.fold) # adjacency matrix of user item
+        #a = a.to('cuda')
+        # train
+        #(u, s, v) = torch.svd_lowrank(a, q=self.args.emb_dim, niter=self.args.epochs)
+        #print('train done')
+        #e = s * torch.eye(s.shape[0]).to(self.device)
+        #out = u @ (e @ v.T)
+        #matrix_U = torch.asarray(u)
+        #matrix_V = torch.asarray(v)
 
         return matrix_U, matrix_V
 
@@ -79,8 +91,8 @@ class PureSVD:
 
     def test_model(self, matrix_U, matrix_V):
         ranks=[]
-        test_users_list=list(self.user_likes_mine.keys())[:1000]
-        for test_user in tqdm(test_users_list):
+        test_users_list=list(self.user_likes_mine.keys())
+        for test_user in (test_users_list):
             test_user_id = self.user2index[test_user]
             vector_u = matrix_U[test_user_id]
             vector_predict = matrix_V.dot(vector_u)
