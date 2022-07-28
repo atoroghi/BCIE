@@ -1,6 +1,24 @@
-import os, sys, re, pickle
+import os, sys, re, pickle, torch
 import numpy as np
 from numpy.random import default_rng
+
+# make adj matrix from rec triplets
+def adj_matrix(fold):
+    # get data
+    main_path = 'datasets/ML_FB/fold {}'.format(fold)
+    rec = np.load(os.path.join(main_path, 'train.npy'))
+    rec = rec[:, [0,2]]
+    user_max = np.max(rec[:,0]) + 1
+    item_max = np.max(rec[:,1]) + 1
+    print(user_max, item_max)
+    
+    # make torch sparse array
+    rec = torch.from_numpy(rec).T
+    v = torch.ones(rec.shape[1])
+
+    s = torch.sparse_coo_tensor(rec, v, (user_max, item_max))
+
+    return s
 
 # remove items from test and val that aren't in train
 def remove_new(test, val, train):

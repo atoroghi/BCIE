@@ -3,10 +3,11 @@ from proc import dataset_fold
 from tune import tuner
 
 def eval_best(fold_num):
+    # get model, test
     print()
 
 if __name__ == '__main__':
-    tune_name = 'softplus'
+    tune_name = 'single'
 
     # hp tuning parameters
     folds = 5
@@ -23,4 +24,4 @@ if __name__ == '__main__':
     print('tuning')
     for i in range(folds):
         tuner(i, epochs, batch, n, tune_name) # main tune loop
-        eval_best(i) # run tester on best net of fold i 
+    eval_best(i) # run tester on best net of fold i 

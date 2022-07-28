@@ -1,9 +1,11 @@
 import os, re, yaml, argparse, torch, math, sys
+from random import Random
 import numpy as np
 import matplotlib.pyplot as plt
 from tester import test
 from trainer import train
 from dataload import DataLoader
+from sklearn.ensemble import RandomForestRegressor
 
 def natural_key(string_):
     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
@@ -11,51 +13,88 @@ def natural_key(string_):
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-test_name', default='dev')
-    parser.add_argument('-load_epoch', default=0)
     return parser.parse_args() 
 
+def test_fold(tune_name, best_run, best_epoch):
+    args = get_args()
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+    # get args from file
+    path = os.path.join('results', tune_name, 'fold_{}'.format(i), 'train_{}'.format(best_run))
+    with open(os.path.join(path, 'info.yml'), 'r') as f:
+        yml = yaml.safe_load(f)
+        for key in yml.keys():
+            setattr(args, key, yml[key])
+    
+    dataloader = DataLoader(args)
+
+    # load model
+    load_path = os.path.join(path, 'models', 'best_model.pt')
+    model = torch.load(load_path).to(device)
+    test(model, dataloader, best_epoch, args, 'test')
+
+# TODO: clean this up, it's bad
 if __name__ == '__main__':
     tune_name = 'gauss'
     folds = 5
-    
+    opt = 'test'
+
     # search through all folders
     for i in range(folds):
-        path = 'results/{}/fold_{}'.format(tune_name, i)
-        folders = os.listdir(path)
-        folders = [f for f in folders if 'train' in f]
-        folders = sorted(folders, key=natural_key)
+        if opt == 'test':
+            path = 'results/{}/fold_{}'.format(tune_name, i)
+            folders = os.listdir(path)
+            folders = [f for f in folders if 'train' in f]
+            folders = sorted(folders, key=natural_key)
 
-        # get best performance and hps
-        perf, arg_perf = [], []
-        for f in folders:
-            try:
-                scores = np.load(os.path.join(path, f, 'stop_metric.npy'), allow_pickle=True)
-                perf.append(np.max(scores))
-                arg_perf.append(np.argmax(scores))
-            except:
-                print('skipped: ', f)
+            # get performance for each model in a fold
+            perf, arg_perf = [], []
+            for f in folders:
+                try:
+                    scores = np.load(os.path.join(path, f, 'stop_metric.npy'), allow_pickle=True)
+                    perf.append(np.max(scores))
+                    arg_perf.append(np.argmax(scores))
+                except:
+                    print('skipped: ', f)
+            
+            best_run = np.argmax(perf)
+            best_score = np.max(perf)
+            best_epoch = arg_perf[np.argmax(perf)]
+            print('best score: {}, best folder: {}, best epoch: {}'.format(best_score, best_run, best_epoch))
 
-        best_run = np.argmax(perf)
-        best_score = np.max(perf)
-        best_arg = arg_perf[np.argmax(perf)]
-        print('best score: {}, best folder: {}, best epoch: {}'.format(best_score, best_run, best_arg))
-        continue
+            test_fold(tune_name, best_run, best_epoch)
 
-        ######################################
-        # test best run from given fold
-        args = get_args()
-        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        elif opt == 'hp':
+            load_path = os.path.join('gp', tune_name, 'fold_{}'.format(i))
+            hp_ = torch.load(os.path.join(load_path, 'x_train.pt')).numpy()
+            y_ = torch.load(os.path.join(load_path, 'y_train.pt')).numpy()
 
-        # get args from file
-        path = os.path.join('results', tune_name, 'fold_{}'.format(i), 'train_{}'.format(best_run))
-        with open(os.path.join(path, 'info.yml'), 'r') as f:
-            yml = yaml.safe_load(f)
-            for key in yml.keys():
-                setattr(args, key, yml[key])
+            if i == 0:
+                hp = hp_
+                y = y_
+            else:
+                hp = np.concatenate((hp, hp_))
+                y = np.concatenate((y, y_))
+            print(hp.shape, y.shape)
+
+    if opt == 'hp':
+        hp_names = ['lr', 'batch size', 'emb dim', 
+              'reg lambda', 'kg lambda', 'init scale',
+              'neg ratio', 'neg power']
+        forest = RandomForestRegressor()
+        forest.fit(hp, y)
+        imp = forest.feature_importances_
+
+        # plot
+        arg = np.argsort(imp)[::-1]
+        imp = np.sort(imp)[::-1]
+        print(imp)
+        hp_names = [hp_names[a] for a in arg]
         
-        dataloader = DataLoader(args)
+        for i in range(imp.shape[0]):
+            plt.bar(i, imp[i])
 
-        # load model
-        load_path = os.path.join(path, 'models', 'epoch_{}.chkpnt'.format(best_arg))
-        model = torch.load(load_path).to(device)
-        test(model, dataloader, args.load_epoch, args, 'test')
+        plt.xticks(ticks=np.arange(0, imp.shape[0]), labels=hp_names)
+        plt.ylabel('Random Forest Importance')
+        plt.title('Hyperparameter Importance')
+        plt.show()

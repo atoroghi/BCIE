@@ -9,20 +9,15 @@ import torch.nn.functional as F
 from tester import test
 from dataload import DataLoader
 from PureSVD import PureSVD
-from utils.plots import rank_save, RankTrack, temporal_plot
+from utils.plots import rank_plot, RankTrack, temporal_plot, save_metrics
+from proc import adj_matrix
+from svd import svd
 
 def train(dataloader, args, device='cuda'):
     # get model, dataset and optimizer
     if args.model_type == 'svd':
-        # train model
-        model = PureSVD(dataloader, args)
-        matrix_U , matrix_V = model.train_model()
-        ranks = model.test_model(matrix_U, matrix_V)
+        svd(dataloader, args, 'val', device)
 
-        # save ranks for tester
-        rank_track = RankTrack()
-        rank_track.update(ranks, 0)
-        rank_save(rank_track, args.test_name, 0)
     else:
         model = SimplE(dataloader, args, device)
 

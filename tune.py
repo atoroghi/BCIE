@@ -81,20 +81,20 @@ def tuner(fold_num, epochs, batch, n, tune_name):
     # load training data
     path = os.path.join('gp', tune_name)
     os.makedirs(path, exist_ok=True)
-    gp_path = os.path.join(path, 'fold {}'.format(fold_num)) 
+    gp_path = os.path.join(path, 'fold_{}'.format(fold_num)) 
     os.makedirs(gp_path, exist_ok=True)
 
     if os.path.isfile(os.path.join(gp_path, 'x_train.pt')):
         begin = False
         x_train = torch.load(os.path.join(gp_path, 'x_train.pt'))
         y_train = torch.load(os.path.join(gp_path, 'y_train.pt'))
-        print(x_train)
-        print(y_train)
+        print(x_train.shape)
+        print(y_train.shape)
     else:
         begin = True
 
     # main loop
-    for e in range(11, epochs):
+    for e in range(epochs):
         # train models and update points
         if begin:
             begin = False

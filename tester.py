@@ -1,6 +1,6 @@
 import torch, os, sys, time, pickle
 import numpy as np
-from utils.plots import rank_save, RankTrack
+from utils.plots import RankTrack, rank_plot, save_metrics
 
 # make array of all items to suggest (rec or all possible head tail)
 def get_array(model, dataloader, args, rec):
@@ -41,38 +41,50 @@ def get_scores(test_emb, rel_emb, item_emb, dataloader):
     return ranked
 
 # get ground truth
-# TODO: comment this 
 class GetGT:
     def __init__(self, fold, mode):
         path = os.path.join('datasets', 'ML_FB', 'fold {}'.format(fold))
         #names = ['kg_head_test', 'kg_head_train', 'kg_tail_test', 'kg_tail_train',
         #         'user_likes_test', 'user_likes_train']
-        if mode == 'test': names = ['ul_train', 'ul_test']
         if mode == 'val': names = ['ul_train', 'ul_val']
+        if mode == 'test': names = ['ul_train', 'ul_test', 'ul_val']
+        
+        self.mode = mode
         
         self.maps = []
         for n in names:
             with open(os.path.join(path, n + '.pkl'), 'rb') as f:
                 self.maps.append(pickle.load(f))
 
-    def get(self, test_item, rel, head=True, rec=False):
-        if rec:
-            test_gt = self.maps[1][test_item]
+    def get(self, test_item):
+        if self.mode == 'val':
             train_gt = self.maps[0][test_item]
-        
-        else:
-            print('get GT for kg not implimented')
-            sys.exit()
-            if head:
-                key = (test_item, rel)
-                test_gt = self.maps[0][key]
-                train_gt = self.maps[1][key]
-            else:
-                key = (rel, test_item)
-                test_gt = self.maps[2][key]
-                train_gt = self.maps[3][key]
+            val_gt = self.maps[1][test_item]
+            return val_gt, train_gt + val_gt
 
-        return test_gt, test_gt + train_gt
+        else:
+            train_gt = self.maps[0][test_item]
+            test_gt = self.maps[1][test_item]
+
+            # TODO: this is bad practice...
+            # if user is in validation, filter this too... 
+            try: 
+                val_gt = self.maps[2][test_item]
+                return test_gt, train_gt + test_gt + val_gt
+            except:
+                return test_gt, train_gt + test_gt
+
+        #else:
+            #print('get GT for kg not implimented')
+            #sys.exit()
+            #if head:
+                #key = (test_item, rel)
+                #test_gt = self.maps[0][key]
+                #train_gt = self.maps[1][key]
+            #else:
+                #key = (rel, test_item)
+                #test_gt = self.maps[2][key]
+                #train_gt = self.maps[3][key]
 
 # get final rank to show performance
 def get_rank(ranked, test_gt, all_gt, id2index):
@@ -151,7 +163,7 @@ def test(model, dataloader, epoch, args, mode):
             if i == 0:
                 test_emb = get_emb(test_item, model)
                 ranked = get_scores(test_emb, rel_emb[0], item_emb, dataloader)
-                test_gt, all_gt = get_gt.get(test_item.cpu().item(), dataloader, rec=True)
+                test_gt, all_gt = get_gt.get(test_item.cpu().item())
                 if test_gt == None: continue
                 ranks = get_rank(ranked, test_gt, all_gt, id2index[i])
                 rank_track.update(ranks, 0)
@@ -171,6 +183,12 @@ def test(model, dataloader, epoch, args, mode):
                 ranked = get_scores(test_emb, rel_emb[rel], item_emb, dataloader)
                 ranks = get_rank(ranked, test_gt, all_gt, id2index[i])
                 rank_track.update(ranks, rel)
-        
-    rank_at_k = rank_save(rank_track, args.test_name, epoch, k=10)
-    return rank_at_k
+
+    # different save options if train or testing        
+    if mode == 'val': 
+        rank_plot(rank_track, args.test_name, epoch)
+        rank_at_k = save_metrics(rank_track, args.test_name, epoch, mode)
+        return rank_at_k
+
+    else:
+        save_metrics(rank_track, args.test_name, epoch, mode)
