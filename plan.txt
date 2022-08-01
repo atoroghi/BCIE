@@ -1,0 +1,26 @@
+HP Tune
+* compare 3 full hp tunes *
+    - "best model"
+    - "best model" with gauss loss
+    - single
+
+Sampler
+    - single, vs both double
+    - 3 total exps
+
+SVD Comparison
+    * do these all at once, then add back in, while trying to keep performace*
+    - gauss
+    - remove kg
+    - mean reduction
+    - hard set likes as ones
+    - large neg. ratio
+
+Other
+    - Best model w/o kg?
+
+
+TODO:
+*****************
+    - remove ram bottleneck in training
+    - clean critique code 
