@@ -5,34 +5,36 @@ import numpy as np
 from utils import rank_plot, save_metrics
 
 def svd(dataloader, args, mode, device):
-    a = adj_matrix(args.fold) # adjacency matrix of user item
+    a, u_min = adj_matrix(args.fold) # adjacency matrix of user item
     a = a.to('cuda')
 
     # train
-    (u, s, v) = torch.svd_lowrank(a, q=100, niter=2)
-    print('train done')
+    print('args: {} {}'.format(args.rank, args.n_iter))
+    (u, s, v) = torch.svd_lowrank(a, q=args.rank, niter=args.n_iter)
     e = s * torch.eye(s.shape[0]).to(device)
-    out = u @ (e @ v.T)
-
+    out = u @ (e @ v.T) # estimate of user likes matrix
+    
     # all users and items in maps
     data = dataloader.rec_test if mode == 'test' else dataloader.rec_val
     all_users = torch.tensor(data[:,0]).to('cuda')
     users = torch.unique(all_users, sorted=False).to('cpu').tolist()
-    user2index = dict(zip(users, list(range(len(users)))))
+    user2index = {}
+    for u in users:
+        user2index.update({u : u - u_min})
     
     data = dataloader.rec_train
     all_items = torch.tensor(data[:,2]).to('cuda')
     items = torch.unique(all_items, sorted=False).to('cpu').tolist()
-    id2index = dict(zip(items, list(range(len(items)))))
+    id2index = {}
+    for it in items:
+        id2index.update({it : it})
 
     # load gt info and track rank scores classes
     get_gt = GetGT(dataloader.fold, mode)
     rank_track = RankTrack()
 
     # main test loop
-    print(out.shape)
     for j, user in enumerate(users):
-        if j > 1000: break
         scores = out[user2index[user]]
         ranked = torch.argsort(scores, descending=True)
 

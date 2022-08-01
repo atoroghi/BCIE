@@ -3,10 +3,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as st
 
-folder = ['softplus', 'gauss']
-leg = ['double', 'gauss']
-color = ['k', 'r']
+folder = ['softplus', 'single', 'gauss', 'svd']
+leg = ['double', 'single', 'gauss (double)', 'svd']
+color = ['r', 'k', 'b', 'm']
 
+plt.figure(figsize=(12,10))
 for i in range(3):
     for j, f in enumerate(folder):
         path = os.path.join('results', f, 'results.txt')

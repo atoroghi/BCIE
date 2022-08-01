@@ -18,14 +18,18 @@ def get_args():
     parser.add_argument('-kg_lambda', default=1, type=float, help="l2 regularization parameter")   
     parser.add_argument('-neg_ratio', default=10, type=int, help="number of negative examples per positive example")
     parser.add_argument('-neg_power', default=0.0, type=float, help="power for neg sampling disribution")
-    parser.add_argument('-init_scale', default=None, type=float, help="std for normal, gain for uniform")
+    parser.add_argument('-init_scale', default=1, type=float, help="std for normal, gain for uniform")
     parser.add_argument('-hinge_margin', default=1, type=float, help="in case of margin loss, margin")
     
+    # for svd
+    parser.add_argument('-rank', default=10, type=int, help="rank for svd")
+    parser.add_argument('-n_iter', default=5, type=int, help="number of iterations for approx method")
+    
     # other hyper-params
-    parser.add_argument('-reg_type', default='gauss', type=str, help="tilt or gauss")
-    parser.add_argument('-loss_type', default='softplus', type=str, help="softplus or gauss")
-    parser.add_argument('-reduce_type', default='sum', type=str, help="sum or mean")
-    parser.add_argument('-optim_type', default='adagrad', type=str, help="adagrad or adam")
+    parser.add_argument('-reg_type', default='tilt', type=str, help="tilt or gauss")
+    parser.add_argument('-loss_type', default='gauss', type=str, help="softplus or gauss")
+    parser.add_argument('-reduce_type', default='mean', type=str, help="sum or mean")
+    parser.add_argument('-optim_type', default='adam', type=str, help="adagrad or adam")
     parser.add_argument('-sample_type', default='double', type=str, help="single or double (double treats head and tail dists differently)")
     parser.add_argument('-init_type', default='uniform', type=str, help="uniform or normal")
     parser.add_argument('-kg', default='kg', type=str, help="kg or no_kg")
@@ -57,7 +61,7 @@ def main(args):
     assert args.optim_type in ['adagrad', 'adam']
     assert args.init_type in ['uniform', 'normal']
 
-    if args.init_scale == None: 
+    if args.init_scale == 1: 
         print('manual init scale')
         args.init_scale = 6.0 / math.sqrt(args.emb_dim)
 

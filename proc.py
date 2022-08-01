@@ -8,17 +8,19 @@ def adj_matrix(fold):
     main_path = 'datasets/ML_FB/fold {}'.format(fold)
     rec = np.load(os.path.join(main_path, 'train.npy'))
     rec = rec[:, [0,2]]
-    user_max = np.max(rec[:,0]) + 1
-    item_max = np.max(rec[:,1]) + 1
-    print(user_max, item_max)
+
+    item_max = np.max(rec[:,1])
+    user_min = np.min(rec[:,0])
+    user_max_ = np.max(rec[:,0]) 
+    user_max = np.max(rec[:,0]) - user_min    
+    rec[:, 0] -= user_min
     
     # make torch sparse array
     rec = torch.from_numpy(rec).T
     v = torch.ones(rec.shape[1])
 
-    s = torch.sparse_coo_tensor(rec, v, (user_max, item_max))
-
-    return s
+    s = torch.sparse_coo_tensor(rec, v, (user_max + 1, item_max + 1))
+    return s, user_min
 
 # remove items from test and val that aren't in train
 def remove_new(test, val, train):

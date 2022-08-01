@@ -66,14 +66,50 @@ def temporal_plot(test_name, k):
     plt.savefig(os.path.join(path, 'hits_epoch.jpg'))
     plt.close()
 
+# save metric info
+def save_metrics(rank_track, test_name, epoch, mode):
+    # for train loop
+    if mode == 'val':
+        save_path = os.path.join('results', test_name, 'epoch_{}'.format(epoch)) 
+        os.makedirs(save_path, exist_ok=True)
+
+        # save metric_track for eval performance over training
+        with open(os.path.join(save_path, 'metric_track.pkl'), 'wb') as f:
+            pickle.dump(rank_track, f)
+
+        # get hit at k for rec
+        rank = rank_track.info[0] # likes relation
+        rank_at_k = np.where(rank < 10)[0].shape[0] / rank.shape[0]
+        stop_metric_path = os.path.join('results', test_name, 'stop_metric.npy')  
+
+        if epoch != 0:
+            scores = np.load(stop_metric_path, allow_pickle=True)
+            saved_scores = np.append(scores, rank_at_k)
+        else:
+            saved_scores = np.array([rank_at_k])
+
+        print(np.max(saved_scores))
+        np.save(stop_metric_path, saved_scores)
+        return rank_at_k
+
+    # for test loop
+    else:
+        save_path = os.path.abspath(os.path.join('results', test_name, '../..'))
+        os.makedirs(save_path, exist_ok=True)
+
+        rank = rank_track.info[0] # likes relation
+        hit_1 = np.where(rank < 1)[0].shape[0] / rank.shape[0]
+        hit_3 = np.where(rank < 3)[0].shape[0] / rank.shape[0]
+        hit_10 = np.where(rank < 10)[0].shape[0] / rank.shape[0]
+        print(hit_10)
+
+        with open(os.path.join(save_path, 'results.txt'), 'a') as f:
+            f.write('{} {} {}\n'.format(hit_1, hit_3, hit_10))
+
 # plot distribution of ranks and line plot of hits @ k per epoch
-def rank_save(rank_track, test_name, epoch, k=10):
+def rank_plot(rank_track, test_name, epoch):
     save_path = os.path.join('results', test_name, 'epoch_{}'.format(epoch)) 
     os.makedirs(save_path, exist_ok=True)
-
-    # save metric_track for eval performance over training
-    with open(os.path.join(save_path, 'metric_track.pkl'), 'wb') as f:
-        pickle.dump(rank_track, f)
 
     # distribution
     plt.style.use('seaborn')
@@ -84,16 +120,6 @@ def rank_save(rank_track, test_name, epoch, k=10):
     color = sns.color_palette('Set2')
     for rel, rank in rank_track.items():
         if rel == 0:
-            rank_at_k = np.where(rank < k)[0].shape[0] / rank.shape[0]
-            stop_metric_path = os.path.join('results', test_name, 'stop_metric.npy')  
-            if epoch != 0:
-                scores = np.load(stop_metric_path, allow_pickle=True)
-                saved_scores = np.append(scores, rank_at_k)
-            else:
-                saved_scores = np.array([rank_at_k])
-            
-            print(np.max(saved_scores))
-            np.save(stop_metric_path, saved_scores)
             sns.histplot(rank, bins=40, ax=ax1)
         else:
             a = k % 7
@@ -109,8 +135,6 @@ def rank_save(rank_track, test_name, epoch, k=10):
     plt.tight_layout() 
     plt.savefig(os.path.join(save_path, 'rank_hist.jpg'))
     plt.close()
-
-    return rank_at_k
 
 # plot loss
 def loss_save(rec, kg, reg, test_name):

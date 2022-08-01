@@ -100,7 +100,9 @@ class DataLoader:
         if self.sample_type == 'single':
             samples = self.sampler.sample(n)
             samples = np.vstack((samples, np.zeros(n), samples)).T
+        # soft samples work better rn?
         elif self.sample_type == 'double':
+            # option to flip type
             head_samples, tail_samples = self.sampler.sample(n)
             samples = np.vstack((tail_samples, np.zeros(n), head_samples)).T
 

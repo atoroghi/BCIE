@@ -13,14 +13,17 @@ class Tune_Param:
         self.tune_name = tune_name
         self.fold_num = fold_num
 
-        self.lr_range = [-2, 1] # 10 ^ lr_range
-        self.batch_range = [11, 14] # 2 ^ batch_range
-        self.emb_range = [3, 8] # 2 ^ emb_range
-        self.reg_range = [-5, 1] # 10 ^ reg_range
-        self.kg_range = [-5, 1] # 10 ^ kg_range
-        self.init_range = [-2, 1] # 10 ^ init_range
-        self.ratio_range = [1, 15]
-        self.power_range = [0, 1]
+        self.rank_range = [2, 9] # 2 ^ rank_range
+        self.iter_range = [1, 200]
+
+        #self.lr_range = [-2, 1] # 10 ^ lr_range
+        #self.batch_range = [11, 14] # 2 ^ batch_range
+        #self.emb_range = [3, 8] # 2 ^ emb_range
+        #self.reg_range = [-5, 1] # 10 ^ reg_range
+        #self.kg_range = [-5, 1] # 10 ^ kg_range
+        #self.init_range = [-2, 1] # 10 ^ init_range
+        #self.ratio_range = [1, 15]
+        #self.power_range = [0, 1]
 
     # run training process
     def train(self, p):
@@ -34,14 +37,17 @@ class Tune_Param:
         subs = []
         for i in range(p.shape[0]): 
             # convert params from [0, 1] to inputs
-            self.args.lr, po[i,0] = normal2param(self.lr_range, p[i,0], float, base=10)
-            self.args.batch_size, po[i,1] = normal2param(self.batch_range, p[i,1], int, base=2)
-            self.args.emb_dim, po[i,2] = normal2param(self.emb_range, p[i,2], int, base=2)
-            self.args.reg_lambda, po[i,3] = normal2param(self.reg_range, p[i,3], float, base=10)
-            self.args.kg_lambda, po[i,4] = normal2param(self.kg_range, p[i,4], float, base=10)
-            self.args.init_scale, po[i,5] = normal2param(self.init_range, p[i,5], float, base=10)
-            self.args.neg_ratio, po[i,6] = normal2param(self.ratio_range, p[i,6], int)
-            self.args.neg_power, po[i,7] = normal2param(self.power_range, p[i,7], float)
+            self.args.rank, po[i,0] = normal2param(self.rank_range, p[i,0], int, base=2)
+            self.args.n_iter, po[i,1] = normal2param(self.iter_range, p[i,1], int)
+
+            #self.args.lr, po[i,0] = normal2param(self.lr_range, p[i,0], float, base=10)
+            #self.args.batch_size, po[i,1] = normal2param(self.batch_range, p[i,1], int, base=2)
+            #self.args.emb_dim, po[i,2] = normal2param(self.emb_range, p[i,2], int, base=2)
+            #self.args.reg_lambda, po[i,3] = normal2param(self.reg_range, p[i,3], float, base=10)
+            #self.args.kg_lambda, po[i,4] = normal2param(self.kg_range, p[i,4], float, base=10)
+            #self.args.init_scale, po[i,5] = normal2param(self.init_range, p[i,5], float, base=10)
+            #self.args.neg_ratio, po[i,6] = normal2param(self.ratio_range, p[i,6], int)
+            #self.args.neg_power, po[i,7] = normal2param(self.power_range, p[i,7], float)
 
             folders = sorted(os.listdir(path), key=natural_key)
             folders = [f for f in folders if 'train' in f]
@@ -76,7 +82,7 @@ def tuner(fold_num, epochs, batch, n, tune_name):
     args = get_args()
     args.fold = fold_num
     tune = Tune_Param(args, tune_name, fold_num)
-    dim = 8
+    dim = 2
 
     # load training data
     path = os.path.join('gp', tune_name)

@@ -4,12 +4,15 @@ from tester import test
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-test_name', default='double')
-    parser.add_argument('-load_epoch', default=1)
+    parser.add_argument('-test_name', default='q_test')
+    #parser.add_argument('-load_epoch', default=0)
     return parser.parse_args() 
 
 # eval
 if __name__ == '__main__':
+    print('fix implimentation')
+    sys.exit()
+    
     args = get_args()
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -21,11 +24,11 @@ if __name__ == '__main__':
     
     # load model
     path = os.path.join('results', args.test_name)
-    load_path = os.path.join(path, 'models', 'epoch_{}.chkpnt'.format(args.load_epoch))
-    model = torch.load(load_path, map_location='cpu')
+    load_path = os.path.join(path, 'models', 'best_model.pt')
+    model = torch.load(load_path).to(device)
 
     # load
     dataloader = DataLoader(args)
 
-    test(model, dataloader, args.load_epoch, args, device)
+    test(model, dataloader, 5, args, 'test')
 
