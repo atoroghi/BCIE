@@ -1,3 +1,4 @@
+
 from trainer import train
 from tester import test
 from dataload import DataLoader
@@ -7,7 +8,7 @@ import numpy as np
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-test_name', default='dev', type=str, help="folder for test results")
+    parser.add_argument('-test_name', default=0.1, type=float, help="folder for test results")
     parser.add_argument('-model_type', default='simple', type=str, help="model type (svd, Simple, etc)")
 
     # hyper-parameters (optimized)
@@ -29,6 +30,7 @@ def get_args():
     parser.add_argument('-sample_type', default='double', type=str, help="single or double (double treats head and tail dists differently)")
     parser.add_argument('-init_type', default='uniform', type=str, help="uniform or normal")
     parser.add_argument('-kg', default='kg', type=str, help="kg or no_kg")
+    parser.add_argument('-type_checking',default='no', type=str, help="doing type checking or not")
 
     # optimization, saving and data
     parser.add_argument('-epochs', default=30, type=int, help="number of epochs")
@@ -68,7 +70,7 @@ def main(args):
     if args.test_name == None:
         raise ValueError('enter a test name folder using -test_name')
     os.makedirs('results', exist_ok=True)
-    save_path = os.path.join("results", args.test_name)
+    save_path = os.path.join("results", str(args.test_name))
     os.makedirs(save_path, exist_ok=True) # TODO: update this is continue training...
     save_hyperparams(save_path, args)
 
@@ -81,9 +83,9 @@ def main(args):
     
     # this trains and tests
     #print('training')
-    train(dataloader, args, device)
+    hits10 = train(dataloader, args, device)
+    print(hits10)
 
 if __name__ == '__main__':
     args = get_args()
     main(args)
-

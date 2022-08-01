@@ -39,6 +39,53 @@ def remove_new(test, val, train):
         out.append(tv)
     return (out[0], out[1])
 
+# remove kg rels with very low frequency
+def remove_rare(kg):
+    _ , counts = np.unique(kg[:,1], return_counts=True)
+    #finding rels that occur less than 50 times
+    rare_rels = np.where(counts<50)
+    for rare_rel in rare_rels[0]:
+        kg = np.delete(kg,np.where(kg[:,1] == (rare_rel + 1)),axis=0)
+    return kg
+
+def split_kg(kg, split = 0.2):
+    num_rels = (np.unique(kg[:,1])).shape[0]
+    test_start = int(split*kg.shape[0])
+    #making sure that all relations are present in the test set
+    while (np.shape(np.unique(kg[test_start:,1])))[0] < num_rels:
+        np.random.shuffle(kg)
+    kg_train = kg[:test_start]
+    kg_test = kg[test_start:]
+    return kg_train , kg_test
+
+# make dictionaries "valid_heads" and "valid_tails" for realations to be used in type checking 
+def make_types_dicts(rec,kg):
+    data = np.concatenate([rec,kg], axis = 0)
+    main_path = 'datasets/ML_FB/'
+    valid_heads = {}
+    valid_tails = {}
+    valid_heads_freq = {}
+    valid_tails_freq = {}
+    all_rels = np.unique(data[:,1])
+    for rel in all_rels:
+        heads_all = data[np.where(data[:,1]==rel)[0],0]
+        tails_all = data[np.where(data[:,1]==rel)[0],2]
+        heads, heads_counts = np.unique(heads_all, return_counts = True)
+        tails, tails_counts = np.unique(tails_all, return_counts = True)
+        valid_heads[rel] = heads
+        valid_tails[rel] = tails
+        valid_heads_freq[rel] = heads_counts / np.sum(heads_counts)
+        valid_tails_freq[rel] = tails_counts / np.sum(tails_counts)
+
+    with open(os.path.join(main_path, 'valid_heads.pkl'), 'wb') as f:
+        pickle.dump(valid_heads, f) 
+    with open(os.path.join(main_path, 'valid_tails.pkl'), 'wb') as f:
+        pickle.dump(valid_tails, f) 
+    with open(os.path.join(main_path, 'valid_heads_freq.pkl'), 'wb') as f:
+        pickle.dump(valid_heads_freq, f)
+    with open(os.path.join(main_path, 'valid_tails_freq.pkl'), 'wb') as f:
+        pickle.dump(valid_tails_freq, f)
+    
 # user likes for dicts
 def user_likes(test, val, train):
     tvt = (test, val, train)
@@ -116,6 +163,9 @@ if __name__ == '__main__':
     rec = rec[rec[:,2] == 1] # select only positive ratings
     rec[:,2] = 0 # set redundant col to relationship 0
     kg[:,1] += 1 # offset
+    kg = remove_rare(kg) #remove rare relations
+    kg_train, kg_test = split_kg(kg)
+
     rec = rec[:, [0,2,1]] # <user, likes, item> format
 
     TOTAL_FB_IDS = np.max(kg) # total number of default kg pairs (# rel << # entities)
@@ -178,6 +228,7 @@ if __name__ == '__main__':
         rec[i,0] = userid2fbid_map[rec[i,0]]
 
     NEW_USER_IDS = new_ids
+    make_types_dicts(rec,kg)
 
     # save full kg and rec
     # break up into train / test / val later..
