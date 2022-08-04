@@ -40,12 +40,12 @@ def test_fold(tune_name, best_run, best_epoch):
 
 # TODO: clean this up, it's bad
 if __name__ == '__main__':
-    tune_name = 'adam_tilt_gauss_mean'
+    tune_name = 'softplus'
     folds = 5
-    opt = 'test'
+    opt = 'hp'
 
     # search through all folders
-    for i in range(3,folds):
+    for i in range(folds):
         if opt == 'test':
             path = 'results/{}/fold_{}'.format(tune_name, i)
             folders = os.listdir(path)
@@ -66,7 +66,6 @@ if __name__ == '__main__':
             best_score = np.max(perf)
             best_epoch = arg_perf[np.argmax(perf)]
             print('best score: {}, best folder: {}, best epoch: {}'.format(best_score, best_run, best_epoch))
-            continue
 
             test_fold(tune_name, best_run, best_epoch)
 
