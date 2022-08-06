@@ -33,10 +33,11 @@ def make_array(model, items, emb_dim):
 # get scores
 def get_scores(test_emb, rel_emb, item_emb, dataloader):
     # get score, based on if test item is head or tail
-    # embds are [head_emb, tail_emb] always
     for_prod = torch.sum(test_emb[0] * rel_emb[0] * item_emb[1], axis=1)
     inv_prod = torch.sum(test_emb[1] * rel_emb[1] * item_emb[0], axis=1)
     scores = torch.clip((for_prod + inv_prod) / 2, -40, 40)
+    #for_prod = torch.sum(test_emb[0] * item_emb[1], axis=1)
+    #scores = torch.clip(for_prod, -40, 40)
     ranked = torch.argsort(scores, descending=True)
     return ranked
 
@@ -98,7 +99,7 @@ def get_rank(ranked, test_gt, all_gt, id2index):
     # get rank for all items in test set for user
     rank = []
     for gt in test_gt:
-        remove_inds = np.setdiff1d(item_inds, gt)
+        remove_inds = np.setdiff1d(item_inds, id2index[gt])
         pre_rank = np.where(ranked == id2index[gt])[0][0]       
         
         check_ranked = ranked[:pre_rank]
@@ -169,6 +170,7 @@ def test(model, dataloader, epoch, args, mode):
                 rank_track.update(ranks, 0)
             
             else:
+                print('testing here not implimented...')
                 rel = test_item[1]
                 
                 # test_item as head
