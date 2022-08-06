@@ -61,7 +61,7 @@ class GetGT:
         if self.mode == 'val':
             train_gt = self.maps[0][test_item]
             val_gt = self.maps[1][test_item]
-            return val_gt, train_gt + val_gt
+            return val_gt, train_gt + val_gt, train_gt
 
         else:
             train_gt = self.maps[0][test_item]
@@ -71,9 +71,12 @@ class GetGT:
             # if user is in validation, filter this too... 
             try: 
                 val_gt = self.maps[2][test_item]
-                return test_gt, train_gt + test_gt + val_gt
+                all_gt = train_gt + test_gt + val_gt
+                train = train_gt + val_gt
             except:
-                return test_gt, train_gt + test_gt
+                all_gt = train_gt + test_gt
+                train = train_gt
+            return test_gt, all_gt, train
 
         #else:
             #print('get GT for kg not implimented')
@@ -108,6 +111,33 @@ def get_rank(ranked, test_gt, all_gt, id2index):
         rank.append(pre_rank - sub)
 
     return np.array(rank)
+
+# get final rank to show performance
+def get_Rprec(ranked, test_gt, train_gt, id2index):
+    R = len(test_gt)
+    ranked = ranked.cpu().numpy()
+    # get array of all test and train items
+    item_inds = []
+    for item in train_gt:
+        item_inds.append(id2index[item])
+    item_inds = np.array(item_inds)
+    
+    # get rank for all items in test set for user
+    rank = []
+    for gt in test_gt:
+        #shouldn't this be np.setdiff1d(item_inds, id2index[gt])? isn't gt an id here?
+        remove_inds = np.setdiff1d(item_inds, gt)
+        pre_rank = np.where(ranked == id2index[gt])[0][0]       
+        
+        check_ranked = ranked[:pre_rank]
+        hits = np.in1d(check_ranked, remove_inds) 
+        sub = np.count_nonzero(hits)
+        rank.append(pre_rank - sub)
+    test_ranks = np.array(rank)
+    # this is the Rprec per user
+    Rprec = ((np.where((test_ranks < R)))[0].shape[0]) / R
+    return Rprec
+
 
 # get embedding for a head or tail id
 def get_emb(test_item, model):
@@ -164,10 +194,14 @@ def test(model, dataloader, epoch, args, mode):
             if i == 0:
                 test_emb = get_emb(test_item, model)
                 ranked = get_scores(test_emb, rel_emb[0], item_emb, dataloader)
-                test_gt, all_gt = get_gt.get(test_item.cpu().item())
+                test_gt, all_gt, train_gt = get_gt.get(test_item.cpu().item())
+                # for calculating R-precision
+                
                 if test_gt == None: continue
                 ranks = get_rank(ranked, test_gt, all_gt, id2index[i])
-                rank_track.update(ranks, 0)
+                rprec = get_Rprec(ranked, test_gt, train_gt, id2index[i])
+
+                rank_track.update(ranks, rprec, 0)
             
             else:
                 print('testing here not implimented...')

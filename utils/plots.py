@@ -9,16 +9,20 @@ def natural_key(string_):
 # class to save all rank infomation to plot and save
 class RankTrack:
     def __init__(self):
-        self.info = {}
+        self.info = {'rank':{}, 'rprec':{}}
     
-    def update(self, rank, rel, k=10):
-        if rel not in self.info:
-            self.info.update({rel : rank})
+    def update(self, rank, rprec, rel, k=10):
+        if rel not in self.info['rank']:
+            self.info['rank'].update({rel : rank})
         else:
-            self.info[rel] = np.concatenate((self.info[rel], rank))
+            self.info['rank'][rel] = np.concatenate((self.info['rank'][rel], rank))
+        if rel not in self.info['rprec']:
+            self.info['rprec'].update({rel : np.array([rprec])})
+        else:
+            self.info['rprec'][rel] = np.concatenate((self.info['rprec'][rel], np.array([rprec])))
 
     def items(self):
-        return self.info.items()
+        return self.info['rank'].items()
 
 # plots metics over the training sequence
 def temporal_plot(test_name, k):
@@ -78,7 +82,8 @@ def save_metrics(rank_track, test_name, epoch, mode):
             pickle.dump(rank_track, f)
 
         # get hit at k for rec
-        rank = rank_track.info[0] # likes relation
+        rank = rank_track.info['rank'][0] # likes relation
+        
         rank_at_k = np.where(rank < 10)[0].shape[0] / rank.shape[0]
         stop_metric_path = os.path.join('results', test_name, 'stop_metric.npy')  
 
@@ -87,6 +92,10 @@ def save_metrics(rank_track, test_name, epoch, mode):
             saved_scores = np.append(scores, rank_at_k)
         else:
             saved_scores = np.array([rank_at_k])
+
+        rprec = rank_track.info['rprec'][0] # likes relation
+        avg_rprec = np.sum(rprec)/rprec.shape[0] # average r precision over all users
+        print(avg_rprec)
 
         print(np.max(saved_scores))
         np.save(stop_metric_path, saved_scores)
