@@ -6,7 +6,7 @@ import scipy.stats as st
 plt.style.use('seaborn')
 
 folder = ['softplus', 'single', 'gauss', 'svd', 'rev_double', 'pseudo_svd']
-leg = ['double', 'single', 'gauss', 'svd', 'double-reverse', 'simple-like-svd']
+leg = ['split-reverse', 'joined', 'gauss', 'svd', 'split-regular', 'simple-like-svd']
 groups = ['hit@1', 'hit@3', 'hit@10'] 
 color = ['r', 'k', 'b', 'm', 'g']
 
@@ -30,6 +30,7 @@ for j, f in enumerate(folder):
     
 val_dic, err_dic = {}, {}
 for i, h in enumerate(all_hits):
+    print(leg[i])
     val_dic.update({leg[i] : h})
 
 for i, e in enumerate(all_err):

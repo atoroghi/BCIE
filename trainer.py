@@ -8,13 +8,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 from tester import test
 from dataload import DataLoader
-from PureSVD import PureSVD
-from utils.plots import rank_save, RankTrack, temporal_plot
+from utils.plots import RankTrack, temporal_plot
 
 def train(dataloader, args, device='cuda'):
     # get model, dataset and optimizer
     if args.model_type == 'svd':
         # train model
+        print('svd is fucked')
+        sys.exit()
         model = PureSVD(dataloader, args)
         matrix_U , matrix_V = model.train_model()
         ranks = model.test_model(matrix_U, matrix_V)
@@ -84,7 +85,6 @@ def train(dataloader, args, device='cuda'):
             # save and test
             if epoch % args.save_each == 0:
                 hits10 = test(model, dataloader, epoch, args, 'val')
-                
 
                 # loss saving 
                 loss_save(rec_score_track, kg_score_track, reg_track, str(args.test_name))

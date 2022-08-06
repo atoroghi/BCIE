@@ -8,8 +8,7 @@ import numpy as np
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-test_name', default=0.1, type=float, help="folder for test results")
-    parser.add_argument('-model_type', default='simple', type=str, help="model type (svd, Simple, etc)")
+    parser.add_argument('-test_name', default='dev', type=str, help="folder for test results")
 
     # hyper-parameters (optimized)
     parser.add_argument('-lr', default=1, type=float, help="learning rate")
@@ -20,6 +19,8 @@ def get_args():
     parser.add_argument('-neg_ratio', default=10, type=int, help="number of negative examples per positive example")
     parser.add_argument('-neg_power', default=0.0, type=float, help="power for neg sampling disribution")
     parser.add_argument('-init_scale', default=1, type=float, help="std for normal, gain for uniform")
+
+    # not used rn.
     parser.add_argument('-hinge_margin', default=1, type=float, help="in case of margin loss, margin")
     
     # for svd
@@ -27,14 +28,17 @@ def get_args():
     parser.add_argument('-n_iter', default=5, type=int, help="number of iterations for approx method")
     
     # other hyper-params
-    parser.add_argument('-reg_type', default='tilt', type=str, help="tilt or gauss")
-    parser.add_argument('-loss_type', default='gauss', type=str, help="softplus or gauss")
-    parser.add_argument('-reduce_type', default='mean', type=str, help="sum or mean")
-    parser.add_argument('-optim_type', default='adam', type=str, help="adagrad or adam")
-    parser.add_argument('-sample_type', default='double', type=str, help="single or double (double treats head and tail dists differently)")
-    parser.add_argument('-init_type', default='uniform', type=str, help="uniform or normal")
+    parser.add_argument('-model_type', default='simple', type=str, help="model type (svd, Simple, etc)")
+    parser.add_argument('-reg_type', default='gauss', type=str, help="tilt or gauss")
+    parser.add_argument('-loss_type', default='softplus', type=str, help="softplus or gauss")
+    parser.add_argument('-reduce_type', default='sum', type=str, help="sum or mean")
+    parser.add_argument('-optim_type', default='adagrad', type=str, help="adagrad or adam")
+    parser.add_argument('-sample_type', default='split_rev', type=str, help="combo, split_reg, split_rev")
+    parser.add_argument('-init_type', default='normal', type=str, help="uniform or normal")
     parser.add_argument('-kg', default='kg', type=str, help="kg or no_kg")
-    parser.add_argument('-type_checking',default='no', type=str, help="doing type checking or not")
+    
+    # TODO: is this used now ??
+    #parser.add_argument('-type_checking',default='no', type=str, help="doing type checking or not")
 
     # optimization, saving and data
     parser.add_argument('-epochs', default=30, type=int, help="number of epochs")
@@ -57,8 +61,8 @@ def save_hyperparams(path, args):
                       default_flow_style=False)
 
 def main(args):
-    assert args.sample_type in ['single', 'double']
-    assert args.reg_type in ['gauss', 'tilt', 'tilt']
+    assert args.sample_type in ['combo', 'split_reg', 'split_rev']
+    assert args.reg_type in ['gauss', 'tilt']
     assert args.loss_type in ['softplus', 'gauss', 'hinge', 'PSL']
     assert args.optim_type in ['adagrad', 'adam']
     assert args.init_type in ['uniform', 'normal']
@@ -88,7 +92,7 @@ def main(args):
     # this trains and tests
     #print('training')
     hits10 = train(dataloader, args, device)
-    print(hits10)
+    #print(hits10)
 
 if __name__ == '__main__':
     args = get_args()

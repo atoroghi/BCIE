@@ -20,7 +20,10 @@ class GP(gpytorch.models.ExactGP):
 
 # convert from continuous data in [0, 1] (gp)
 # to parameter for nn training
-def normal2param(minmax, x, dtype, base=None):
+def normal2param(x, spec):
+    minmax = spec[0]
+    dtype = spec[1]
+    base = spec[2]
     assert x >= 0 and x <= 1
 
     param = (minmax[1] - minmax[0]) * x + minmax[0]

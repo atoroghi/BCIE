@@ -1,26 +1,45 @@
-HP Tune
-* compare 3 full hp tunes *
-    - "best model"
-    - "best model" with gauss loss
-    - single
+Griffin
+#######################
+    - plot hp ranges
+    - save hp ranges / info
+    - add hp args_parse into nested_cv
+#######################
 
-Sampler
-    - single, vs both double
-    - 3 total exps
+    - clean up svd (for ref.)
+    - make simple-like-svd settings
 
-SVD Comparison
-    * do these all at once, then add back in, while trying to keep performace*
-    - gauss
-    - remove kg
-    - mean reduction
-    - hard set likes as ones
-    - large neg. ratio
+    - uniform vs gauss init
+    - sanity check mean reduc
+        1) make lr proporional to batch size
 
-Other
-    - Best model w/o kg?
+    - baby scipt to show mean and average of hp's
+
+Armin
+#######################
+    - more metrics
+        - average r precision
+        - mrr
+#######################
+    - wrmf
+
+Tests
+    - simple-like-svd
+        - neg sample - split-regular   
+        - wait on g. code
+
+    - best model + no kg
+        - running
+
+    - large sweep of non-tunable hp's 
+        - asap 
 
 
-TODO:
-*****************
-    - remove ram bottleneck in training
-    - clean critique code 
+    ## test 1
+    - wandb trio 
+        - best model
+        - send to g.
+
+Negative sampling type check
+    - speeed
+    - how to speed up?
+    - efficiency low priority

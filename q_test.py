@@ -66,6 +66,7 @@ if __name__ == '__main__':
             best_score = np.max(perf)
             best_epoch = arg_perf[np.argmax(perf)]
             print('best score: {}, best folder: {}, best epoch: {}'.format(best_score, best_run, best_epoch))
+            continue
 
             test_fold(tune_name, best_run, best_epoch)
 
@@ -83,6 +84,7 @@ if __name__ == '__main__':
             print(hp.shape, y.shape)
 
     if opt == 'hp':
+        plt.style.use('seaborn')
         hp_names = ['lr', 'batch size', 'emb dim', 
               'reg lambda', 'kg lambda', 'init scale',
               'neg ratio', 'neg power']

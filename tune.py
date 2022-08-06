@@ -1,29 +1,69 @@
-import os, sys, torch, gpytorch, argparse, math, subprocess, re, pickle
+import os, sys, torch, gpytorch, argparse, math, subprocess, re, pickle, yaml
 import numpy as np
 import matplotlib.pyplot as plt
 from launch import get_args
+from varname import nameof
 from gp import normal2param, train_sample_gp
+
+class Params:
+    def __init__(self, model_type, tune_name):
+        self.model_type = model_type
+        self.tune_name = tune_name
+
+        if self.model_type == 'simple': 
+            # TODO: update this using argparse (not tn)
+            self.param_dict = {
+                # name : (range, type, base)
+                'lr' : ([-6, 1], float, 10),
+                'batch_size' : ([11, 14], int,2),
+                'emb_dim' : ([2, 9], int, 2),
+                'reg_lambda' : ([-7, 1], float, 10),
+                'kg_lambda' : ([-7, 1], float, 10),
+                'init_scale' : ([-6, 1], float, 10),
+                'neg_ratio' : ([1, 30], int, None),
+                'neg_power' : ([0, 1], float, None),
+            }
+
+        elif self.model_type == 'svd':
+            self.param_dict = {
+                # name : (range, type, base)
+                'rank' : ([2, 9], int, 2),
+                'n_iter' : ([1, 200], int,None),
+            }
+
+        self.save()
+
+    def convert(self, i, po, p, args):
+        for j, (arg_name, spec) in enumerate(self.param_dict.items()):
+            # get proper arg corresponding to param_dict values
+            for a in vars(args):
+                if a == arg_name:
+                    # back out arg from key
+                    out, po[i,j] = normal2param(p[i,j], spec)
+                    setattr(args, a, out)
+
+        return args, po
+    
+    def save(self):
+        # convert dict specs to strings
+        save_dict = {}
+        for k, v in self.param_dict.items():
+            save_dict.update({k : str(v)})
+
+        save_path = os.path.join('gp', self.tune_name)
+        with open(os.path.join(save_path, 'hp_ranges.yml'), 'w') as f:
+                yaml.dump(save_dict, f, sort_keys=False,
+                        default_flow_style=False)
+
 
 def natural_key(string_):
     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
 
-class Tune_Param:
+class Launch:
     def __init__(self, args, tune_name, fold_num):
         self.args = args
         self.tune_name = tune_name
         self.fold_num = fold_num
-
-        self.rank_range = [2, 9] # 2 ^ rank_range
-        self.iter_range = [1, 200]
-
-        #self.lr_range = [-2, 1] # 10 ^ lr_range
-        #self.batch_range = [11, 14] # 2 ^ batch_range
-        #self.emb_range = [3, 8] # 2 ^ emb_range
-        #self.reg_range = [-5, 1] # 10 ^ reg_range
-        #self.kg_range = [-5, 1] # 10 ^ kg_range
-        #self.init_range = [-2, 1] # 10 ^ init_range
-        #self.ratio_range = [1, 15]
-        #self.power_range = [0, 1]
 
     # run training process
     def train(self, p):
@@ -35,19 +75,12 @@ class Tune_Param:
         os.makedirs(path, exist_ok=True)
 
         subs = []
-        for i in range(p.shape[0]): 
-            # convert params from [0, 1] to inputs
-            self.args.rank, po[i,0] = normal2param(self.rank_range, p[i,0], int, base=2)
-            self.args.n_iter, po[i,1] = normal2param(self.iter_range, p[i,1], int)
+        param = Params(self.args.model_type, self.tune_name)
 
-            #self.args.lr, po[i,0] = normal2param(self.lr_range, p[i,0], float, base=10)
-            #self.args.batch_size, po[i,1] = normal2param(self.batch_range, p[i,1], int, base=2)
-            #self.args.emb_dim, po[i,2] = normal2param(self.emb_range, p[i,2], int, base=2)
-            #self.args.reg_lambda, po[i,3] = normal2param(self.reg_range, p[i,3], float, base=10)
-            #self.args.kg_lambda, po[i,4] = normal2param(self.kg_range, p[i,4], float, base=10)
-            #self.args.init_scale, po[i,5] = normal2param(self.init_range, p[i,5], float, base=10)
-            #self.args.neg_ratio, po[i,6] = normal2param(self.ratio_range, p[i,6], int)
-            #self.args.neg_power, po[i,7] = normal2param(self.power_range, p[i,7], float)
+        for i in range(p.shape[0]): 
+            # convert gp [0, 1] to proper parameter vals
+            # po is gp values corresponding to discretization
+            self.args, po = param.convert(i, po, p, self.args)
 
             folders = sorted(os.listdir(path), key=natural_key)
             folders = [f for f in folders if 'train' in f]
@@ -79,10 +112,11 @@ class Tune_Param:
         return torch.from_numpy(po), best_hits 
 
 def tuner(fold_num, epochs, batch, n, tune_name):
+    # TODO: get this from nested cv
     args = get_args()
     args.fold = fold_num
-    tune = Tune_Param(args, tune_name, fold_num)
-    dim = 2
+    launch = Launch(args, tune_name, fold_num)
+    dim = 8
 
     # load training data
     path = os.path.join('gp', tune_name)
@@ -104,7 +138,7 @@ def tuner(fold_num, epochs, batch, n, tune_name):
         # train models and update points
         if begin:
             begin = False
-            x_out, score = tune.train(torch.rand(batch, dim))
+            x_out, score = launch.train(torch.rand(batch, dim))
             y_train = score
             x_train = x_out
         else:
@@ -113,7 +147,7 @@ def tuner(fold_num, epochs, batch, n, tune_name):
             x_sample = train_sample_gp(x_test, x_train, y_train, batch, dim, e) 
             x_sample[:2] = torch.rand(2, dim)
 
-            x_out, score = tune.train(x_sample)
+            x_out, score = launch.train(x_sample)
             x_train = torch.vstack((x_train, x_out))
             y_train = torch.cat((y_train, score))
 

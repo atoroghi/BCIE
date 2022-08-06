@@ -138,7 +138,6 @@ def get_Rprec(ranked, test_gt, train_gt, id2index):
     Rprec = ((np.where((test_ranks < R)))[0].shape[0]) / R
     return Rprec
 
-
 # get embedding for a head or tail id
 def get_emb(test_item, model):
     # get embedding for test item
