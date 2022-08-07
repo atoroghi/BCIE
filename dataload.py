@@ -42,9 +42,9 @@ class DataLoader:
         #self.first_userid = np.min(self.users) # used for printing triplets
 
         # class for negative sampling
-        if self.sample_type == 'single':
+        if self.sample_type == 'combo':
             self.sampler = SingleSample(self.train_data, power=args.neg_power)
-        elif self.sample_type == 'double':
+        elif 'split' in self.sample_type:
             self.sampler = DoubleSample(self.train_data, power=args.neg_power)
 
         # user likes

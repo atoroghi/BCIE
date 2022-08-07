@@ -232,4 +232,3 @@ if __name__  == '__main__':
         #x_all[:,e] = x_train[best]
         #print(x_all)
         #print()
-

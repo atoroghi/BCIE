@@ -9,7 +9,8 @@ import numpy as np
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-test_name', default='dev', type=str, help="folder for test results")
-
+    parser.add_argument('-tune_name', default='dev_nest', type=str, help="tuner process name")
+    
     # hyper-parameters (optimized)
     parser.add_argument('-lr', default=1, type=float, help="learning rate")
     parser.add_argument('-batch_size', default=4096, type=int, help="batch size")
