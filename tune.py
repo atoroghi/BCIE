@@ -16,11 +16,11 @@ class Params:
                 # name : (range, type, base)
                 'lr' : ([-6, 1], float, 10),
                 'batch_size' : ([11, 14], int,2),
-                'emb_dim' : ([2, 9], int, 2),
+                'emb_dim' : ([2, 8], int, 2),
                 'reg_lambda' : ([-7, 1], float, 10),
                 'kg_lambda' : ([-7, 1], float, 10),
                 'init_scale' : ([-6, 1], float, 10),
-                'neg_ratio' : ([1, 30], int, None),
+                'neg_ratio' : ([1, 15], int, None),
                 'neg_power' : ([0, 1], float, None),
             }
 

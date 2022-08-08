@@ -43,6 +43,6 @@ if __name__ == '__main__':
 
     # iterate through each fold
     print('tuning')
-    i = 1
+    i = 4
         # TODO: pass in args
     tuner(i, epochs, batch, n, meta_args.tune_name) # main tune loop

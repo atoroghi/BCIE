@@ -39,10 +39,6 @@ class SimplE(nn.Module):
             for w in weights:
                 nn.init.normal_(w, std=args.init_scale)
 
-        # freeze weights
-        nn.init.ones_(self.rel_embs.weight.data)
-        self.rel_embs.requires_grad = False
-
     def forward(self, heads, rels, tails):
         hh_embs = self.ent_h_embs(heads)
         ht_embs = self.ent_h_embs(tails)
