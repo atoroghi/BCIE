@@ -14,6 +14,7 @@ class SimplE(nn.Module):
         self.loss_type = args.loss_type
         self.device = device
         self.hinge_margin = args.hinge_margin
+        self.learning_rel = args.learning_rel
 
         self.ent_h_embs   = nn.Embedding(self.num_ent, args.emb_dim).to(device)
         self.ent_t_embs   = nn.Embedding(self.num_ent, args.emb_dim).to(device)
@@ -39,6 +40,7 @@ class SimplE(nn.Module):
             for w in weights:
                 nn.init.normal_(w, std=args.init_scale)
 
+
     def forward(self, heads, rels, tails):
         hh_embs = self.ent_h_embs(heads)
         ht_embs = self.ent_h_embs(tails)
@@ -47,11 +49,14 @@ class SimplE(nn.Module):
         r_embs = self.rel_embs(rels)
         r_inv_embs = self.rel_inv_embs(rels)
 
-        for_prod = torch.sum(hh_embs * r_embs * tt_embs, dim=1)
-        inv_prod = torch.sum(ht_embs * r_inv_embs * th_embs, dim=1)
-        return torch.clamp((for_prod + inv_prod) / 2, -20, 20) 
-        #for_prod = torch.sum(hh_embs * tt_embs, dim=1)
-        #return torch.clamp(for_prod, -20, 20) 
+        if self.learning_rel == 'freeze':
+            for_prod = torch.sum(hh_embs * tt_embs, dim=1)
+            return torch.clamp(for_prod, -20, 20)
+        else:
+            for_prod = torch.sum(hh_embs * r_embs * tt_embs, dim=1)
+            inv_prod = torch.sum(ht_embs * r_inv_embs * th_embs, dim=1)
+            return torch.clamp((for_prod + inv_prod) / 2, -20, 20) 
+
 
 
     def loss(self, score, labels):

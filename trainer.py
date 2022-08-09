@@ -1,6 +1,7 @@
 import os, time, sys
 from SimplE import SimplE
 from utils import loss_save, perrel_save
+from WRMF_torch import wrmf
 import numpy as np
 from tqdm import tqdm
 import torch
@@ -12,6 +13,9 @@ from utils.plots import RankTrack, temporal_plot
 
 def train(dataloader, args, device='cuda'):
     # get model, dataset and optimizer
+    if args.model_type == 'wrmf':
+        wrmf(dataloader, args, 'val', device)
+
     if args.model_type == 'svd':
         # train model
         print('svd is fucked')

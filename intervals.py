@@ -45,7 +45,12 @@ vdf.plot(
     kind='bar', yerr=edf, figsize=(12,10), rot=0, 
     title='Confidence Intervals - 95%', ylabel='Hit Percentage'
 )
-plt.show()
+#plt.show()
+plt.savefig(os.path.join('results', 'intervals.jpg'))
+plt.close()
+
+
+
 
 #plt.figure(figsize=(12,10))
 

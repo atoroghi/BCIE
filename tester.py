@@ -31,13 +31,15 @@ def make_array(model, items, emb_dim):
     return items_h, items_t, item_id2index
 
 # get scores
-def get_scores(test_emb, rel_emb, item_emb, dataloader):
+def get_scores(test_emb, rel_emb, item_emb, dataloader, learning_rel):
     # get score, based on if test item is head or tail
-    for_prod = torch.sum(test_emb[0] * rel_emb[0] * item_emb[1], axis=1)
-    inv_prod = torch.sum(test_emb[1] * rel_emb[1] * item_emb[0], axis=1)
-    scores = torch.clip((for_prod + inv_prod) / 2, -40, 40)
-    #for_prod = torch.sum(test_emb[0] * item_emb[1], axis=1)
-    #scores = torch.clip(for_prod, -40, 40)
+    if learning_rel == 'freeze':
+        for_prod = torch.sum(test_emb[0] * item_emb[1], axis=1)
+        scores = torch.clip(for_prod, -40, 40)
+    else:
+        for_prod = torch.sum(test_emb[0] * rel_emb[0] * item_emb[1], axis=1)
+        inv_prod = torch.sum(test_emb[1] * rel_emb[1] * item_emb[0], axis=1)
+        scores = torch.clip((for_prod + inv_prod) / 2, -40, 40)
     ranked = torch.argsort(scores, descending=True)
     return ranked
 
@@ -192,7 +194,7 @@ def test(model, dataloader, epoch, args, mode):
             # for rec testing
             if i == 0:
                 test_emb = get_emb(test_item, model)
-                ranked = get_scores(test_emb, rel_emb[0], item_emb, dataloader)
+                ranked = get_scores(test_emb, rel_emb[0], item_emb, dataloader, args.learning_rel)
                 test_gt, all_gt, train_gt = get_gt.get(test_item.cpu().item())
                 # for calculating R-precision
                 

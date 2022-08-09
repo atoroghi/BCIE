@@ -24,9 +24,11 @@ def get_args():
     # not used rn.
     parser.add_argument('-hinge_margin', default=1, type=float, help="in case of margin loss, margin")
     
-    # for svd
+    # for svd (now wrmf)
     parser.add_argument('-rank', default=10, type=int, help="rank for svd")
     parser.add_argument('-n_iter', default=5, type=int, help="number of iterations for approx method")
+    parser.add_argument('-alpha', default=1, type=int, help="alpha for WRMF")
+    parser.add_argument('-lam', default=100, type=int, help="lam for WRMF")
     
     # other hyper-params
     parser.add_argument('-model_type', default='simple', type=str, help="model type (svd, Simple, etc)")
@@ -36,6 +38,7 @@ def get_args():
     parser.add_argument('-optim_type', default='adagrad', type=str, help="adagrad or adam")
     parser.add_argument('-sample_type', default='split_rev', type=str, help="combo, split_reg, split_rev")
     parser.add_argument('-init_type', default='normal', type=str, help="uniform or normal")
+    parser.add_argument('-learning_rel', default='learn', type=str, help="learn or freeze")
     parser.add_argument('-kg', default='kg', type=str, help="kg or no_kg")
     
     # TODO: is this used now ??

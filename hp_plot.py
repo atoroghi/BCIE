@@ -32,5 +32,7 @@ for i, f in enumerate(os.listdir(path)):
             ax.scatter(x[:,k], y)
             ax.set_title('{}: {}'.format(f, hps[k]))
         plt.tight_layout()
-        plt.show()
+        plt.savefig(os.path.join(load_path, 'hp_plot.jpg'))
+        plt.close()
+        #plt.show()
         break
