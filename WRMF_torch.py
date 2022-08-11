@@ -51,13 +51,12 @@ def wrmf(dataloader, args, mode, device):
     R = a.to_dense()
     for i in range(args.n_iter):
         solve(R.T, U, V, lam= args.lam, rank= args.rank, alpha= args.alpha)
-        sys.exit()
         solve(R, V, U, lam= args.lam, rank= args.rank, alpha= args.alpha)
 
 
     # train
     print('args: {} {} {} {}'.format(args.rank, args.n_iter, args.alpha, args.lam))
-    out = U @ V
+    out = U @ V.T
 
     #(u, s, v) = torch.svd_lowrank(a, q=args.rank, niter=args.n_iter)
     #e = s * torch.eye(s.shape[0]).to(device)
