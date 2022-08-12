@@ -224,8 +224,10 @@ def test(model, dataloader, epoch, args, mode):
     # different save options if train or testing        
     if mode == 'val': 
         rank_plot(rank_track, args.test_name, epoch)
-        rank_at_k = save_metrics(rank_track, args.test_name, epoch, mode)
-        return rank_at_k
+        #rank_at_k = save_metrics(rank_track, args.test_name, epoch, mode)
+        #return rank_at_k
+        mrr = save_metrics(rank_track, args.test_name, epoch, mode)
+        return mrr
 
     else:
         save_metrics(rank_track, args.test_name, epoch, mode)
