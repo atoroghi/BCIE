@@ -36,7 +36,7 @@ def temporal_plot(test_name, k):
     ax2 = fig.add_subplot(122)
 
     # loop through each epoch
-    hit_map, labels = {}, []
+    hit_map, mrrs, labels = {}, {} , []
     for epoch in folders:
         if 'epoch' not in epoch: continue # don't look in models folder
         labels.append(int(epoch.split('_')[1]))
@@ -49,9 +49,13 @@ def temporal_plot(test_name, k):
         for rel, rank in rank_track.items():
             if rel not in hit_map:
                 hit_map.update({rel : []})
+            if rel not in mrrs:
+                mrrs.update({rel : []})
 
-            rank_at_k = np.where(rank < k)[0].shape[0] / rank.shape[0]       
+            rank_at_k = np.where(rank < k)[0].shape[0] / rank.shape[0]  
+            mrr = np.sum(1 / rank) / rank.shape[0]  
             hit_map[rel].append(rank_at_k)
+            mrrs[rel].append(mrr)
 
     for rel, hit in hit_map.items():
         if rel == 0: # likes relationship
@@ -85,13 +89,16 @@ def save_metrics(rank_track, test_name, epoch, mode):
         rank = rank_track.info['rank'][0] # likes relation
         
         rank_at_k = np.where(rank < 10)[0].shape[0] / rank.shape[0]
+        mrr = np.sum(1 / (rank+1)) / rank.shape[0] 
         stop_metric_path = os.path.join('results', test_name, 'stop_metric.npy')  
 
         if epoch != 0:
             scores = np.load(stop_metric_path, allow_pickle=True)
-            saved_scores = np.append(scores, rank_at_k)
+            #saved_scores = np.append(scores, rank_at_k)
+            saved_scores = np.append(scores, mrr)
         else:
-            saved_scores = np.array([rank_at_k])
+            #saved_scores = np.array([rank_at_k])
+            saved_scores = np.array([mrr])
 
         rprec = rank_track.info['rprec'][0] # likes relation
         avg_rprec = np.sum(rprec)/rprec.shape[0] # average r precision over all users
@@ -99,14 +106,15 @@ def save_metrics(rank_track, test_name, epoch, mode):
 
         print(np.max(saved_scores))
         np.save(stop_metric_path, saved_scores)
-        return rank_at_k
+        #return rank_at_k
+        return mrr
 
     # for test loop
     else:
         save_path = os.path.abspath(os.path.join('results', test_name, '../..'))
         os.makedirs(save_path, exist_ok=True)
 
-        rank = rank_track.info[0] # likes relation
+        rank = rank_track.info['rank'][0] # likes relation
         hit_1 = np.where(rank < 1)[0].shape[0] / rank.shape[0]
         hit_3 = np.where(rank < 3)[0].shape[0] / rank.shape[0]
         hit_10 = np.where(rank < 10)[0].shape[0] / rank.shape[0]
