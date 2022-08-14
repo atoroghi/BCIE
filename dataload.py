@@ -112,6 +112,10 @@ class DataLoader:
     # negative sampling
     def get_negatives(self, pos):
         n = self.neg_ratio * pos.shape[0] # number of neg samples
+        pos = np.repeat(np.copy(pos), self.neg_ratio, axis=0)
+        # TODO: switch to only modify tail (to make similar to svd)
+        mask = np.random.randint(0, 2, size=(n))
+        mask = np.vstack((mask, np.ones(n), 1 - mask)).T
 
         if self.type_checking == 'check':
             head_samples, tail_samples = self.sampler.sample(pos,self.neg_ratio)
@@ -119,11 +123,6 @@ class DataLoader:
                 samples = np.vstack((head_samples, np.zeros(n), tail_samples)).T
             elif 'rev' in self.sample_type:
                 samples = np.vstack((tail_samples, np.zeros(n), head_samples)).T
-
-        pos = np.repeat(np.copy(pos), self.neg_ratio, axis=0)
-        # TODO: switch to only modify tail (to make similar to svd)
-        mask = np.random.randint(0, 2, size=(n))
-        mask = np.vstack((mask, np.ones(n), 1 - mask)).T
 
         if self.type_checking == 'no':
             if self.sample_type == 'combo':
@@ -222,21 +221,24 @@ class DoubleSampleType:
         self.valid_tails_freq = valid_tails_freq
 
     def sample(self, pos, neg_ratio):
-        head_samples = []
-        tail_samples = []
+        head_samples = pos[:,0]
+        rels = pos[:,1]
+        tail_samples = pos[:,2]
+        rel_unqs, rel_freqs = np.unique(rels,return_counts=True) 
         if self.power == 0:
-            for fact in pos:
-                _, rel, _ = fact
-                head_samples.append(np.random.choice(self.valid_heads[rel], size=(neg_ratio)))
-                tail_samples.append(np.random.choice(self.valid_tails[rel], size=(neg_ratio)))
-        # discrete inverse sampling
+            for rel , freq in zip(rel_unqs, rel_freqs):
+                rel_inds = np.where((rels == rel))
+                heads_chosen = np.random.choice(self.valid_heads[rel], size=(freq))
+                tails_chosen = np.random.choice(self.valid_tails[rel], size=(neg_ratio * freq))
+                head_samples[rel_inds] = heads_chosen
+                tail_samples[rel_inds] = tails_chosen
         else:
-            for fact in pos:
-                _, rel, _ = fact
+            for rel , freq in zip(rel_unqs, rel_freqs):
+                rel_inds = np.where((rels == rel))
                 head_probs = self.valid_heads_freq[rel]
-                tail_probs = self.valid_rails_freq[rel]
-                head_samples.append(np.random.choice(self.valid_heads[rel], size=(neg_ratio), p=head_probs))
-                tail_samples.append((np.random.choice(self.valid_tails[rel], size=(neg_ratio), p=tail_probs)))
-        head_samples = np.array(head_samples).reshape(len(head_samples)*neg_ratio)
-        tail_samples = np.array(tail_samples).reshape(len(tail_samples)*neg_ratio)
+                tail_probs = self.valid_tails_freq[rel]
+                heads_chosen = np.random.choice(self.valid_heads[rel], size=(freq), p=head_probs)
+                tails_chosen = np.random.choice(self.valid_tails[rel], size=(freq), p=tail_probs)
+                head_samples[rel_inds] = heads_chosen
+                tail_samples[rel_inds] = tails_chosen
         return head_samples, tail_samples
