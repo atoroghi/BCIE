@@ -39,6 +39,7 @@ def get_args():
     parser.add_argument('-sample_type', default='split_rev', type=str, help="combo, split_reg, split_rev")
     parser.add_argument('-init_type', default='normal', type=str, help="uniform or normal")
     parser.add_argument('-learning_rel', default='learn', type=str, help="learn or freeze")
+    parser.add_argument('-type_checking', default='no', type=str, help="check or no")
     parser.add_argument('-kg', default='kg', type=str, help="kg or no_kg")
     
     # TODO: is this used now ??

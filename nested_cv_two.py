@@ -16,6 +16,7 @@ def get_meta_args():
     parser.add_argument('-init_type', default='normal', type=str, help="uniform or normal")
     parser.add_argument('-kg', default='kg', type=str, help="kg or no_kg")
     parser.add_argument('-learning_rel', default='learn', type=str, help="learn or freeze")
+    parser.add_argument('-type_checking', default='no', type=str, help="check or no")
 
     args = parser.parse_args()
     return args
