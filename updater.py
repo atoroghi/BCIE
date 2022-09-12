@@ -11,7 +11,7 @@ from scipy.special import expit
 import scipy.linalg as sp
 
 class Updater:
-	def __init__(self,X,y,mu_prior,Sigma_prior,W,args,etta,device,session_no):
+	def __init__(self,X,y,mu_prior,Sigma_prior,W,args,etta,device):
 		#self.X = X.cpu()
 		self.X = X
 		#self.y = y.cpu()
@@ -34,8 +34,9 @@ class Updater:
 		self.etta=etta
 		self.emb_dim=args.emb_dim
 		self.device = device
-		self.session_no = session_no
-		self.etta_dict={1:0.00001,2:0.1,3:0.5,4:1,5:10}
+		#self.session_no = session_no
+		#self.etta_dict={1:0.00001,2:0.1,3:0.5,4:1,5:10}
+		self.update_type = args.update_type
 		#self.etta_cvx = session_no
 
 
@@ -58,7 +59,7 @@ class Updater:
 		for i in range(len(X_all)):
 			var= (X_all[i]@w)*y[i]
 			#objective_function += cp.logistic(-1*self.etta*var)
-			objective_function += self.etta_dict[self.session_no]*cp.logistic(-1*var)
+			objective_function += self.etta * cp.logistic(-1*var)
 			#objective_function += self.etta_cvx*cp.logistic(-1*var)
 		prob = cp.Problem(cp.Minimize(objective_function), constraints)
 		prob2 = cp.Problem(cp.Minimize(1000*objective_function),constraints)
@@ -67,7 +68,8 @@ class Updater:
 		except:
 			prob2.solve()
 		
-		return w.value , prob.value
+		#return w.value , prob.value
+		return w.value
 
 	#def log_prior(self):
 #		nlp = - self.prior_distribution.log_prob(self.W)
@@ -100,21 +102,27 @@ class Updater:
 	def compute_laplace_approximation(self):
 		#print("Sigma prior:",self.Sigma_prior)
 		#print("mu_input",self.W)
+		assert args.update_type in ['gaussian', 'laplace']
+		if self.update_type == "gaussian":
+			mu = 
+			H_out = 
+		if self.update_type == "laplace":
 
-		W_new, _ = self.SDR_cvxopt(self.Sigma_prior, self.X, self.y , self.W)
-		self.W = W_new
-		mu = self.W
-		#print("mu_out:",mu)
-		H_map = self.log_likelihood()
-		#print("H_map:",H_map)
-		prior_precision = self.Sigma_prior
-		za = prior_precision + self.etta*H_map
-		H_out=np.maximum(za,za.T)
-		#print("H_out:",H_out)
-		##za , _ = sp.lapack.dpotrf(prior_precision + self.etta*H_map, False, False)
-		##inv_A , _ = sp.lapack.dpotri(za)
-		##Sigma = np.triu(inv_A) + np.triu(inv_A, k=1).T
-		##Sigma = np.linalg.inv(prior_precision + self.etta*H_map)
+			#W_new, _ = self.SDR_cvxopt(self.Sigma_prior, self.X, self.y , self.W)
+			W_new = self.SDR_cvxopt(self.Sigma_prior, self.X, self.y , self.W)
+			self.W = W_new
+			mu = self.W
+			#print("mu_out:",mu)
+			H_map = self.log_likelihood()
+			#print("H_map:",H_map)
+			prior_precision = self.Sigma_prior
+			za = prior_precision + self.etta*H_map
+			H_out=np.maximum(za,za.T)
+			#print("H_out:",H_out)
+			##za , _ = sp.lapack.dpotrf(prior_precision + self.etta*H_map, False, False)
+			##inv_A , _ = sp.lapack.dpotri(za)
+			##Sigma = np.triu(inv_A) + np.triu(inv_A, k=1).T
+			##Sigma = np.linalg.inv(prior_precision + self.etta*H_map)
 		return mu, H_out
 
 
