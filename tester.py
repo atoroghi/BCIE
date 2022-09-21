@@ -51,7 +51,6 @@ class GetGT:
         #         'user_likes_test', 'user_likes_train']
         if mode == 'val': names = ['ul_train', 'ul_val']
         if mode == 'test': names = ['ul_train', 'ul_test', 'ul_val']
-        
         self.mode = mode
         
         self.maps = []

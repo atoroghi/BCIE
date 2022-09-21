@@ -1,5 +1,4 @@
 import os, pickle, sys, argparse, yaml
-from ossaudiodev import SNDCTL_COPR_RESET
 from tqdm import tqdm
 import torch
 import numpy as np
@@ -21,7 +20,6 @@ def get_parameter():
     parser.add_argument('-init_sigma', default=1e-2, type=float, help='initial prior precision')
     args = parser.parse_args()
     return args
-
 
 if __name__ == '__main__':
     args = get_parameter()
@@ -48,12 +46,15 @@ if __name__ == '__main__':
     load_path = os.path.join(path, 'models', 'best_model.pt')
     model = torch.load(load_path).to(device)
 
+    # load random dictionaries and such
+
     # make arrays with embeddings, and dict to map 
     rec_h, rec_t, id2index = get_array(model, dataloader, args, rec=True)
     item_emb = (rec_h, rec_t)
 
+    # TODO: setup for tests??
     # load gt info and track rank scores classes
-    get_gt = GetGT(dataloader.fold, mode)
+    get_gt = GetGT(dataloader.fold, 'train')
 
     # get all relationships
     with torch.no_grad():
@@ -64,8 +65,7 @@ if __name__ == '__main__':
         rel_emb = torch.stack((rel_f, rel_inv))
         rel_emb = torch.permute(rel_emb, (1,0,2))
 
-    # all users to test rec on and all test triples to test kg on
-    # TODO: are we doing this on test / train or what?
+    # all users, gt selects test / train gts
     data = dataloader.rec_train
     all_users = torch.tensor(data[:,0]).to('cuda')
 
