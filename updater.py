@@ -5,7 +5,6 @@ import math
 #from torch.distributions.multivariate_normal import MultivariateNormal
 import numpy as np
 import cvxpy as cp
-from requests import session
 #seed = torch.manual_seed(1)
 from scipy.special import expit
 import scipy.linalg as sp
@@ -19,7 +18,9 @@ class Updater:
 		#self.mu_prior = mu_prior.cpu()
 		self.mu_prior = mu_prior
 		#self.Sigma_prior = Sigma_prior.cpu()
-		self.Sigma_prior = Sigma_prior
+
+		# this is precision not variance
+		self.tau_prior = tau_prior
 		#self.lam= torch.cholesky_inverse(Sigma_prior)
 		##zz , _ = sp.lapack.dpotrf(Sigma_prior, False, False)
 		##inv_M , _ = sp.lapack.dpotri(zz)
@@ -37,6 +38,7 @@ class Updater:
 		#self.session_no = session_no
 		#self.etta_dict={1:0.00001,2:0.1,3:0.5,4:1,5:10}
 		self.update_type = args.update_type
+		self.likelihood_precision = args.likelihood_precision
 		#self.etta_cvx = session_no
 
 
@@ -104,18 +106,22 @@ class Updater:
 		#print("mu_input",self.W)
 		assert args.update_type in ['gaussian', 'laplace']
 		if self.update_type == "gaussian":
-			mu = 
-			H_out = 
+			n = self.X.size()[0]
+			#mu = (1/((1/(self.Sigma_prior^2)) + (n/(self.likelihood_variance^2)))) * (self.mu_prior/(self.Sigma_prior^2) + self.X.sum()/(self.likelihood_variance^2))
+			#H_out = (1/self.Sigma_prior^2) + (n/(self.likelihood_variance^2))
+			
+			H_out = self.prior_precision + n * self.likelihood_precision
+			mu = (self.prior_precision * self.mu_prior + self.likelihood_precision * self.X.sum()) * torch.cholesky_inverse(H_out)
 		if self.update_type == "laplace":
 
 			#W_new, _ = self.SDR_cvxopt(self.Sigma_prior, self.X, self.y , self.W)
-			W_new = self.SDR_cvxopt(self.Sigma_prior, self.X, self.y , self.W)
+			W_new = self.SDR_cvxopt(self.tau_prior, self.X, self.y , self.W)
 			self.W = W_new
 			mu = self.W
 			#print("mu_out:",mu)
 			H_map = self.log_likelihood()
 			#print("H_map:",H_map)
-			prior_precision = self.Sigma_prior
+			prior_precision = self.tau_prior
 			za = prior_precision + self.etta*H_map
 			H_out=np.maximum(za,za.T)
 			#print("H_out:",H_out)

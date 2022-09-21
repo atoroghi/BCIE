@@ -75,25 +75,25 @@ def select_critique(critique_selection_data, rec_facts, critique_mode, pop_count
               
           else:
             obj = candidates_list[0][1]
-          critique_fact=candidates_list[0]
+          critique_fact = candidates_list[0]
 
       else:
         obj , critique_fact = None, None
   return obj , critique_fact
 
 def remove_chosen_critiques( critiquing_candidate, previous_critiques):
-    for end in ["head", "tail"]:
-        for record in previous_critiques[end]:
-            if len(critiquing_candidate[end]) > 1:
-                critiquing_candidate[end].remove(record)
+  for end in ["head", "tail"]:
+      for record in previous_critiques[end]:
+          if len(critiquing_candidate[end]) > 1:
+              critiquing_candidate[end].remove(record)
 
-    return critiquing_candidate
+  return critiquing_candidate
 
 def obj2item(items,obj,data):
-  objkg=data[np.where((data[:, 0] == obj) | (data[:, 2] == obj))]
-  objkg=np.delete(objkg,1,1)
-  mapped_items=np.intersect1d(items,data)
-  return mapped_items
+    objkg=data[np.where((data[:, 0] == obj) | (data[:, 2] == obj))]
+    objkg=np.delete(objkg,1,1)
+    mapped_items=np.intersect1d(items,data)
+    return mapped_items
 
 
 
