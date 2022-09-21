@@ -7,7 +7,7 @@ import scipy.linalg as sp
 
 # TODO: no comments or explanation of how this is supposed to work
 class Updater:
-	# TODO: too many parameters, this should just accept args and unpacke it in the class init
+	# TODO: too many parameters, this should just accept args and unpack it in the class init
 	def __init__(self, X, y, mu_prior, Sigma_prior, W, args, etta, device, update_type, likelihood_precision):
 		self.X = X
 		self.y = y
