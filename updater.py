@@ -4,50 +4,62 @@ import numpy as np
 import cvxpy as cp
 from scipy.special import expit
 import scipy.linalg as sp
+import sys
 
 # TODO: no comments or explanation of how this is supposed to work
 class Updater:
-	# TODO: too many parameters, this should just accept args and unpack it in the class init
-	def __init__(self, X, y, mu_prior, Sigma_prior, W, args, etta, device, update_type, likelihood_precision):
+
+	def __init__(self, X, y, mu_prior, tau_prior, args, device):
 		self.X = X
 		self.y = y
 		self.mu_prior = mu_prior
 
 		# this is precision not variance
-		# TODO: where is tau_prior from
+
 		self.tau_prior = tau_prior
-		self.W = W
-		self.alpha=args.alpha
-		self.max_iters=args.max_iters_laplace
-		self.etta=etta
-		self.emb_dim=args.emb_dim
+		self.W = mu_prior
+		self.alpha= args.alpha
+		#self.max_iters= args.max_iters_laplace
+		self.etta= args.etta
+		self.emb_dim= args.emb_dim
 		self.device = device
 		self.update_type = args.update_type
 		self.likelihood_precision = args.likelihood_precision
 
+# The main updating function that performs gaussian or laplace updating
 	def compute_laplace_approximation(self):
-		# TODO where is args from
-		assert args.update_type in ['gaussian', 'laplace']
+		assert self.update_type in ['gaussian', 'laplace']
 		if self.update_type == "gaussian":
-			n = self.X.size()[0]
-			H_out = self.prior_precision + n * self.likelihood_precision
-			mu = (self.prior_precision * self.mu_prior + self.likelihood_precision * self.X.sum()) * torch.cholesky_inverse(H_out)
+            # Update formula https://en.wikipedia.org/wiki/Conjugate_prior
+			n = self.X.shape[0]
+			tau_likelihood= self.likelihood_precision * np.eye(self.emb_dim)
+			za = self.tau_prior + n * tau_likelihood
+			H_out = np.maximum(za,za.T)
+			mu = np.transpose(np.matmul(np.linalg.inv(H_out) , np.transpose(((np.matmul(self.mu_prior, self.tau_prior)) + np.matmul(n *self.mu_prior, tau_likelihood )))))
+
 
 		if self.update_type == "laplace":
+            # derivation : https://www.overleaf.com/read/jypckmmmcvsv
+        
+            #solving convex problem to update user belief
+
 			W_new = self.SDR_cvxopt(self.tau_prior, self.X, self.y , self.W)
 			self.W = W_new
 			mu = self.W
+            # log likelihood for Hessian update
 			H_map = self.log_likelihood()
 
 			prior_precision = self.tau_prior
+            # Hessian update (prior precision + log likelihood)
 			za = prior_precision + self.etta*H_map
 			H_out = np.maximum(za,za.T)
 
 		return mu, H_out
-
+    # using the convex solver to update user belief
 	def SDR_cvxopt(self,landa, X_all, y , previous_w):
 		w = cp.Variable(self.emb_dim)
 		constraints = []
+		previous_w = np.reshape(previous_w, self.emb_dim)
 		objective_function = cp.quad_form(w-previous_w, landa)
 		for i in range(len(X_all)):
 			var= (X_all[i] @ w) * y[i]
@@ -56,10 +68,14 @@ class Updater:
 		prob2 = cp.Problem(cp.Minimize(1000*objective_function),constraints)
 
 		# TODO: this is bad 
+        # armin: this is bad, but it's because cvxpy is unstable with small 
+        # numbers and you have to scale the objective function if it fails. Clearly, the solution 
+        # doesn't change though. We should probably try more advanced solvers such as MOSEK
+        # http://ask.cvxr.com/t/scaling-and-numerical-stability/320/3
 		try: prob.solve()
 		except: prob2.solve()
 		return w.value
-
+# Calculating the Hessian of log likelihood
 	def log_likelihood(self):
 		N = np.shape(self.X)[0]
 		logits = np.matmul(self.X, self.W)

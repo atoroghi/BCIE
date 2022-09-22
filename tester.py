@@ -22,13 +22,14 @@ def get_array(model, dataloader, args, rec):
 def make_array(model, items, emb_dim):
     # to map id to array location
     item_id2index = dict(zip(items.cpu().tolist(), list(range(0, len(items)))))
+    item_index2id = dict( zip(list(range(0, len(items))), items.cpu().tolist()))
 
     with torch.no_grad():
         items_temp = items.long()
         items_h = model.ent_h_embs(items_temp)
         items_t = model.ent_t_embs(items_temp)
 
-    return items_h, items_t, item_id2index
+    return items_h, items_t, item_id2index, item_index2id
 
 # get scores
 def get_scores(test_emb, rel_emb, item_emb, dataloader, learning_rel):
