@@ -8,6 +8,7 @@ from updater import Updater
 from dataload import DataLoader
 from tester import get_array, get_emb, get_scores, get_rank, GetGT
 from recommender import select_critique, remove_chosen_critiques, obj2item
+from utils.plots import RankTrack, rank_plot, save_metrics_critiquing
 
 def get_parameter():
     parser = argparse.ArgumentParser()
@@ -98,6 +99,7 @@ if __name__ == '__main__':
 
     #shouldn't we just enumerate ul_test keys?
     all_users = torch.tensor(data[:,0]).to('cuda')
+    rank_track = RankTrack()
 
     # main test loop
     for i, user in tqdm(enumerate(all_users)):
@@ -110,8 +112,11 @@ if __name__ == '__main__':
 
         if test_gt == None: continue
         pre_rank = get_rank(ranked, test_gt, all_gt, id2index)
+        #TODO: Do we need rprec here too?
+        rprec = np.array([0])
 
         for gt in test_gt:
+            rank_track.update(pre_rank, rprec, 0)
             ### These arrays will keep track of the previous critique, so that we avoid repetition of critiques (one user saying "I want Spielberg" multiple times) 
             previous_critiques=np.array([[0,0]])
             critique_selection_data=np.vstack([items_facts_head[gt],items_facts_tail[gt]])
@@ -201,6 +206,9 @@ if __name__ == '__main__':
                 ranked = get_scores(test_emb_updated, rel_emb[0], item_emb, dataloader, args.learning_rel)
                 
                 post_rank = get_rank(ranked, [gt], all_gt, id2index)
+                rank_track.update(post_rank, rprec, session_no)
+
+    save_metrics_critiquing(rank_track, args.test_name)
 
 
     # critique loop
