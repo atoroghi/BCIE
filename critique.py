@@ -167,7 +167,8 @@ if __name__ == '__main__':
                 if args.critique_target == "object":
                     true_object_embedding= get_emb(object, model)
 
-                    X_true=np.multiply((rel_emb[0][0].cpu().numpy()),(true_object_embedding[1].cpu().numpy()))
+                    X_true_f = np.multiply((rel_emb[0][0].cpu().numpy()),(true_object_embedding[1].cpu().numpy()))
+                    X_true_inv = np.multiply((rel_emb[0][1].cpu().numpy()),(true_object_embedding[0].cpu().numpy()))
 
                 elif args.critique_target == "item":
                     liked_items_list = obj2items[object]
@@ -177,12 +178,16 @@ if __name__ == '__main__':
                     #true_object_embedding = torch.empty(size=(10, args.emb_dim))
                     #for i in range(10):
                     #    true_object_embedding[i] = get_emb(liked_items_list[i],model)[1]
-                    liked_embeddings_list = [get_emb(x,model)[1] for x in liked_items_list[:10]]
+                    liked_embeddings_list_f = [get_emb(x,model)[1] for x in liked_items_list[:10]]
+                    liked_embeddings_list_inv = [get_emb(x,model)[0] for x in liked_items_list[:10]]
                     #true_object_embedding = torch.FloatTensor(liked_embeddings_list)
-                    liked_embeddings = torch.stack(liked_embeddings_list, dim=0)
-                    true_object_embedding = torch.reshape(liked_embeddings,(liked_embeddings.shape[0],args.emb_dim))
+                    liked_embeddings_f = torch.stack(liked_embeddings_list_f, dim=0)
+                    liked_embeddings_inv = torch.stack(liked_embeddings_list_inv, dim=0)
+                    true_object_embedding_f = torch.reshape(liked_embeddings_f,(liked_embeddings_f.shape[0],args.emb_dim))
+                    true_object_embedding_inv = torch.reshape(liked_embeddings_inv,(liked_embeddings_inv.shape[0],args.emb_dim))
                     
-                    X_true=np.multiply((rel_emb[0][0].cpu().numpy()),(true_object_embedding.cpu().numpy()))
+                    X_true_f = np.multiply((rel_emb[0][0].cpu().numpy()),(true_object_embedding_f.cpu().numpy()))
+                    X_true_inv = np.multiply((rel_emb[0][1].cpu().numpy()),(true_object_embedding_inv.cpu().numpy()))
 
 
                 #X_true = np.reshape(X_true, (args.emb_dim))
@@ -195,14 +200,16 @@ if __name__ == '__main__':
                 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
                 #test_emb_f = np.reshape((test_emb[0].cpu().numpy()),(args.emb_dim))
                 test_emb_f = test_emb[0].cpu().numpy()
+                test_emb_inv = test_emb[1].cpu().numpy()
 
-                updater=Updater(X_true, y, test_emb_f, tau_prior, args, device)
+                updater_f = Updater(X_true_f, y, test_emb_f, tau_prior, args, device)
+                updater_inv = Updater(X_true_inv, y, test_emb_inv, tau_prior, args, device)
                 
                 #TODO: The reverse direction should also be added (item_h, liked_inv, user_t)
-                test_emb_f, tau_prior = updater.compute_laplace_approximation()
+                test_emb_f, tau_prior = updater_f.compute_laplace_approximation()
+                test_emb_inv, tau_prior = updater_inv.compute_laplace_approximation()
                 
-                
-                test_emb_updated = (torch.tensor(test_emb_f).to(device), test_emb[1])
+                test_emb_updated = (torch.tensor(test_emb_f).to(device), torch.tensor(test_emb_inv).to(device))
                 ranked = get_scores(test_emb_updated, rel_emb[0], item_emb, dataloader, args.learning_rel)
                 
                 post_rank = get_rank(ranked, [gt], all_gt, id2index)
