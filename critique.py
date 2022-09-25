@@ -10,33 +10,38 @@ from tester import get_array, get_emb, get_scores, get_rank, GetGT
 from recommender import select_critique, remove_chosen_critiques, obj2item
 from utils.plots import RankTrack, rank_plot, save_metrics_critiquing
 
-def get_parameter():
+def get_args_critique():
     parser = argparse.ArgumentParser()
     parser.add_argument('-test_name', default='dev', type=str, help='name of folder where model is')
     parser.add_argument('-dataset', default='ML_FB', type=str, help='Movielens dataset')
-    parser.add_argument('-fold', default=0, type=int, help='fold number')
     parser.add_argument('-emb_dim', default=128, type=int, help='embedding dimension')
     parser.add_argument('-alpha', default=0.01, type=float, help='Learning rate for Laplace Approximation')
-    parser.add_argument('-etta', default=1.0, type=float, help='Precision for Laplace Approximation')
-    parser.add_argument('-mode', default='diff', type=str, help='Mode of critiquing')
+    #TODO: Have multiple ettas for each session
+    #parser.add_argument('-etta', default=1.0, type=float, help='Precision for Laplace Approximation')
+    #TODO: This is bad
+    parser.add_argument('-ettaone', default=1.0, type=float, help='Precision for Laplace Approximation')
+    parser.add_argument('-ettatwo', default=1.0, type=float, help='Precision for Laplace Approximation')
+    parser.add_argument('-ettathree', default=1.0, type=float, help='Precision for Laplace Approximation')
+    parser.add_argument('-ettafour', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-num_users', default=100, type=int, help='number of users')
-    parser.add_argument('-Sigma_prior', default=1e-2, type=float, help='initial prior precision')
     parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
     parser.add_argument('-update_type', default='gaussian', type=str, help='laplace or gaussian')
     parser.add_argument('-critique_mode', default='random', type=str, help='random or pop or diff')
     parser.add_argument('-critique_target', default='item', type=str, help='object or item')
     parser.add_argument('-likelihood_precision', default=1e-2, type=float, help='likelihood precision')
     parser.add_argument('-tau_prior', default=1e-2, type=float, help='prior precision')
+    parser.add_argument('-fold', default=0, type=int, help='fold number')
 
     args = parser.parse_args()
     return args
 
-if __name__ == '__main__':
-    args = get_parameter()
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+def critiquing(model, args, val_or_test):
+
+    etta_dict = {1: args.ettaone, 2: args.ettatwo, 3: args.ettathree, 4: args.ettafour}
 
     #load required data
-    data_path="datasets/" + args.dataset
+    data_path = "datasets/" + args.dataset
     with open(os.path.join(data_path, 'items_facts_head.pkl'), 'rb') as f:
         items_facts_head = pickle.load(f)
     ### This dict contains facts about the item in which the item is the tail of the triple
@@ -56,22 +61,14 @@ if __name__ == '__main__':
         yml = yaml.safe_load(f)
         for key in yml.keys():
             setattr(args, key, yml[key])
-
     # print important hps
     print('alpha: {}\tetta: {}\tcritique mode: {}\tcritique target: {}'.format(
         args.alpha, args.etta, args.mode, args.critique_target))
-
     # load datasets
     print('loading dataset: {}'.format(args.dataset))
     dataloader = DataLoader(args)
 
-    # load model
-    print('loading model from: {}\tfold: {}'.format(args.test_name, args.fold))
-    path = os.path.join('results', args.test_name, 'fold_{}'.format(args.fold))
-    load_path = os.path.join(path, 'models', 'best_model.pt')
-    model = torch.load(load_path).to(device)
 
-    # load random dictionaries and such
 
     # make arrays with embeddings, and dict to map 
     rec_h, rec_t, id2index, index2id = get_array(model, dataloader, args, rec=True)
@@ -82,7 +79,7 @@ if __name__ == '__main__':
 
     #why is this "train"?
     #get_gt = GetGT(dataloader.fold, 'train')
-    get_gt = GetGT(dataloader.fold, 'test')
+    get_gt = GetGT(dataloader.fold, val_or_test)
 
     # get all relationships
     with torch.no_grad():
@@ -95,10 +92,11 @@ if __name__ == '__main__':
 
 
     # all users, gt selects test / train gts
-    data = dataloader.rec_train
+    data = dataloader.rec_test if val_or_test == 'test' else dataloader.rec_val
 
     #shouldn't we just enumerate ul_test keys?
     all_users = torch.tensor(data[:,0]).to('cuda')
+    #all_users = np.fromiter(get_gt.maps[1].keys(), dtype = 'int')
     rank_track = RankTrack()
 
     # main test loop
@@ -114,9 +112,10 @@ if __name__ == '__main__':
         pre_rank = get_rank(ranked, test_gt, all_gt, id2index)
         #TODO: Do we need rprec here too?
         rprec = np.array([0])
+        rank_track.update(pre_rank, rprec, 0)
 
         for gt in test_gt:
-            rank_track.update(pre_rank, rprec, 0)
+            
             ### These arrays will keep track of the previous critique, so that we avoid repetition of critiques (one user saying "I want Spielberg" multiple times) 
             previous_critiques=np.array([[0,0]])
             critique_selection_data=np.vstack([items_facts_head[gt],items_facts_tail[gt]])
@@ -196,7 +195,7 @@ if __name__ == '__main__':
           #performing Laplace Approximation
 
                 alpha= args.alpha
-                etta= args.etta
+                etta= etta_dict[session_no]
                 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
                 #test_emb_f = np.reshape((test_emb[0].cpu().numpy()),(args.emb_dim))
                 test_emb_f = test_emb[0].cpu().numpy()
@@ -215,7 +214,13 @@ if __name__ == '__main__':
                 post_rank = get_rank(ranked, [gt], all_gt, id2index)
                 rank_track.update(post_rank, rprec, session_no)
 
-    save_metrics_critiquing(rank_track, args.test_name)
+
+    if val_or_test == "val":
+        mrr = save_metrics_critiquing(rank_track, args.test_name, val_or_test)
+        return mrr
+    else:
+        save_metrics_critiquing(rank_track, args.test_name, val_or_test)
+    
 
 
     # critique loop
@@ -231,3 +236,17 @@ if __name__ == '__main__':
 
     #    save rank as we update the user emb 
 
+
+if __name__ == '__main__':
+    args = get_args_critique()
+
+    # load model
+    #print('loading model from: {}\tfold: {}'.format(args.test_name, args.fold))
+    path = os.path.join('results', args.test_name, 'fold_{}'.format(args.fold))
+    load_path = os.path.join(path, 'models', 'best_model.pt')
+    model = torch.load(load_path).to(device)
+
+    critiquing(model, args,"val")
+
+
+    
