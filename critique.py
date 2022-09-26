@@ -191,7 +191,7 @@ def critiquing(model, args, val_or_test):
 
                 #X_true = np.reshape(X_true, (args.emb_dim))
  
-                y = np.ones(np.shape(X_true)[0])
+                y = np.ones(np.shape(X_true_f)[0])
           #performing Laplace Approximation
 
                 alpha= args.alpha
