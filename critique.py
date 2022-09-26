@@ -244,6 +244,7 @@ if __name__ == '__main__':
     #print('loading model from: {}\tfold: {}'.format(args.test_name, args.fold))
     path = os.path.join('results', args.test_name, 'fold_{}'.format(args.fold))
     load_path = os.path.join(path, 'models', 'best_model.pt')
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     model = torch.load(load_path).to(device)
 
     critiquing(model, args,"val")
