@@ -2,7 +2,7 @@ import os, sys, torch, gpytorch, argparse, math, subprocess, re, pickle, yaml
 import numpy as np
 import matplotlib.pyplot as plt
 from launch import get_args
-from critique import critique_args
+from critique import get_args_critique
 from varname import nameof
 from gp import normal2param, train_sample_gp
 
