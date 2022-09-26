@@ -2,6 +2,7 @@ import os, sys, torch, gpytorch, argparse, math, subprocess, re, pickle, yaml
 import numpy as np
 import matplotlib.pyplot as plt
 from launch import get_args
+from critique import critique_args
 from varname import nameof
 from gp import normal2param, train_sample_gp
 
@@ -17,11 +18,11 @@ class Params:
                 'lr' : ([-6, 1], float, 10),
                 'batch_size' : ([11, 14], int,2),
                 'emb_dim' : ([2, 8], int, 2),
-                'reg_lambda' : ([-7, 1], float, 10),
-                'kg_lambda' : ([-7, 1], float, 10),
+                #'reg_lambda' : ([-7, 1], float, 10),
+                #'kg_lambda' : ([-7, 1], float, 10),
                 'init_scale' : ([-6, 1], float, 10),
-                'neg_ratio' : ([1, 15], int, None),
-                'neg_power' : ([0, 1], float, None),
+                'neg_ratio' : ([15, 30], int, None),
+                #'neg_power' : ([0, 1], float, None),
             }
 
         elif self.model_type == 'svd':
@@ -30,6 +31,16 @@ class Params:
                 'rank' : ([2, 9], int, 2),
                 'n_iter' : ([1, 200], int,None),
             }
+
+
+        elif self.model_type == 'critiquing':
+            self.param_dict = {
+                'likelihood_precision' : ([-5, 5], float, 10),
+                'tau_prior' : ([-5, 5], float, 10),
+                'ettaone' : ([-5, 5], float, 10),
+                'ettatwo' : ([-5, 5], float, 10),
+                'ettathree' : ([-5, 5], float, 10),
+                'ettafour' : ([-5, 5], float, 10)}
 
         self.save()
 
@@ -90,7 +101,10 @@ class Launch:
             self.args.test_name = save_path 
             
             # make string to pass arguments
-            proc_input = ['python', 'launch.py']
+            if self.args.model_type == "critiquing":
+                proc_input = ['python3', 'critique.py']
+            else:
+                proc_input = ['python3', 'launch.py']
             for k, v in vars(self.args).items():
                 proc_input.append('-{}'.format(k))
                 proc_input.append('{}'.format(v))
@@ -111,12 +125,18 @@ class Launch:
 
         return torch.from_numpy(po), best_hits 
 
-def tuner(fold_num, epochs, batch, n, tune_name):
+def tuner(fold_num, epochs, batch, n, tune_name, model_type):
     # TODO: get this from nested cv
-    args = get_args()
+
+    if model_type == "critiquing":
+        args = get_args_critique()
+    else:
+        args = get_args()
     args.fold = fold_num
     launch = Launch(args, tune_name, fold_num)
-    dim = 8
+    param = Params(args.model_type, self.tune_name)
+    #dim = 8
+    dim = len(param.param_dict)
 
     # load training data
     path = os.path.join('gp', tune_name)

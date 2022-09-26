@@ -120,23 +120,63 @@ def save_metrics(rank_track, test_name, epoch, mode):
 
         with open(os.path.join(save_path, 'results.txt'), 'a') as f:
             f.write('{} {} {}\n'.format(hit_1, hit_3, hit_10))
-            
-def save_metrics_critiquing(rank_track, test_name):
 
-    save_path = os.path.abspath(os.path.join('Critiquing_results', test_name, '../..'))
-    os.makedirs(save_path, exist_ok=True)
-    for session_no in range(1,6):
-        rank = rank_track.info['rank'][session_no] # likes relation
-        hit_1 = np.where(rank < 1)[0].shape[0] / rank.shape[0]
-        hit_3 = np.where(rank < 3)[0].shape[0] / rank.shape[0]
-        hit_10 = np.where(rank < 10)[0].shape[0] / rank.shape[0]
-        mrr = np.sum(1 / (rank+1)) / rank.shape[0] 
-        #rprec = rank_track.info['rprec'][0]
-        #avg_rprec = np.sum(rprec)/rprec.shape[0]
+def save_metrics_critiquing(rank_track, test_name, mode):
 
-        with open(os.path.join(save_path, 'results.txt'), 'a') as f:
-            #f.write('{} {} {} {} {}\n'.format(hit_1, hit_3, hit_10, mrr, avg_rprec))
-            f.write('{} {} {} {}\n'.format(hit_1, hit_3, hit_10, mrr))
+
+    # for validation loop
+    if mode == 'val':
+        save_path = os.path.join('results', test_name, 'epoch_{}'.format(epoch)) 
+        os.makedirs(save_path, exist_ok=True)
+
+        # save metric_track for eval performance over training
+        with open(os.path.join(save_path, 'metric_track.pkl'), 'wb') as f:
+            pickle.dump(rank_track, f)
+
+        # get hit at k for rec
+        post_rank = rank_track.info['rank'][5] # after 5 sessions
+        pre_rank = rank_track.info['rank'][0] # after 5 sessions
+
+        mrr_pre = np.sum(1 / (1 + pre_rank)) / pre_rank.shape[0] 
+        mrr_post = np.sum(1 / (1 + post_rank)) / post_rank.shape[0] 
+
+        diff_mrr = mrr_post - mrr_pre
+
+        #rank_at_k = np.where(rank < 10)[0].shape[0] / rank.shape[0]
+        stop_metric_path = os.path.join('results', test_name, 'stop_metric.npy')  
+
+        if epoch != 0:
+            scores = np.load(stop_metric_path, allow_pickle=True)
+            #saved_scores = np.append(scores, rank_at_k)
+            saved_scores = np.append(scores, diff_mrr)
+        else:
+            #saved_scores = np.array([rank_at_k])
+            saved_scores = np.array([diff_mrr])
+
+        #rprec = rank_track.info['rprec'][0] # likes relation
+        #avg_rprec = np.sum(rprec)/rprec.shape[0] # average r precision over all users
+        #print(avg_rprec)
+
+        #print(np.max(saved_scores))
+        np.save(stop_metric_path, saved_scores)
+        return diff_mrr
+
+    else:
+
+        save_path = os.path.abspath(os.path.join('Critiquing_results', test_name, '../..'))
+        os.makedirs(save_path, exist_ok=True)
+        for session_no in range(1,6):
+            rank = rank_track.info['rank'][session_no] # likes relation
+            hit_1 = np.where(rank < 1)[0].shape[0] / rank.shape[0]
+            hit_3 = np.where(rank < 3)[0].shape[0] / rank.shape[0]
+            hit_10 = np.where(rank < 10)[0].shape[0] / rank.shape[0]
+            mrr = np.sum(1 / (rank+1)) / rank.shape[0] 
+            #rprec = rank_track.info['rprec'][0]
+            #avg_rprec = np.sum(rprec)/rprec.shape[0]
+
+            with open(os.path.join(save_path, 'results.txt'), 'a') as f:
+                #f.write('{} {} {} {} {}\n'.format(hit_1, hit_3, hit_10, mrr, avg_rprec))
+                f.write('{} {} {} {}\n'.format(hit_1, hit_3, hit_10, mrr))
 
 
 

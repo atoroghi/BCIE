@@ -7,6 +7,8 @@ from trainer import train
 from dataload import DataLoader
 from sklearn.ensemble import RandomForestRegressor
 from svd import svd
+from WRMF_torch import wrmf
+from critique import critiquing
 
 def natural_key(string_):
     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
@@ -14,6 +16,8 @@ def natural_key(string_):
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-test_name', default='dev')
+    parser.add_argument('-type_checking', default='no')
+    parser.add_argument('-learnin_rel', default='learn')
     return parser.parse_args() 
 
 def test_fold(tune_name, best_run, best_epoch):
@@ -35,14 +39,18 @@ def test_fold(tune_name, best_run, best_epoch):
         model = torch.load(load_path).to(device)
         test(model, dataloader, best_epoch, args, 'test')
 
-    elif args.model_type == 'svd':
-        svd(dataloader, args, 'test', device)
+    elif args.model_type == 'wrmf':
+        wrmf(dataloader, args, 'test', device)
+    elif args.model_type == 'critiquing':
+        load_path = os.path.join(path, 'models', 'best_model.pt')
+        model = torch.load(load_path).to(device)
+        critiquing(model, args, 'test')
 
 # TODO: clean this up, it's bad
 if __name__ == '__main__':
-    tune_name = 'softplus'
+    tune_name = 'gausslargenegnokg'
     folds = 5
-    opt = 'hp'
+    opt = 'test'
 
     # search through all folders
     for i in range(folds):
@@ -66,8 +74,6 @@ if __name__ == '__main__':
             best_score = np.max(perf)
             best_epoch = arg_perf[np.argmax(perf)]
             print('best score: {}, best folder: {}, best epoch: {}'.format(best_score, best_run, best_epoch))
-            continue
-
             test_fold(tune_name, best_run, best_epoch)
 
         elif opt == 'hp':
@@ -84,6 +90,7 @@ if __name__ == '__main__':
             print(hp.shape, y.shape)
 
     if opt == 'hp':
+        path = 'results/{}/'.format(tune_name)
         plt.style.use('seaborn')
         hp_names = ['lr', 'batch size', 'emb dim', 
               'reg lambda', 'kg lambda', 'init scale',
@@ -104,4 +111,6 @@ if __name__ == '__main__':
         plt.xticks(ticks=np.arange(0, imp.shape[0]), labels=hp_names)
         plt.ylabel('Random Forest Importance')
         plt.title('Hyperparameter Importance')
-        plt.show()
+        #plt.show()
+        plt.savefig(os.path.join(path, 'q_test_hp.jpg'))
+        plt.close()
