@@ -9,7 +9,11 @@ import sys
 # TODO: no comments or explanation of how this is supposed to work
 class Updater:
 
+<<<<<<< Updated upstream
 	def __init__(self, X, y, mu_prior, tau_prior, args, device):
+=======
+	def __init__(self, X, y, mu_prior, tau_prior, args, device, etta):
+>>>>>>> Stashed changes
 		self.X = X
 		self.y = y
 		self.mu_prior = mu_prior
@@ -20,7 +24,11 @@ class Updater:
 		self.W = mu_prior
 		self.alpha= args.alpha
 		#self.max_iters= args.max_iters_laplace
+<<<<<<< Updated upstream
 		self.etta= args.etta
+=======
+		self.etta= etta
+>>>>>>> Stashed changes
 		self.emb_dim= args.emb_dim
 		self.device = device
 		self.update_type = args.update_type

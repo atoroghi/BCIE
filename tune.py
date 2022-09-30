@@ -36,11 +36,23 @@ class Params:
         elif self.model_type == 'critiquing':
             self.param_dict = {
                 'likelihood_precision' : ([-5, 5], float, 10),
+<<<<<<< Updated upstream
                 'tau_prior' : ([-5, 5], float, 10),
                 'ettaone' : ([-5, 5], float, 10),
                 'ettatwo' : ([-5, 5], float, 10),
                 'ettathree' : ([-5, 5], float, 10),
                 'ettafour' : ([-5, 5], float, 10)}
+=======
+                'tau_prior_f' : ([-5, 5], float, 10),
+                'tau_prior_inv' : ([-5, 5], float, 10),
+                'ettaone' : ([-5, 5], float, 10),
+                'ettatwo' : ([-5, 5], float, 10),
+                'ettathree' : ([-5, 5], float, 10),
+                'ettafour' : ([-5, 5], float, 10),
+                #'-tau_z_f': ([-5, 5], float, 10),
+                #'-tau_z_inv': ([-5, 5], float, 10),
+                }
+>>>>>>> Stashed changes
 
         self.save()
 
@@ -134,7 +146,11 @@ def tuner(fold_num, epochs, batch, n, tune_name, model_type):
         args = get_args()
     args.fold = fold_num
     launch = Launch(args, tune_name, fold_num)
+<<<<<<< Updated upstream
     param = Params(args.model_type, self.tune_name)
+=======
+    param = Params(args.model_type, tune_name)
+>>>>>>> Stashed changes
     #dim = 8
     dim = len(param.param_dict)
 

@@ -125,8 +125,14 @@ def save_metrics_critiquing(rank_track, test_name, mode):
 
 
     # for validation loop
+<<<<<<< Updated upstream
     if mode == 'val':
         save_path = os.path.join('results', test_name, 'epoch_{}'.format(epoch)) 
+=======
+    epoch = 0
+    if mode == 'val':
+        save_path = os.path.join('results', test_name, 'epoch_{}'.format(epoch))
+>>>>>>> Stashed changes
         os.makedirs(save_path, exist_ok=True)
 
         # save metric_track for eval performance over training
@@ -140,6 +146,7 @@ def save_metrics_critiquing(rank_track, test_name, mode):
         mrr_pre = np.sum(1 / (1 + pre_rank)) / pre_rank.shape[0] 
         mrr_post = np.sum(1 / (1 + post_rank)) / post_rank.shape[0] 
 
+<<<<<<< Updated upstream
         diff_mrr = mrr_post - mrr_pre
 
         #rank_at_k = np.where(rank < 10)[0].shape[0] / rank.shape[0]
@@ -152,6 +159,20 @@ def save_metrics_critiquing(rank_track, test_name, mode):
         else:
             #saved_scores = np.array([rank_at_k])
             saved_scores = np.array([diff_mrr])
+=======
+        diff_mrr = mrr_post / mrr_pre
+
+        #rank_at_k = np.where(rank < 10)[0].shape[0] / rank.shape[0]
+        stop_metric_path = os.path.join('results', test_name, 'stop_metric.npy')  
+        saved_scores = np.array([diff_mrr])
+
+        #if epoch != 0:
+            #scores = np.load(stop_metric_path, allow_pickle=True)
+            #saved_scores = np.append(scores, diff_mrr)
+        #else:
+            #saved_scores = np.array([rank_at_k])
+            #saved_scores = np.array([diff_mrr])
+>>>>>>> Stashed changes
 
         #rprec = rank_track.info['rprec'][0] # likes relation
         #avg_rprec = np.sum(rprec)/rprec.shape[0] # average r precision over all users
@@ -196,6 +217,11 @@ def rank_plot(rank_track, test_name, epoch):
         if rel == 0:
             sns.histplot(rank, bins=40, ax=ax1)
         else:
+<<<<<<< Updated upstream
+=======
+            # k was undefined here
+            k = 7
+>>>>>>> Stashed changes
             a = k % 7
             sns.histplot(rank, bins=40, ax=ax2, color=color[a])
 

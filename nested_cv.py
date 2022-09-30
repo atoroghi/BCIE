@@ -7,7 +7,7 @@ from critique import get_args_critique
 def get_meta_args():
     parser = argparse.ArgumentParser()
     # other hyper-params
-    parser.add_argument('-tune_name', default='dev_nest', type=str, help="tuner process name")
+    parser.add_argument('-tune_name', default='dev', type=str, help="tuner process name")
     parser.add_argument('-model_type', default='simple', type=str, help="model type (svd, Simple, etc)")
     parser.add_argument('-reg_type', default='tilt', type=str, help="tilt or gauss")
     parser.add_argument('-loss_type', default='softplus', type=str, help="softplus or gauss")
@@ -27,8 +27,16 @@ def get_meta_args():
 
 if __name__ == '__main__':
     meta_args = get_meta_args()
+    
     launch_args = get_args()
+<<<<<<< Updated upstream
     critique_args = get_args_critique()
+=======
+    
+    critique_args = get_args_critique()
+    
+    
+>>>>>>> Stashed changes
 
     # update args with non-tunable params
     for ma in vars(meta_args):
@@ -42,8 +50,9 @@ if __name__ == '__main__':
                 setattr(critique_args, la, getattr(meta_args, ma))
 
     # hp tuning parameters
+
     folds = 5
-    epochs = 15
+    epochs = 2
     batch = 4
     n = 10000
 
