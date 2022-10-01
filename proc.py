@@ -276,6 +276,7 @@ if __name__ == '__main__':
 
     NEW_USER_IDS = new_ids
     make_types_dicts(rec,kg)
+    make_critiquing_dicts(rec,kg)
 
     # save full kg and rec
     # break up into train / test / val later..
