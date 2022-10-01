@@ -62,6 +62,45 @@ def split_kg(kg, split = 0.2):
     kg_test = kg[test_start:]
     return kg_train , kg_test
 
+
+def make_critiquing_dicts(rec,kg):
+    main_path = 'datasets/ML_FB/'
+    items = np.unique(rec[:,2])
+    popularities={}
+    pop_data=np.delete(kg,1,1)
+    unique, counts = np.unique(pop_data, return_counts=True)
+    # a dictionary containing the popularity of each object
+    pop_counts=dict(zip(unique, counts))
+    with open(os.path.join(main_path,'pop_counts.pkl'), 'wb') as f:
+        pickle.dump(pop_counts, f)
+    
+    #making dictionary of facts about each item
+
+    items_facts_head={}
+    items_facts_tail={}
+    for item in items:
+      items_facts_head[item]=kg[np.where(kg[:, 0] == item)][:,1:]
+      items_facts_tail[item]=kg[np.where(kg[:, 2] == item)][:,:-1]    
+    with open(os.path.join(main_path,'items_facts_head.pkl'), 'wb') as f:
+        pickle.dump(items_facts_head, f)
+    with open(os.path.join(main_path,'items_facts_tail.pkl'), 'wb') as f:
+        pickle.dump(items_facts_tail, f)
+
+    #mappings from objects to items
+    
+    obj2items={}
+    for obj in pop_counts.keys():
+      if obj not in items:
+
+        objkg = kg[np.where((kg[:, 0] == obj) | (kg[:, 2] == obj))]
+        objkg = np.delete(objkg,1,1)
+        mapped_items = np.intersect1d(items,objkg)
+        obj2items[obj] = mapped_items
+      else:
+        obj2items[obj] = np.array([obj])
+    with open(os.path.join(main_path,'obj2items.pkl'), 'wb') as f:
+        pickle.dump(obj2items, f)
+
 # make dictionaries "valid_heads" and "valid_tails" for realations to be used in type checking 
 def make_types_dicts(rec,kg):
     data = np.concatenate([rec,kg], axis = 0)
@@ -237,6 +276,7 @@ if __name__ == '__main__':
 
     NEW_USER_IDS = new_ids
     make_types_dicts(rec,kg)
+    make_critiquing_dicts(rec,kg)
 
     # save full kg and rec
     # break up into train / test / val later..
