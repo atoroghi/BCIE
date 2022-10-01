@@ -5,44 +5,16 @@ from launch import get_args
 from critique import get_args_critique
 from varname import nameof
 from gp import normal2param, train_sample_gp
+from outer_cv import best_model 
 
+# converts parameters in [0, 1] to actual ranges
 class Params:
-    def __init__(self, model_type, tune_name):
-        self.model_type = model_type
-        self.tune_name = tune_name
+    def __init__(self, cv_type, args, meta_args):
+        self.tune_name = meta_args.tune_name
 
-        if self.model_type == 'simple': 
-            # TODO: update this using argparse (not tn)
-            self.param_dict = {
-                # name : (range, type, base)
-                'lr' : ([-6, 1], float, 10),
-                'batch_size' : ([11, 14], int,2),
-                'emb_dim' : ([2, 8], int, 2),
-                #'reg_lambda' : ([-7, 1], float, 10),
-                #'kg_lambda' : ([-7, 1], float, 10),
-                'init_scale' : ([-6, 1], float, 10),
-                'neg_ratio' : ([15, 30], int, None),
-                #'neg_power' : ([0, 1], float, None),
-            }
-
-        elif self.model_type == 'svd':
-            self.param_dict = {
-                # name : (range, type, base)
-                'rank' : ([2, 9], int, 2),
-                'n_iter' : ([1, 200], int,None),
-            }
-
-
-        elif self.model_type == 'critiquing':
+        if cv_type == 'crit': 
             self.param_dict = {
                 'likelihood_precision' : ([-5, 5], float, 10),
-<<<<<<< Updated upstream
-                'tau_prior' : ([-5, 5], float, 10),
-                'ettaone' : ([-5, 5], float, 10),
-                'ettatwo' : ([-5, 5], float, 10),
-                'ettathree' : ([-5, 5], float, 10),
-                'ettafour' : ([-5, 5], float, 10)}
-=======
                 'tau_prior_f' : ([-5, 5], float, 10),
                 'tau_prior_inv' : ([-5, 5], float, 10),
                 'ettaone' : ([-5, 5], float, 10),
@@ -51,11 +23,32 @@ class Params:
                 'ettafour' : ([-5, 5], float, 10),
                 #'-tau_z_f': ([-5, 5], float, 10),
                 #'-tau_z_inv': ([-5, 5], float, 10),
+            }
+
+        elif cv_type == 'train':
+            if args.model_type == 'svd':
+                self.param_dict = {
+                    # name : (range, type, base)
+                    'rank' : ([2, 9], int, 2),
+                    'n_iter' : ([1, 200], int,None),
                 }
->>>>>>> Stashed changes
+
+            elif args.model_type == 'simple':
+                self.param_dict = {
+                    # name : (range, type, base)
+                    'lr' : ([-6, 1], float, 10),
+                    'batch_size' : ([11, 14], int,2),
+                    'emb_dim' : ([2, 8], int, 2),
+                    #'reg_lambda' : ([-7, 1], float, 10),
+                    #'kg_lambda' : ([-7, 1], float, 10),
+                    'init_scale' : ([-6, 1], float, 10),
+                    'neg_ratio' : ([15, 30], int, None),
+                    #'neg_power' : ([0, 1], float, None),
+                }
 
         self.save()
 
+    # take params from gp to real values
     def convert(self, i, po, p, args):
         for j, (arg_name, spec) in enumerate(self.param_dict.items()):
             # get proper arg corresponding to param_dict values
@@ -66,7 +59,8 @@ class Params:
                     setattr(args, a, out)
 
         return args, po
-    
+
+    # save to yaml file 
     def save(self):
         # convert dict specs to strings
         save_dict = {}
@@ -78,15 +72,18 @@ class Params:
                 yaml.dump(save_dict, f, sort_keys=False,
                         default_flow_style=False)
 
-
+# sorts files aplpha-numerically
 def natural_key(string_):
     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
 
+# main class to launch code that gp is trying to opimize
 class Launch:
-    def __init__(self, args, tune_name, fold_num):
+    def __init__(self, cv_type, args, param, tune_name, fold_num):
         self.args = args
         self.tune_name = tune_name
         self.fold_num = fold_num
+        self.param = param
+        self.cv_type = cv_type
 
     # run training process
     def train(self, p):
@@ -94,33 +91,28 @@ class Launch:
         po = np.empty_like(p)
 
         # make fold folder
-        path = os.path.join('results', self.tune_name, 'fold_{}'.format(self.fold_num))
+        path = os.path.join('results', self.tune_name, self.cv_type, 'fold_{}'.format(self.fold_num))
         os.makedirs(path, exist_ok=True)
 
         subs = []
-        param = Params(self.args.model_type, self.tune_name)
-
         for i in range(p.shape[0]): 
             # convert gp [0, 1] to proper parameter vals
             # po is gp values corresponding to discretization
-            self.args, po = param.convert(i, po, p, self.args)
+            self.args, po = self.param.convert(i, po, p, self.args)
 
             folders = sorted(os.listdir(path), key=natural_key)
             folders = [f for f in folders if 'train' in f]
 
-            # don't include results in this path 
-            save_path = os.path.join(self.tune_name, 'fold_{}'.format(self.fold_num), 'train_{}'.format(len(folders) + i))
-            self.args.test_name = save_path 
-            
             # make string to pass arguments
-            if self.args.model_type == "critiquing":
+            if self.cv_type == 'crit':
                 proc_input = ['python3', 'critique.py']
+                self.args.test_name = os.path.join(self.tune_name, 'crit', 'fold_{}'.format(self.fold_num), 'train_{}'.format(len(folders) + i)) 
             else:
                 proc_input = ['python3', 'launch.py']
+                self.args.test_name = os.path.join(self.tune_name, 'train', 'fold_{}'.format(self.fold_num), 'train_{}'.format(len(folders) + i)) 
             for k, v in vars(self.args).items():
                 proc_input.append('-{}'.format(k))
                 proc_input.append('{}'.format(v))
-            #print(proc_input)
 
             sub = subprocess.Popen(proc_input)
             subs.append(sub)
@@ -137,27 +129,24 @@ class Launch:
 
         return torch.from_numpy(po), best_hits 
 
-def tuner(fold_num, epochs, batch, n, tune_name, model_type):
-    # TODO: get this from nested cv
-
-    if model_type == "critiquing":
-        args = get_args_critique()
-    else:
-        args = get_args()
-    args.fold = fold_num
-    launch = Launch(args, tune_name, fold_num)
-<<<<<<< Updated upstream
-    param = Params(args.model_type, self.tune_name)
-=======
-    param = Params(args.model_type, tune_name)
->>>>>>> Stashed changes
-    #dim = 8
+# main entry point from inner_cv
+def tuner(cv_type, meta_args, args, fold, epochs, batch, n):
+    # if critique, set model to load
+    args.fold = fold
+    if cv_type == 'crit':
+        (best_score, best_run, best_epoch) = best_model(meta_args.tune_name, fold)
+        args.load_name = os.path.join('results', meta_args.tune_name, 'fold_{}'.format(fold), 'train_{}'.format(best_run))
+    
+    # build important classes
+    param = Params(cv_type, args, meta_args)
+    launch = Launch(cv_type, args, param, meta_args.tune_name, fold)
     dim = len(param.param_dict)
+    print('tuning with {} parameters'.format(dim))
 
     # load training data
-    path = os.path.join('gp', tune_name)
+    path = os.path.join('gp', meta_args.tune_name)
     os.makedirs(path, exist_ok=True)
-    gp_path = os.path.join(path, 'fold_{}'.format(fold_num)) 
+    gp_path = os.path.join(path, 'fold_{}'.format(fold)) 
     os.makedirs(gp_path, exist_ok=True)
 
     if os.path.isfile(os.path.join(gp_path, 'x_train.pt')):

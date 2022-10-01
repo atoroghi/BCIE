@@ -122,84 +122,22 @@ def save_metrics(rank_track, test_name, epoch, mode):
             f.write('{} {} {}\n'.format(hit_1, hit_3, hit_10))
 
 def save_metrics_critiquing(rank_track, test_name, mode):
-
-
     # for validation loop
-<<<<<<< Updated upstream
     if mode == 'val':
-        save_path = os.path.join('results', test_name, 'epoch_{}'.format(epoch)) 
-=======
-    epoch = 0
-    if mode == 'val':
-        save_path = os.path.join('results', test_name, 'epoch_{}'.format(epoch))
->>>>>>> Stashed changes
+        save_path = os.path.join('results', test_name)
         os.makedirs(save_path, exist_ok=True)
 
-        # save metric_track for eval performance over training
-        with open(os.path.join(save_path, 'metric_track.pkl'), 'wb') as f:
-            pickle.dump(rank_track, f)
+        # reduce track, save single number in stop_metric.npy
+        improv = rank_track[:, 0] - rank_track[:, -1]
+        
+        # take this and plot it, look at it etc...
+        y = np.mean(improv)
 
-        # get hit at k for rec
-        post_rank = rank_track.info['rank'][5] # after 5 sessions
-        pre_rank = rank_track.info['rank'][0] # after 5 sessions
-
-        mrr_pre = np.sum(1 / (1 + pre_rank)) / pre_rank.shape[0] 
-        mrr_post = np.sum(1 / (1 + post_rank)) / post_rank.shape[0] 
-
-<<<<<<< Updated upstream
-        diff_mrr = mrr_post - mrr_pre
-
-        #rank_at_k = np.where(rank < 10)[0].shape[0] / rank.shape[0]
-        stop_metric_path = os.path.join('results', test_name, 'stop_metric.npy')  
-
-        if epoch != 0:
-            scores = np.load(stop_metric_path, allow_pickle=True)
-            #saved_scores = np.append(scores, rank_at_k)
-            saved_scores = np.append(scores, diff_mrr)
-        else:
-            #saved_scores = np.array([rank_at_k])
-            saved_scores = np.array([diff_mrr])
-=======
-        diff_mrr = mrr_post / mrr_pre
-
-        #rank_at_k = np.where(rank < 10)[0].shape[0] / rank.shape[0]
-        stop_metric_path = os.path.join('results', test_name, 'stop_metric.npy')  
-        saved_scores = np.array([diff_mrr])
-
-        #if epoch != 0:
-            #scores = np.load(stop_metric_path, allow_pickle=True)
-            #saved_scores = np.append(scores, diff_mrr)
-        #else:
-            #saved_scores = np.array([rank_at_k])
-            #saved_scores = np.array([diff_mrr])
->>>>>>> Stashed changes
-
-        #rprec = rank_track.info['rprec'][0] # likes relation
-        #avg_rprec = np.sum(rprec)/rprec.shape[0] # average r precision over all users
-        #print(avg_rprec)
-
-        #print(np.max(saved_scores))
-        np.save(stop_metric_path, saved_scores)
-        return diff_mrr
+        np.save(os.path.join(save_path, 'stop_metric.npy'))
+        return y
 
     else:
-
-        save_path = os.path.abspath(os.path.join('Critiquing_results', test_name, '../..'))
-        os.makedirs(save_path, exist_ok=True)
-        for session_no in range(1,6):
-            rank = rank_track.info['rank'][session_no] # likes relation
-            hit_1 = np.where(rank < 1)[0].shape[0] / rank.shape[0]
-            hit_3 = np.where(rank < 3)[0].shape[0] / rank.shape[0]
-            hit_10 = np.where(rank < 10)[0].shape[0] / rank.shape[0]
-            mrr = np.sum(1 / (rank+1)) / rank.shape[0] 
-            #rprec = rank_track.info['rprec'][0]
-            #avg_rprec = np.sum(rprec)/rprec.shape[0]
-
-            with open(os.path.join(save_path, 'results.txt'), 'a') as f:
-                #f.write('{} {} {} {} {}\n'.format(hit_1, hit_3, hit_10, mrr, avg_rprec))
-                f.write('{} {} {} {}\n'.format(hit_1, hit_3, hit_10, mrr))
-
-
+        print('impliment this and make it nice!!!')
 
 # plot distribution of ranks and line plot of hits @ k per epoch
 def rank_plot(rank_track, test_name, epoch):
@@ -217,11 +155,8 @@ def rank_plot(rank_track, test_name, epoch):
         if rel == 0:
             sns.histplot(rank, bins=40, ax=ax1)
         else:
-<<<<<<< Updated upstream
-=======
             # k was undefined here
             k = 7
->>>>>>> Stashed changes
             a = k % 7
             sns.histplot(rank, bins=40, ax=ax2, color=color[a])
 
@@ -264,6 +199,7 @@ def loss_save(rec, kg, reg, test_name):
     np.save(os.path.join('results', test_name, 'kg_loss.npy'), np.array(kg), allow_pickle=True)
     np.save(os.path.join('results', test_name, 'reg_loss.npy'), np.array(reg), allow_pickle=True)
 
+# TOOD: delete this after all plots confirmed working
 def perrel_save(hit1s,hit3s,hit10s,mrs,mrrs,test_name):
     epoch_list=np.arange(1,1+len(hit1s[0]))
     plt.style.use('seaborn')

@@ -6,7 +6,7 @@ from dataload import DataLoader
 import torch, argparse, time, os, sys, yaml, math
 import numpy as np
 
-def get_args():
+def get_model_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-test_name', default='dev', type=str, help="folder for test results")
     parser.add_argument('-tune_name', default='dev_nest', type=str, help="tuner process name")
