@@ -20,21 +20,21 @@ def get_args_critique():
     parser = argparse.ArgumentParser()
     parser.add_argument('-test_name', default='dev', type=str, help='name of folder where results are saved')
     parser.add_argument('-load_name', default='dev', type=str, help='name of folder where model is')
-    parser.add_argument('-alpha', default=0.01, type=float, help='Learning rate for Laplace Approximation')
+    #parser.add_argument('-alpha', default=0.01, type=float, help='Learning rate for Laplace Approximation')
     parser.add_argument('-fold', default=0, type=int, help='fold number')
 
     #TODO: Have multiple ettas for each session
     #TODO: This is bad (list)
-    parser.add_argument('-user_prec', default=1e-2, type=float, help='prior precision')
-    parser.add_argument('-ettaone', default=1.0, type=float, help='Precision for Laplace Approximation')
-    parser.add_argument('-ettatwo', default=1.0, type=float, help='Precision for Laplace Approximation')
-    parser.add_argument('-ettathree', default=1.0, type=float, help='Precision for Laplace Approximation')
-    parser.add_argument('-ettafour', default=1.0, type=float, help='Precision for Laplace Approximation')
-    parser.add_argument('-ettafive', default=1.0, type=float, help='Precision for Laplace Approximation')
+    parser.add_argument('-user_prec', default=1e5, type=float, help='prior precision')
+    parser.add_argument('-ettaone', default=1, type=float, help='Precision for Laplace Approximation')
+    parser.add_argument('-ettatwo', default=1, type=float, help='Precision for Laplace Approximation')
+    parser.add_argument('-ettathree', default=1, type=float, help='Precision for Laplace Approximation')
+    parser.add_argument('-ettafour', default=1, type=float, help='Precision for Laplace Approximation')
+    parser.add_argument('-ettafive', default=1, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
     parser.add_argument('-critique_target', default='item', type=str, help='object or item')
     parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
-    parser.add_argument('-update_type', default='gaussian', type=str, help='laplace or gaussian')
+    parser.add_argument('-update_type', default='laplace', type=str, help='laplace or gaussian')
     parser.add_argument('-critique_mode', default='random', type=str, help='random or pop or diff')
     parser.add_argument('-l_prec', default=1e-2, type=float, help='likelihood precision')
 
@@ -241,7 +241,6 @@ def critiquing(crit_args, mode):
                 y = np.ones(d[0].shape)
                 etta = etta_dict[session_no] # TODO: fix this 
 
-
                 beta_updater(user, d, priors, etta, crit_args, model_args, device)
                 
                 # TODO: make fast updaters...
@@ -274,6 +273,8 @@ def critiquing(crit_args, mode):
 
     # save results
     if mode == 'val':
+        print(args.test_name)
+        sys.exit()
         mrr = save_metrics_critiquing(rank_track, args.test_name, mode)
         return mrr
     else:
