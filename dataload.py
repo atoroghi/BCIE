@@ -43,14 +43,14 @@ class DataLoader:
         #self.first_userid = np.min(self.users) # used for printing triplets
 
         # class for negative sampling
-        if args.type_checking == 'no':
+        if self.type_checking == 'no':
             if self.sample_type == 'combo':
                 self.sampler = SingleSample(self.train_data, power=args.neg_power)
             elif 'split' in self.sample_type:
                 self.sampler = DoubleSample(self.train_data, power=args.neg_power)
 
 
-        if args.type_checking == 'check':
+        if self.type_checking == 'check':
             with open(os.path.join(main_path, 'valid_heads.pkl'), 'rb') as f:
                 self.valid_heads = pickle.load(f)
             with open(os.path.join(main_path, 'valid_tails.pkl'), 'rb') as f:

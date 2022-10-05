@@ -21,14 +21,15 @@ def get_array(model, dataloader, args, rec):
 # make array with all item embeddings and dict map {item id : array index}
 def make_array(model, items, emb_dim):
     # to map id to array location
-    item_id2index = dict(zip(items.cpu().tolist(), list(range(0, len(items)))))
+    id2index = dict(zip(items.cpu().tolist(), list(range(0, len(items)))))
+    index2id = dict(zip(list(range(0, len(items))), items.cpu().tolist()))
 
     with torch.no_grad():
         items_temp = items.long()
         items_h = model.ent_h_embs(items_temp)
         items_t = model.ent_t_embs(items_temp)
 
-    return items_h, items_t, item_id2index
+    return items_h, items_t, id2index, index2id
 
 # get scores
 def get_scores(test_emb, rel_emb, item_emb, dataloader, learning_rel):
@@ -156,8 +157,8 @@ def test(model, dataloader, epoch, args, mode):
     # get arrays with all items for link prediction
     # special array for < user, likes, ? >
     
-    #kg_h, kg_t, kg_id2index = get_array(model, dataloader, args, rec=False)
-    rec_h, rec_t, rec_id2index = get_array(model, dataloader, args, rec=True)
+    #kg_h, kg_t, kg_id2index, _ = get_array(model, dataloader, args, rec=False)
+    rec_h, rec_t, rec_id2index, _ = get_array(model, dataloader, args, rec=True)
     kg_id2index = {}
     id2index = (rec_id2index, kg_id2index)
 

@@ -1,8 +1,7 @@
+from concurrent.futures import process
 import os, sys, torch, gpytorch, argparse, math, subprocess, re, pickle, yaml
 import numpy as np
 import matplotlib.pyplot as plt
-from launch import get_args
-from critique import get_args_critique
 from varname import nameof
 from gp import normal2param, train_sample_gp
 from outer_cv import best_model 
@@ -14,7 +13,7 @@ class Params:
 
         if cv_type == 'crit': 
             self.param_dict = {
-                'likelihood_precision' : ([-5, 5], float, 10),
+                'l_prec' : ([-5, 5], float, 10),
                 'tau_prior_f' : ([-5, 5], float, 10),
                 'tau_prior_inv' : ([-5, 5], float, 10),
                 'ettaone' : ([-5, 5], float, 10),
@@ -119,6 +118,8 @@ class Launch:
         
         for proc in subs:
             proc.wait()
+        print('done')
+        sys.exit()
 
         # get recall at k
         best_hits = torch.empty(p.shape[0])
@@ -135,7 +136,7 @@ def tuner(cv_type, meta_args, args, fold, epochs, batch, n):
     args.fold = fold
     if cv_type == 'crit':
         (best_score, best_run, best_epoch) = best_model(meta_args.tune_name, fold)
-        args.load_name = os.path.join('results', meta_args.tune_name, 'fold_{}'.format(fold), 'train_{}'.format(best_run))
+        args.load_name = os.path.join('results', meta_args.tune_name, 'train', 'fold_{}'.format(fold), 'train_{}'.format(best_run))
     
     # build important classes
     param = Params(cv_type, args, meta_args)

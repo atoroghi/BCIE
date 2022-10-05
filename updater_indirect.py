@@ -9,7 +9,6 @@ import sys
 
 # TODO: no comments or explanation of how this is supposed to work
 class Updater_Indirect:
-
 	def __init__(self, X, y, mu_prior, tau_prior, tau_z, z_prior, args, device, etta, likes_embedding):
 		self.X = X
 		self.y = y
@@ -26,8 +25,8 @@ class Updater_Indirect:
         # the following two args were used in gradient descent
 		#self.alpha= args.alpha
 		#self.max_iters= args.max_iters_laplace
-		self.etta= etta
-		self.emb_dim= args.emb_dim
+		self.etta = etta
+		self.emb_dim = args.emb_dim
 		self.device = device
 		self.update_type = args.update_type
 		self.likelihood_precision = args.likelihood_precision

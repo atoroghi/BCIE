@@ -6,10 +6,18 @@ from scipy.special import expit
 import scipy.linalg as sp
 import sys
 
+# fast gaussian update
+def beta_update(user, d, prior, etta, crit_args, model_args, device):
+	n = user.shape[0]
+
+	tau_likelihood = crit_args.l_prec * torch.eye(model_args.emb_dim).to(device)
+	za = self.tau_prior + n * tau_likelihood
+	H_out = np.maximum(za,za.T)
+	mu = np.transpose(np.matmul(np.linalg.inv(H_out) , np.transpose(((np.matmul(self.mu_prior, self.tau_prior)) + np.matmul(n *self.mu_prior, tau_likelihood )))))
+
 # TODO: no comments or explanation of how this is supposed to work
 class Updater:
-
-	def __init__(self, X, y, mu_prior, tau_prior, args, device, etta):
+	def __init__(self, X, y, mu_prior, tau_prior, crit_args, model_args, device, etta):
 		self.X = X
 		self.y = y
 		self.mu_prior = mu_prior
@@ -18,13 +26,13 @@ class Updater:
 
 		self.tau_prior = tau_prior
 		self.W = mu_prior
-		self.alpha= args.alpha
+		self.alpha = crit_args.alpha
 		#self.max_iters= args.max_iters_laplace
-		self.etta= etta
-		self.emb_dim= args.emb_dim
+		self.etta = etta
+		self.emb_dim= model_args.emb_dim
 		self.device = device
-		self.update_type = args.update_type
-		self.likelihood_precision = args.likelihood_precision
+		self.update_type = crit_args.update_type
+		self.likelihood_precision = crit_args.likelihood_precision
 
 # The main updating function that performs gaussian or laplace updating
 	def compute_laplace_approximation(self):
@@ -37,10 +45,8 @@ class Updater:
 			H_out = np.maximum(za,za.T)
 			mu = np.transpose(np.matmul(np.linalg.inv(H_out) , np.transpose(((np.matmul(self.mu_prior, self.tau_prior)) + np.matmul(n *self.mu_prior, tau_likelihood )))))
 
-
 		if self.update_type == "laplace":
             # derivation : https://www.overleaf.com/read/jypckmmmcvsv
-        
             #solving convex problem to update user belief
 
 			W_new = self.SDR_cvxopt(self.tau_prior, self.X, self.y , self.W)

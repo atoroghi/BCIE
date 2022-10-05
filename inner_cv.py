@@ -1,7 +1,7 @@
 import os, sys, argparse
 from proc import dataset_fold
 from tune import tuner
-from launch import get_args
+from launch import get_model_args
 from critique import get_args_critique
 
 # TODO: these shouldn't have to be defined in the same file...
@@ -28,10 +28,11 @@ def get_metatrain_args():
 def get_metacrit_args():
     parser = argparse.ArgumentParser()
     # other hyper-params
+    parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
+    parser.add_argument('-critique_target', default='object', type=str, help='object or item')
     parser.add_argument('-tune_name', default='gauss', type=str, help="tuner process name")
     parser.add_argument('-update_type', default='gaussian', type=str, help='laplace or gaussian')
     parser.add_argument('-critique_mode', default='random', type=str, help='random or pop or diff')
-    parser.add_argument('-critique_target', default='item', type=str, help='object or item')
 
     args = parser.parse_args()
     return args
@@ -53,7 +54,7 @@ if __name__ == '__main__':
         args = get_args_critique()
     elif cv_type == 'train':
         meta_args = get_metatrain_args()
-        args = get_args()
+        args = get_model_args()
 
     # make gp dir
     os.makedirs('gp/{}'.format(meta_args.tune_name), exist_ok=True)
@@ -70,6 +71,5 @@ if __name__ == '__main__':
         dataset_fold(5)
 
     # iterate through each fold
-    print('tuning')
     for fold in range(folds):
         tuner(cv_type, meta_args, args, fold, epochs, batch, n) # main tune loop

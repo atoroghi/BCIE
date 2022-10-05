@@ -3,6 +3,16 @@ import os, sys
 import random
 import operator
 
+# dummy function for initial testing
+def beta_crit(ht_facts):
+	pick = np.random.randint(ht_facts.shape[0])
+	crit = ht_facts[pick]
+
+	# remove from pool and return in (node, rel) format
+	ht_facts = np.delete(ht_facts, pick, axis=0)
+	if crit[0] == -1.0: return (crit[2], crit[1]), ht_facts
+	else: return (crit[0], crit[1]), ht_facts
+
 ### inputs: facts about the ground truth and facts about the recommended items as well as the critique mode and the dictionary containing popularities of each object
 ### Also, we input the facts in which the gt is placed in their tail to differentiate between objects and relations
 def select_critique(critique_selection_data, rec_facts, critique_mode, pop_counts, items_facts_tail_gt):
