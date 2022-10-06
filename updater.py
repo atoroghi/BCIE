@@ -7,9 +7,12 @@ import scipy.linalg as sp
 import sys
 
 # fast gaussian update
-def beta_update(user, d, prior, etta, crit_args, model_args, device):
-	n = user.shape[0]
+def beta_update(update_info, sn, crit_args, model_args, device):
+	n = sn + 1
+	mean_0, covar_0  = update_info.mean_covar(sn)
+	prec_0 = torch.inverse(covar_0)
 
+	n = user.shape[0]
 	tau_likelihood = crit_args.l_prec * torch.eye(model_args.emb_dim).to(device)
 	za = self.tau_prior + n * tau_likelihood
 	H_out = np.maximum(za,za.T)

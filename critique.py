@@ -5,12 +5,13 @@ from tqdm import tqdm
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-from updater import Updater
+from updater import Updater, beta_update
 from updater_indirect import Updater_Indirect
 from dataload import DataLoader
 from tester import get_array, get_emb, get_scores, get_rank, GetGT
 from recommender import select_critique, beta_crit, remove_chosen_critiques, obj2item
 from utils.plots import RankTrack, rank_plot, save_metrics_critiquing
+from utils.updateinfo import UpdateInfo
 from launch import get_model_args
 from argparse import Namespace
 import time
@@ -20,17 +21,16 @@ def get_args_critique():
     parser = argparse.ArgumentParser()
     parser.add_argument('-test_name', default='dev', type=str, help='name of folder where results are saved')
     parser.add_argument('-load_name', default='dev', type=str, help='name of folder where model is')
-    #parser.add_argument('-alpha', default=0.01, type=float, help='Learning rate for Laplace Approximation')
     parser.add_argument('-fold', default=0, type=int, help='fold number')
 
     #TODO: Have multiple ettas for each session
     #TODO: This is bad (list)
-    parser.add_argument('-user_prec', default=1e5, type=float, help='prior precision')
-    parser.add_argument('-ettaone', default=1, type=float, help='Precision for Laplace Approximation')
-    parser.add_argument('-ettatwo', default=1, type=float, help='Precision for Laplace Approximation')
-    parser.add_argument('-ettathree', default=1, type=float, help='Precision for Laplace Approximation')
-    parser.add_argument('-ettafour', default=1, type=float, help='Precision for Laplace Approximation')
-    parser.add_argument('-ettafive', default=1, type=float, help='Precision for Laplace Approximation')
+    parser.add_argument('-user_cov', default=1e5, type=float, help='prior cov')
+    parser.add_argument('-etta_0', default=1.0, type=float, help='Precision for Laplace Approximation')
+    parser.add_argument('-etta_1', default=1.0, type=float, help='Precision for Laplace Approximation')
+    parser.add_argument('-etta_2', default=1.0, type=float, help='Precision for Laplace Approximation')
+    parser.add_argument('-etta_3', default=1.0, type=float, help='Precision for Laplace Approximation')
+    parser.add_argument('-etta_4', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
     parser.add_argument('-critique_target', default='item', type=str, help='object or item')
     parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
@@ -38,10 +38,9 @@ def get_args_critique():
     parser.add_argument('-critique_mode', default='random', type=str, help='random or pop or diff')
     parser.add_argument('-l_prec', default=1e-2, type=float, help='likelihood precision')
 
-    # to remove
-    # TODO: this is very bad and ugly... never do this
     parser.add_argument('-num_users', default=100, type=int, help='number of users')
     #parser.add_argument('-model_type', default=' ', type=str, help='this is bad')
+    #parser.add_argument('-alpha', default=0.01, type=float, help='Learning rate for Laplace Approximation')
 
     args = parser.parse_args()
     return args
@@ -94,22 +93,6 @@ def get_dics(args):
         pop_counts = pickle.load(f)
     return (item_facts_head, item_facts_tail, obj2items, pop_counts)
 
-# return info about each of the priors
-class Priors:
-    #TODO: this is for more complex prior
-    def __init__(self, crit_args, model_args):
-        # we assume this (this is a hp)
-        self.user_prec_f = crit_args.user_prec * np.eye(model_args.emb_dim)
-        self.user_prec_inv = crit_args.user_prec * np.eye(model_args.emb_dim)
-
-        # the model defines this. N(0, lambda*I)
-        # prior over items for I^2
-        #if crit_args.evidence_type == 'indirect':
-        self.z_prec_f = model_args.reg_lambda * np.eye(model_args.emb_dim)
-        self.z_prec_inv = model_args.reg_lambda * np.eye(model_args.emb_dim)
-        self.z_mean_f = np.zeros(model_args.emb_dim)
-        self.z_mean_inv = np.zeros(model_args.emb_dim)
-
 # get d embedding, used for p(u | d) baysian update
 def get_d(model, crit, rel_emb, obj2items, crit_args, model_args):
     (crit_node, crit_rel) = crit
@@ -117,8 +100,8 @@ def get_d(model, crit, rel_emb, obj2items, crit_args, model_args):
     # single embedding of crit node
     if crit_args.critique_target == 'object':
         node_emb = get_emb(crit_node, model)
-        d_f = rel_emb[0,0].cpu().numpy() * node_emb[1].cpu().numpy()
-        d_inv = rel_emb[0,1].cpu().numpy() * node_emb[0].cpu().numpy()
+        d_f = rel_emb[0,0] * node_emb[1]
+        d_inv = rel_emb[0,1] * node_emb[0]
 
     # TODO: clean this up.. too many lines!
     # make stack of likes * items related to feedback node
@@ -137,8 +120,8 @@ def get_d(model, crit, rel_emb, obj2items, crit_args, model_args):
         true_object_embedding_f = torch.reshape(liked_embeddings_f,(liked_embeddings_f.shape[0], model_args.emb_dim))
         true_object_embedding_inv = torch.reshape(liked_embeddings_inv,(liked_embeddings_inv.shape[0], model_args.emb_dim))
     
-        d_f = np.multiply((rel_emb[0][0].cpu().numpy()),(true_object_embedding_f.cpu().numpy()))
-        d_inv = np.multiply((rel_emb[0][1].cpu().numpy()),(true_object_embedding_inv.cpu().numpy()))
+        d_f = rel_emb[0,0] * true_object_embedding_f
+        d_inv = rel_emb[0,1] * true_object_embedding_inv
     return (d_f, d_inv)
 
 # main loop
@@ -147,6 +130,7 @@ def critiquing(crit_args, mode):
 #################################################
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     model_args = Namespace()
+    etta = [crit_args.etta_0, crit_args.etta_1, crit_args.etta_2, crit_args.etta_3, crit_args.etta_4]
 
     # load model and get parameter from file
     with open(os.path.join(crit_args.load_name, 'info.yml'), 'r') as f:
@@ -158,10 +142,6 @@ def critiquing(crit_args, mode):
     model_args.learning_rel = 'learn'
     model_args.type_checking = 'yes'
 
-    # print important hps
-    print('alpha: {:.5f}\tettaone: {:.5f}\tettatwo: {:.5f}\tettathree: {:.5f}\tettafour: {:.5f}\tcritique mode: {}\tcritique target: {}'.format(
-        crit_args.alpha, crit_args.ettaone, crit_args.ettatwo, crit_args.ettathree, crit_args.ettafour, crit_args.critique_mode, crit_args.critique_target))
-
     # load model
     model_path = os.path.join(crit_args.load_name, 'models/best_model.pt')
     model = torch.load(model_path).to(device)
@@ -169,7 +149,6 @@ def critiquing(crit_args, mode):
     # load dataset + dictionaries
     print('loading dataset: {}'.format(model_args.dataset))
     dataloader = DataLoader(model_args)
-    etta_dict = {0: crit_args.ettaone, 1: crit_args.ettatwo, 2: crit_args.ettathree, 3: crit_args.ettafour, 4: crit_args.ettafive}
     (item_facts_head, item_facts_tail, obj2items, pop_counts) = get_dics(model_args)
 
     # make arrays with embeddings, and dict to map 
@@ -189,7 +168,7 @@ def critiquing(crit_args, mode):
     # all users, gt + data (based on test / train)
     get_gt = GetGT(dataloader.fold, mode)
     data = dataloader.rec_test if mode == 'test' else dataloader.rec_val
-    all_users = torch.tensor(data[:, 0])
+    all_users = torch.tensor(data[:, 0]).cpu().numpy()
 
     # main test loop (each user)
 ##############################################################
@@ -214,16 +193,14 @@ def critiquing(crit_args, mode):
             sub_track = np.empty(crit_args.session_length + 1)
             sub_track[0] = get_rank(ranked, [gt], all_gt, id2index) 
 
-            # use original user embedding for each gt
-            user_emb_f = user_emb[0].cpu().numpy()
-            user_emb_inv = user_emb[1].cpu().numpy()
-
             # a few sessions for each user 
-            for session_no in range(crit_args.session_length):
+            for sn in range(crit_args.session_length):
             ##############################################################
             ##############################################################
+                # TODO: a better name for this (prior isn't great)
                 # initialize prior, remove user crit from pool
-                if session_no == 0: priors = Priors(crit_args, model_args)
+                if sn == 0: 
+                    update_info = UpdateInfo(user_emb, etta, crit_args, model_args)
 
                 # TODO: move this somewhere else, not important...
                 # get all facts related to top n movies rec (from model)
@@ -238,32 +215,19 @@ def critiquing(crit_args, mode):
 
                 # get d for p(user | d) bayesian update
                 d = get_d(model, crit, rel_emb, obj2items, crit_args, model_args)
-                y = np.ones(d[0].shape)
-                etta = etta_dict[session_no] # TODO: fix this 
+                update_info.store(z=d)
 
-                beta_updater(user, d, priors, etta, crit_args, model_args, device)
-                
-                # TODO: make fast updaters...
-                #if crit_args.evidence_type == 'direct':
-                    #updater_f = Updater(d_f, y, user_emb_f, prior.z_prec_f, crit_args, model_args, device, etta)
-                    #updater_inv = Updater(d_inv, y, user_emb_inv, prior.z_prec_inv, crit_args, model_args, device, etta)
-                
-                    #user_emb_f, user_prior_f = updater_f.compute_laplace_approximation()
-                    #user_emb_inv, user_prior_inv = updater_inv.compute_laplace_approximation()
-
-                #elif crit_args.evidence_type == 'indirect':
-                    #updater_f = Updater_Indirect(d_f, y, user_emb_f, prior.user_prec_f, prior.z_pre_f, model_args, device, etta, likes_rel)
-                    #updater_inv = Updater_Indirect(d_inv, y, user_emb_inv, prior.user_prec_inv, prior.z_pre_inv, model_args, device, etta, likes_rel)
-                    #user_emb_f, tau_prior_f = updater_f.compute_laplace_approximation()
-                    #user_emb_inv, tau_prior_inv = updater_inv.compute_laplace_approximation()
+                # fast updater
+                beta_update(update_info, sn, crit_args, model_args, device)
+                print('done')
+                sys.exit()
 
                 # TODO: default on gpu
                 # update prior class with new user data
                 user_emb_updated = (torch.tensor(user_emb_f).to(device), torch.tensor(user_emb_inv).to(device))
                 ranked = get_scores(user_emb_updated, rel_emb[0], item_emb, dataloader, model_args.learning_rel)
                 rank = get_rank(ranked, [gt], all_gt, id2index)
-                sub_track[session_no + 1] = rank
-            print(time1 / time0)
+                sub_track[sn + 1] = rank
 
             # update w new data
             st = np.expand_dims(sub_track, axis=0)
@@ -284,3 +248,17 @@ def critiquing(crit_args, mode):
 if __name__ == '__main__':
     crit_args = get_args_critique()
     critiquing(crit_args, 'test')
+
+# TODO: make fast updaters...
+#if crit_args.evidence_type == 'direct':
+    #updater_f = Updater(d_f, y, user_emb_f, prior.z_prec_f, crit_args, model_args, device, etta)
+    #updater_inv = Updater(d_inv, y, user_emb_inv, prior.z_prec_inv, crit_args, model_args, device, etta)
+
+    #user_emb_f, user_prior_f = updater_f.compute_laplace_approximation()
+    #user_emb_inv, user_prior_inv = updater_inv.compute_laplace_approximation()
+
+#elif crit_args.evidence_type == 'indirect':
+    #updater_f = Updater_Indirect(d_f, y, user_emb_f, prior.user_prec_f, prior.z_pre_f, model_args, device, etta, likes_rel)
+    #updater_inv = Updater_Indirect(d_inv, y, user_emb_inv, prior.user_prec_inv, prior.z_pre_inv, model_args, device, etta, likes_rel)
+    #user_emb_f, tau_prior_f = updater_f.compute_laplace_approximation()
+    #user_emb_inv, tau_prior_inv = updater_inv.compute_laplace_approximation()
