@@ -241,7 +241,7 @@ def critiquing(crit_args, mode):
 
                 #Armin: I think beta_crit should get be able to see the rec_facts too. Not only does it need it for the "diff" case, but it also makes sense
                 # to me to only select a critique if it's not satisfied by all recommended items. e.g., if ALL recommended items are from USA, why should a 
-                # user's critique be "I like USA"? 
+                # user's critique be "I like USA"? Do you think this is assuming a too intelligent user?
                 crit, ht_facts = beta_crit(ht_facts) # crit in (node, rel) format
 
                 # get d for p(user | d) bayesian update
