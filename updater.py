@@ -8,15 +8,26 @@ import sys
 
 # fast gaussian update
 def beta_update(update_info, sn, crit_args, model_args, device):
-	n = sn + 1
-	mean_0, covar_0  = update_info.mean_covar(sn)
-	prec_0 = torch.inverse(covar_0)
+    n = update_info.d_f.shape[0] # number of update samples
+    (m_f, m_inv), (prec_f, prec_inv) = update_info.get_mean_prec(sn)
+    (m_f0, m_inv0) = (update_info.user_emb_f[0], update_info.user_emb_inv[0])
+    prec_0 = update_info.user_prec
 
-	n = user.shape[0]
-	tau_likelihood = crit_args.l_prec * torch.eye(model_args.emb_dim).to(device)
-	za = self.tau_prior + n * tau_likelihood
-	H_out = np.maximum(za,za.T)
-	mu = np.transpose(np.matmul(np.linalg.inv(H_out) , np.transpose(((np.matmul(self.mu_prior, self.tau_prior)) + np.matmul(n *self.mu_prior, tau_likelihood )))))
+    # update forward and backward
+    out_m_f = torch.inverse(prec_0 + n*prec_f) @ (prec_0*m_f0 + n*prec_f@m_f)
+    out_m_inv = torch.inverse(prec_0 + n*prec_inv) @ (prec_0*m_inv0 + n*prec_inv@m_inv)
+
+    out_prec_f = prec_0 + n*prec_f
+    out_prec_inv = prec_0 + n*prec_inv
+
+    # TODO: we don't actaully user out_prec at all...
+    return 
+
+    #n = user.shape[0]
+    #tau_likelihood = crit_args.l_prec * torch.eye(model_args.emb_dim).to(device)
+    #za = self.tau_prior + n * tau_likelihood
+    #H_out = np.maximum(za,za.T)
+    #mu = np.transpose(np.matmul(np.linalg.inv(H_out) , np.transpose(((np.matmul(self.mu_prior, self.tau_prior)) + np.matmul(n *self.mu_prior, tau_likelihood )))))
 
 # TODO: no comments or explanation of how this is supposed to work
 class Updater:
