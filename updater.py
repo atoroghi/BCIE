@@ -21,25 +21,38 @@ def beta_update(update_info, sn, crit_args, model_args, device):
 	# store new user prior
 	update_info.store(user_emb=(out_f, out_inv), user_prec=(out_prec_f, out_prec_inv))
 
-#TODO: We need rel_emb, rel_emb_inv, 
 def beta_update_indirect(update_info, sn, crit_args, model_args, device):
+
     #(evidence_mean_f, evidence_mean_inv), (evidence_prec_f, evidence_prec_inv) = update_info.get_mean_prec()
-    (user_mean_f, user_mean_inv, user_prec_f, user_prec_inv) = (update_info.user_emb_f[0], update_info.user_emb_inv[0], update_info.user_prec, update_info.user_prec)
+    (user_mean_f, user_mean_inv), (user_prec_f, user_prec_inv) = update_info.get_priorinfo()
     (likes_emb_f, likes_emb_inv) = (update_info.likes_emb_f[0] , update_info.likes_emb_inv[0])
-    (evidence_f, evidence_inv) = (update_info.d_f, update_info.d_inv)
+    (evidence_f, evidence_inv), _ = update_info.get_sampleinfo()
     (rel_emb_f, rel_emb_inv) = (update_info.crit_rel_emb_f, update_info.crit_rel_emb_inv)
     (item_mean_f, item_mean_inv) = (update_info.z_mean, update_info.z_mean)
     (item_prec_f, item_prec_inv) = (update_info.z_prec, update_info.z_prec)
-
-    h_u_f = user_prec_f.cuda()
+    user_mean_f_T = torch.transpose(user_mean_f,0,1)
+    user_mean_inv_T = torch.transpose(user_mean_inv,0,1)
+    h_u_f = user_prec_f @ user_mean_f_T
+    h_u_inv = user_prec_inv @ user_mean_inv_T
+    print("here")
+    sys.exit()
     D_r1 = torch.diag(rel_emb_f)
+    D_r1_inv = torch.diag(rel_emb_inv)
     D_r2 = torch.diag(likes_emb_f)
-    J_z_inv = torch.inverse(item_prec_f)
-    h_z_f = item_prec_f @ item_mean_f
-    h_u_updated_f = h_u_f - 0.5*D_r2 @ J_z_inv @ (h_z_f + D_r1 @evidence_f)
-    user_prec_updated_f = user_prec_f - D_r1 @ J_z_inv @ D_r1
+    D_r2_inv = torch.diag(likes_emb_inv)
+    J_z_f_inv = torch.inverse(item_prec_f).cuda()
+    J_z_inv_inv = torch.inverse(item_prec_inv).cuda()
+    h_z_f = item_prec_f.cuda() @ torch.unsqueeze(item_mean_f, dim=1).cuda()
+    h_z_inv = item_prec_inv.cuda() @ torch.unsqueeze(item_mean_inv, dim=1).cuda()
+    h_u_updated_f = h_u_f - 0.5*D_r2 @ J_z_f_inv @ (h_z_f + D_r1 @ torch.transpose(evidence_f,0,1))
+    h_u_updated_inv = h_u_inv - 0.5*D_r2_inv @ J_z_inv_inv @ (h_z_inv + D_r1_inv @ torch.transpose(evidence_inv,0,1))
+    user_prec_updated_f = user_prec_f.cuda() - D_r1 @ J_z_f_inv @ D_r1
+    user_prec_updated_inv = user_prec_inv.cuda() - D_r1_inv @ J_z_inv_inv @ D_r1_inv
     user_mean_updated_f = torch.inverse(user_prec_updated_f) @ h_u_updated_f
-    return user_prec_updated_f, user_mean_updated_f
+    user_mean_updated_inv = torch.inverse(user_prec_updated_inv) @ h_u_updated_inv
+    update_info.store(user_emb=(user_mean_updated_f, user_mean_updated_inv), user_prec=(user_prec_updated_f, user_prec_updated_inv))
+    
+
 
 # TODO: no comments or explanation of how this is supposed to work
 class Updater:
