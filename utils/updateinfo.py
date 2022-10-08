@@ -8,17 +8,17 @@ def stack_(x):
 
 # INFO: this is gaussian
 class UpdateInfo:
-    def __init__(self, user_emb, etta, crit_args, model_args, rel_emb=None, likes_emb=None):
+    def __init__(self, user_emb, etta, crit_args, model_args, crit_rel_emb=None, likes_emb=None):
         self.etta = etta
         
         self.d_f = None
         self.d_inv = None
         self.user_emb_f = torch.unsqueeze(user_emb[0], axis=0)
         self.user_emb_inv = torch.unsqueeze(user_emb[1], axis=0)
-
-        # rel_f, rel_inv (input tuple, unpack sep, stack this)
-
-        # add likes
+        self.crit_rel_emb_f = None
+        self.crit_rel_emb_inv = None
+        self.likes_emb_f = torch.unsqueeze(likes_emb[0], axis=0)
+        self.likes_emb_inv = torch.unsqueeze(likes_emb[1], axis=0)
 
         # TODO: put this on the device
         # p(u)
@@ -26,8 +26,8 @@ class UpdateInfo:
         # p(d | u)
         self.likelihood_prec = crit_args.default_prec * torch.eye(model_args.emb_dim)
         
-        self.z_mean = torch.zeros
-        self.z_prec = arg * eye # TODO: make a new hp for this? 
+        self.z_mean = torch.zeros(model_args.emb_dim)
+        self.z_prec = crit_args.z_prec * torch.eye(model_args.emb_dim)
 
 
     # TODO: this is bad
@@ -44,7 +44,14 @@ class UpdateInfo:
 
     # TODO: stack rel
     # store either the user or feeback embs
-    def store(self, user_emb=None, d=None, rel_emb=None):
+    def store(self, user_emb=None, d=None, crit_rel_emb=None):
+        if crit_rel_emb is not None:
+            if self.crit_rel_emb_f is None:
+                self.crit_rel_emb_f = crit_rel_emb[0]
+                self.crit_rel_emb_inv = crit_rel_emb[1]
+            else:
+                torch.cat(self.crit_rel_emb_f, torch.unsqueeze(crit_rel_emb[0], axis=0))
+                torch.cat(self.crit_rel_emb_inv, torch.unsqueeze(crit_rel_emb[1], axis=0))
         if user_emb is not None:
             self.user_emb_f = torch.cat(self.user_emb_f, torch.unsqueeze(user_emb[0], axis=0))
             self.user_emb_inv = torch.cat(self.user_emb_inv, torch.unsqueeze(user_emb[1], axis=0))

@@ -9,7 +9,7 @@ import sys
 # fast gaussian update
 def beta_update(update_info, sn, crit_args, model_args, device):
     n = update_info.d_f.shape[0] # number of update samples
-    (m_f, m_inv), (prec_f, prec_inv) = update_info.get_mean_prec(sn)
+    (m_f, m_inv), (prec_f, prec_inv) = update_info.get_mean_prec()
     (m_f0, m_inv0) = (update_info.user_emb_f[0], update_info.user_emb_inv[0])
     prec_0 = update_info.user_prec
 
@@ -30,21 +30,17 @@ def beta_update(update_info, sn, crit_args, model_args, device):
     #mu = np.transpose(np.matmul(np.linalg.inv(H_out) , np.transpose(((np.matmul(self.mu_prior, self.tau_prior)) + np.matmul(n *self.mu_prior, tau_likelihood )))))
 
 #TODO: We need rel_emb, rel_emb_inv, 
-def beta_update_indirect(update_info, sn, crit_args, model_args, device, 
+def beta_update_indirect(update_info, sn, crit_args, model_args, device):
 
-rel_emb_f, rel_emb_inv, # put this into update_info
-
-evidence_f, evidence_inv, # this should be in update_info already
-likes_emb_f, likes_emb_inv, # put this in anyways 
-
-# hp's for z
-item_mean_f, item_mean_inv, 
-item_prec_f, item_prec_inv
-):
-
-    (evidence_mean_f, evidence_mean_inv), (evidence_prec_f, evidence_prec_inv) = update_info.get_mean_prec(sn)
+    #(evidence_mean_f, evidence_mean_inv), (evidence_prec_f, evidence_prec_inv) = update_info.get_mean_prec()
     (user_mean_f, user_mean_inv, user_prec_f, user_prec_inv) = (update_info.user_emb_f[0], update_info.user_emb_inv[0], update_info.user_prec, update_info.user_prec)
-    h_u_f = user_prec_f @ user_mean_f
+    (likes_emb_f, likes_emb_inv) = (update_info.likes_emb_f[0] , update_info.likes_emb_inv[0])
+    (evidence_f, evidence_inv) = (update_info.d_f, update_info.d_inv)
+    (rel_emb_f, rel_emb_inv) = (update_info.crit_rel_emb_f, update_info.crit_rel_emb_inv)
+    (item_mean_f, item_mean_inv) = (update_info.z_mean, update_info.z_mean)
+    (item_prec_f, item_prec_inv) = (update_info.z_prec, update_info.z_prec)
+
+    h_u_f = user_prec_f.cuda()
     D_r1 = torch.diag(rel_emb_f)
     D_r2 = torch.diag(likes_emb_f)
     J_z_inv = torch.inverse(item_prec_f)

@@ -4,7 +4,7 @@ from tqdm import tqdm
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-from updater import Updater, beta_update
+from updater import Updater, beta_update, beta_update_indirect
 from updater_indirect import Updater_Indirect
 from dataload import DataLoader
 from tester import get_array, get_emb, get_scores, get_rank, GetGT
@@ -26,6 +26,7 @@ def get_args_critique():
     #TODO: This is bad (list)
     parser.add_argument('-user_prec', default=1e5, type=float, help='prior cov')
     parser.add_argument('-default_prec', default=1e-2, type=float, help='likelihood precision')
+    parser.add_argument('-z_prec', default=1e-2, type=float, help='item distribution precision indirect case')
     parser.add_argument('-etta_0', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-etta_1', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-etta_2', default=1.0, type=float, help='Precision for Laplace Approximation')
@@ -205,7 +206,7 @@ def critiquing(crit_args, mode):
         # iterature through all gt for single user
         for j, gt in enumerate(test_gt):
             # stack facts, either [-1, rel, tail] or [head, rel, -1]
-            ht_facts = fact_stack(item_facts_head[gt], item_facts_tail[gt])
+            ht_facts = fact_stack(item_facts_head[gt], item_facts_tail[gt]).astype(np.int32)
 
             # save initial rank and previous user crits 
             sub_track = np.empty(crit_args.session_length + 1)
@@ -218,7 +219,7 @@ def critiquing(crit_args, mode):
                 # TODO: a better name for this (prior isn't great)
                 # initialize prior, remove user crit from pool
                 if sn == 0: 
-                    update_info = UpdateInfo(user_emb, etta, crit_args, model_args)
+                    update_info = UpdateInfo(user_emb, etta, crit_args, model_args,None,likes_rel)
 
                 # TODO: move this somewhere else, not important...
                 # get all facts related to top n movies rec (from model)
@@ -233,10 +234,11 @@ def critiquing(crit_args, mode):
                 # to me to only select a critique if it's not satisfied by all recommended items. e.g., if ALL recommended items are from USA, why should a 
                 # user's critique be "I like USA"? Do you think this is assuming a too intelligent user?
                 crit, ht_facts = beta_crit(ht_facts) # crit in (node, rel) format
-
+                
+                crit_rel_emb = rel_emb[crit[1]] 
                 # get d for p(user | d) bayesian update
                 d = get_d(model, crit, rel_emb, obj2items, crit_args, model_args)
-                update_info.store(d=d)
+                update_info.store(d=d, crit_rel_emb=crit_rel_emb)
 
                 # fast updater
                 beta_update(update_info, sn, crit_args, model_args, device)

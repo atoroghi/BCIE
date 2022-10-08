@@ -15,6 +15,7 @@ class Params:
             self.param_dict = {
                 'default_prec' : ([-5, 5], float, 10),
                 'user_prec' : ([-5, 5], float, 10),
+                'z_prec' : ([-5, 5], float, 10),
                 'etta_0' : ([-5, 5], float, 10),
                 'etta_1' : ([-5, 5], float, 10),
                 'etta_2' : ([-5, 5], float, 10),
