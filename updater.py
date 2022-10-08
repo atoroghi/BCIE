@@ -28,6 +28,21 @@ def beta_update(update_info, sn, crit_args, model_args, device):
     #za = self.tau_prior + n * tau_likelihood
     #H_out = np.maximum(za,za.T)
     #mu = np.transpose(np.matmul(np.linalg.inv(H_out) , np.transpose(((np.matmul(self.mu_prior, self.tau_prior)) + np.matmul(n *self.mu_prior, tau_likelihood )))))
+#TODO: We need rel_emb, rel_emb_inv, 
+def beta_update_indirect(update_info, sn, crit_args, model_args, device,rel_emb_f, rel_emb_inv, evidence_f, evidence_inv, likes_emb_f, likes_emb_inv, item_mean_f, item_mean_inv, item_prec_f, item_prec_inv):
+    (evidence_mean_f, evidence_mean_inv), (evidence_prec_f, evidence_prec_inv) = update_info.get_mean_prec(sn)
+    (user_mean_f, user_mean_inv, user_prec_f, user_prec_inv) = (update_info.user_emb_f[0], update_info.user_emb_inv[0], update_info.user_prec, update_info.user_prec)
+    h_u_f = user_prec_f @ user_mean_f
+    D_r1= torch.diag(rel_emb_f)
+    D_r2 = torch.diag(likes_emb_f)
+    J_z_inv = torch.inverse(item_prec_f)
+    h_z_f = item_prec_f @ item_mean_f
+    h_u_updated_f = h_u_f - 0.5* D_r2 @ J_z_inv @ (h_z_f + D_r1 @evidence_f)
+    user_prec_updated_f = user_prec_f - D_r1 @ J_z_inv @ D_r1
+    user_mean_updated_f = torch.inverse(user_prec_updated_f) @ h_u_updated_f
+    return user_prec_updated_f, user_mean_updated_f
+
+
 
 # TODO: no comments or explanation of how this is supposed to work
 class Updater:
