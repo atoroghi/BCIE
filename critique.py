@@ -1,6 +1,5 @@
 from cmath import tau
 import os, pickle, sys, argparse, yaml
-from tkinter import W
 from tqdm import tqdm
 import torch
 import numpy as np
@@ -25,7 +24,8 @@ def get_args_critique():
 
     #TODO: Have multiple ettas for each session
     #TODO: This is bad (list)
-    parser.add_argument('-user_cov', default=1e5, type=float, help='prior cov')
+    parser.add_argument('-user_prec', default=1e5, type=float, help='prior cov')
+    parser.add_argument('-default_prec', default=1e-2, type=float, help='likelihood precision')
     parser.add_argument('-etta_0', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-etta_1', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-etta_2', default=1.0, type=float, help='Precision for Laplace Approximation')
@@ -36,7 +36,6 @@ def get_args_critique():
     parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
     parser.add_argument('-update_type', default='laplace', type=str, help='laplace or gaussian')
     parser.add_argument('-critique_mode', default='random', type=str, help='random or pop or diff')
-    parser.add_argument('-l_prec', default=1e-2, type=float, help='likelihood precision')
 
     parser.add_argument('-num_users', default=100, type=int, help='number of users')
     #parser.add_argument('-model_type', default=' ', type=str, help='this is bad')
@@ -237,7 +236,7 @@ def critiquing(crit_args, mode):
 
                 # get d for p(user | d) bayesian update
                 d = get_d(model, crit, rel_emb, obj2items, crit_args, model_args)
-                update_info.store(z=d)
+                update_info.store(d=d)
 
                 # fast updater
                 beta_update(update_info, sn, crit_args, model_args, device)

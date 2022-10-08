@@ -13,9 +13,8 @@ class Params:
 
         if cv_type == 'crit': 
             self.param_dict = {
-                'l_prec' : ([-5, 5], float, 10),
-                'tau_prior_f' : ([-5, 5], float, 10),
-                'tau_prior_inv' : ([-5, 5], float, 10),
+                'default_prec' : ([-5, 5], float, 10),
+                'user_prec' : ([-5, 5], float, 10),
                 'etta_0' : ([-5, 5], float, 10),
                 'etta_1' : ([-5, 5], float, 10),
                 'etta_2' : ([-5, 5], float, 10),

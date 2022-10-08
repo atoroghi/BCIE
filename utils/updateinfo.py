@@ -1,69 +1,59 @@
-from abc import update_abstractmethods
-import torch
+from os import X_OK
+import sys, torch
 
-# we want:
-# class that stores all info for updates 
-# pass this into updaters 
-# general (ie. works with all updaters given upate_type on init)
-    # 1) -----use this------
-        # parent class: etta, and user info, critiques / feedback
-        # child class: all other update parameters
-        # pass in update function 
-    # 2) 
-        # everything in one big class, use if statements
+def stack_(x):
+    x_ = torch.stack((x[0], x[1]))
+    s = x_.shape
+    return torch.reshape(x_, (s[1], s[0], s[2]))
 
-# FOR NOW, SMALL NUM OF USERS
-# aes = "at each session"
-# gaussian case
-    # rank of gt aet
-    # all covar / prec, all user vector
-        # if too large: det(covar / prec), ||user_n - user_n+1||
-    
-    # aes: mean and std dev of mrr, det covar, norm diff
-    # full histogram aes
-
-# return info about each of the priors
-# this class stores all history for saving / tracking 
+# INFO: this is gaussian
 class UpdateInfo:
-    def __init__(self, user, etta, crit_args, model_args):
-        # used for update strength
+    def __init__(self, user_emb, etta, crit_args, model_args, rel_emb=None, likes_emb=None):
         self.etta = etta
+        
+        self.d_f = None
+        self.d_inv = None
+        self.user_emb_f = torch.unsqueeze(user_emb[0], axis=0)
+        self.user_emb_inv = torch.unsqueeze(user_emb[1], axis=0)
 
-        # assume default for n=1 samples, calculate otherwise
-        self.user_f = user[0]
-        self.user_inv = user[1]
-        self.user_cov_default = crit_args.user_cov * torch.eye(model_args.emb_dim)
+        # rel_f, rel_inv (input tuple, unpack sep, stack this)
 
-        # the model defines this. N(0, lambda*I)
-        self.z_f = None
-        self.z_inv = None
+        # add likes
 
-        # default covar for case when n=1 samples and covar dne
-        self.z_cov = torch.eye(model_args.emb_dim) / model_args.reg_lambda
+        # TODO: put this on the device
+        # p(u)
+        self.user_prec = crit_args.user_prec * torch.eye(model_args.emb_dim)
+        # p(d | u)
+        self.likelihood_prec = crit_args.default_prec * torch.eye(model_args.emb_dim)
+        
+        self.z_mean = torch.zeros
+        self.z_prec = arg * eye # TODO: make a new hp for this? 
 
-    # get mean and covar for bayesian update
-    def mean_covar(self, sn):
-        if sn == 0: 
-            return (self.z_f, self.z_inv), (self.z_cov, self.z_cov)
-        else:
-            mean_f = torch.mean(self.z_f)
-            mean_inv = torch.mean(self.z_inv)
-            covar_f = torch.covar(self.z_f)
-            covar_inv = torch.covar(self.z_inv)
 
-            return (mean_f, mean_inv), (covar_f, covar_inv)
+    # TODO: this is bad
+    # return the sample mean and covariance, if n=1 user the prior prec.
+    def get_mean_prec(self):
+        if self.d_f.shape[0] > 1: 
+            return (self.d_f, self.d_inv), (self.default_prec, self.default_prec)
+        else: 
+            m_f = torch.mean(self.d_f)
+            m_inv = torch.mean(self.d_inv)
+            prec_f = torch.inverse(torch.cov(self.d_f))
+            prec_inv = torch.inverse(torch.cov(self.d_inv))
+            return (m_f, m_inv), (prec_f, prec_inv)
 
-    # store all user updates and d feedback 
-    def store(self, user=None, z=None):
-        # format is [n, embeddings]
-        if user is not None:
-            self.user_f = torch.cat((self.user_f, user[0]))
-            self.user_inv = torch.cat((self.user_inv, user[1]))
+    # TODO: stack rel
+    # store either the user or feeback embs
+    def store(self, user_emb=None, d=None, rel_emb=None):
+        if user_emb is not None:
+            self.user_emb_f = torch.cat(self.user_emb_f, torch.unsqueeze(user_emb[0], axis=0))
+            self.user_emb_inv = torch.cat(self.user_emb_inv, torch.unsqueeze(user_emb[1], axis=0))
 
-        if z is not None:
-            if self.z_f is None:
-                self.z_f = z[0]
-                self.z_inv = z[1]
-            else:
-                self.z_f = torch.cat((self.z_f, z[0]))
-                self.z_inv = torch.cat((self.z_inv, z[1]))
+        elif d is not None:
+            if self.d_f is None: 
+                self.d_f = d[0]
+                self.d_inv = d[1] 
+        else:                
+            self.d_f = torch.cat(self.d_f, torch.unsqueeze(d[0], axis=0))
+            self.d_inv = torch.cat(self.d_inv, torch.unsqueeze(d[1], axis=0))
+   
