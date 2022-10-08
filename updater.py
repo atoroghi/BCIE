@@ -8,30 +8,21 @@ import sys
 
 # fast gaussian update
 def beta_update(update_info, sn, crit_args, model_args, device):
-    n = update_info.d_f.shape[0] # number of update samples
-    (m_f, m_inv), (prec_f, prec_inv) = update_info.get_mean_prec()
-    (m_f0, m_inv0) = (update_info.user_emb_f[0], update_info.user_emb_inv[0])
-    prec_0 = update_info.user_prec
+	n = update_info.d_f.shape[0] # number of update samples
+	(f, inv), prec = update_info.get_sampleinfo()
+	(f0, inv0), (prec_f0, prec_inv0) = update_info.get_priorinfo()
 
-    # update forward and backward
-    out_m_f = torch.inverse(prec_0 + n*prec_f) @ (prec_0*m_f0 + n*prec_f@m_f)
-    out_m_inv = torch.inverse(prec_0 + n*prec_inv) @ (prec_0*m_inv0 + n*prec_inv@m_inv)
+	# update forward and backward, new priors for user
+	out_f = torch.inverse(prec_f0 + n*prec) @ (prec_f0@f0 + n*prec@f)
+	out_inv = torch.inverse(prec_inv0 + n*prec) @ (prec_inv0@inv0 + n*prec@inv)
+	out_prec_f = prec_f0 + n*prec
+	out_prec_inv = prec_inv0 + n*prec
 
-    out_prec_f = prec_0 + n*prec_f
-    out_prec_inv = prec_0 + n*prec_inv
-
-    # TODO: we don't actaully user out_prec at all...
-    return 
-
-    #n = user.shape[0]
-    #tau_likelihood = crit_args.l_prec * torch.eye(model_args.emb_dim).to(device)
-    #za = self.tau_prior + n * tau_likelihood
-    #H_out = np.maximum(za,za.T)
-    #mu = np.transpose(np.matmul(np.linalg.inv(H_out) , np.transpose(((np.matmul(self.mu_prior, self.tau_prior)) + np.matmul(n *self.mu_prior, tau_likelihood )))))
+	# store new user prior
+	update_info.store(user_emb=(out_f, out_inv), user_prec=(out_prec_f, out_prec_inv))
 
 #TODO: We need rel_emb, rel_emb_inv, 
 def beta_update_indirect(update_info, sn, crit_args, model_args, device):
-
     #(evidence_mean_f, evidence_mean_inv), (evidence_prec_f, evidence_prec_inv) = update_info.get_mean_prec()
     (user_mean_f, user_mean_inv, user_prec_f, user_prec_inv) = (update_info.user_emb_f[0], update_info.user_emb_inv[0], update_info.user_prec, update_info.user_prec)
     (likes_emb_f, likes_emb_inv) = (update_info.likes_emb_f[0] , update_info.likes_emb_inv[0])

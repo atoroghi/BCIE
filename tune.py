@@ -10,20 +10,27 @@ from outer_cv import best_model
 class Params:
     def __init__(self, cv_type, args, meta_args):
         self.tune_name = meta_args.tune_name
+        self.cv_type = cv_type
 
+        # TODO: don't tune hp's that we don't use
         if cv_type == 'crit': 
             self.param_dict = {
+                # covar [1e-5, 1]
                 'default_prec' : ([-5, 5], float, 10),
                 'user_prec' : ([-5, 5], float, 10),
-                'z_prec' : ([-5, 5], float, 10),
-                'etta_0' : ([-5, 5], float, 10),
-                'etta_1' : ([-5, 5], float, 10),
-                'etta_2' : ([-5, 5], float, 10),
-                'etta_3' : ([-5, 5], float, 10),
-                'etta_4' : ([-5, 5], float, 10),
+                #'z_prec' : ([-5, 5], float, 10),
+                #'etta_0' : ([-5, 5], float, 10),
+                #'etta_1' : ([-5, 5], float, 10),
+                #'etta_2' : ([-5, 5], float, 10),
+                #'etta_3' : ([-5, 5], float, 10),
+                #'etta_4' : ([-5, 5], float, 10),
                 #'-tau_z_f': ([-5, 5], float, 10),
                 #'-tau_z_inv': ([-5, 5], float, 10),
             }
+            if 'z_prec' in self.param_dict:
+                assert meta_args.edidence_type == 'indirect'
+            if 'etta_0' in self.param_dict:
+                assert meta_args.update_type == 'laplace'
 
         elif cv_type == 'train':
             if args.model_type == 'svd':
@@ -46,8 +53,6 @@ class Params:
                     #'neg_power' : ([0, 1], float, None),
                 }
 
-        self.save()
-
     # take params from gp to real values
     def convert(self, i, po, p, args):
         for j, (arg_name, spec) in enumerate(self.param_dict.items()):
@@ -67,7 +72,7 @@ class Params:
         for k, v in self.param_dict.items():
             save_dict.update({k : str(v)})
 
-        save_path = os.path.join('gp', self.tune_name)
+        save_path = os.path.join('gp', self.tune_name, self.cv_type)
         with open(os.path.join(save_path, 'hp_ranges.yml'), 'w') as f:
                 yaml.dump(save_dict, f, sort_keys=False,
                         default_flow_style=False)
@@ -119,8 +124,6 @@ class Launch:
         
         for proc in subs:
             proc.wait()
-        print('done')
-        sys.exit()
 
         # get recall at k
         best_hits = torch.empty(p.shape[0])
@@ -143,13 +146,16 @@ def tuner(cv_type, meta_args, args, fold, epochs, batch, n):
     param = Params(cv_type, args, meta_args)
     launch = Launch(cv_type, args, param, meta_args.tune_name, fold)
     dim = len(param.param_dict)
-    print('tuning with {} parameters'.format(dim))
+    #print('tuning with {} parameters'.format(dim))
 
     # load training data
-    path = os.path.join('gp', meta_args.tune_name)
+    path = os.path.join('gp', meta_args.tune_name, cv_type)
     os.makedirs(path, exist_ok=True)
     gp_path = os.path.join(path, 'fold_{}'.format(fold)) 
     os.makedirs(gp_path, exist_ok=True)
+
+    # save args
+    param.save()
 
     if os.path.isfile(os.path.join(gp_path, 'x_train.pt')):
         begin = False

@@ -22,8 +22,7 @@ def get_args_critique():
     parser.add_argument('-load_name', default='dev', type=str, help='name of folder where model is')
     parser.add_argument('-fold', default=0, type=int, help='fold number')
 
-    #TODO: Have multiple ettas for each session
-    #TODO: This is bad (list)
+    # TODO: list for etta?
     parser.add_argument('-user_prec', default=1e5, type=float, help='prior cov')
     parser.add_argument('-default_prec', default=1e-2, type=float, help='likelihood precision')
     parser.add_argument('-z_prec', default=1e-2, type=float, help='item distribution precision indirect case')
@@ -33,14 +32,18 @@ def get_args_critique():
     parser.add_argument('-etta_3', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-etta_4', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
-    parser.add_argument('-critique_target', default='item', type=str, help='object or item')
-    parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
-    parser.add_argument('-update_type', default='laplace', type=str, help='laplace or gaussian')
-    parser.add_argument('-critique_mode', default='random', type=str, help='random or pop or diff')
-
     parser.add_argument('-num_users', default=100, type=int, help='number of users')
-    #parser.add_argument('-model_type', default=' ', type=str, help='this is bad')
-    #parser.add_argument('-alpha', default=0.01, type=float, help='Learning rate for Laplace Approximation')
+
+    # TODO: put in asserts
+    # single vs mult
+    parser.add_argument('-critique_target', default='item', type=str, help='object or item')
+
+    # single only
+    parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
+    
+    # likelihood
+    parser.add_argument('-update_type', default='gauss', type=str, help='laplace or gauss')
+    parser.add_argument('-critique_mode', default='random', type=str, help='random or pop or diff')
 
     args = parser.parse_args()
     return args
@@ -166,7 +169,6 @@ def critiquing(crit_args, mode):
     model = torch.load(model_path).to(device)
 
     # load dataset + dictionaries
-    print('loading dataset: {}'.format(model_args.dataset))
     dataloader = DataLoader(model_args)
     (item_facts_head, item_facts_tail, obj2items, pop_counts) = get_dics(model_args)
 
@@ -192,10 +194,9 @@ def critiquing(crit_args, mode):
     # main test loop (each user)
 ##############################################################
 ##############################################################
-    print('main loop')
     rank_track = None
     for i, user in enumerate(all_users):
-        if i == 20: break
+        if i == 2: break
 
         # get ids of top k recs, and all gt from user
         user_emb = get_emb(user, model)
@@ -216,61 +217,54 @@ def critiquing(crit_args, mode):
             for sn in range(crit_args.session_length):
             ##############################################################
             ##############################################################
-                # TODO: a better name for this (prior isn't great)
-                # initialize prior, remove user crit from pool
                 if sn == 0: 
-                    update_info = UpdateInfo(user_emb, etta, crit_args, model_args,None,likes_rel)
+                    update_info = UpdateInfo(user_emb, etta, crit_args, model_args, device)
 
                 # TODO: move this somewhere else, not important...
                 # get all facts related to top n movies rec (from model)
-                #if crit_args.critique_target == 'item':
-                    #rec_facts_head = unpack_dic(item_facts_head, rec_ids)
-                    #rec_facts_tail = unpack_dic(item_facts_tail, rec_ids)
-                    #rec_facts = np.vstack([rec_facts_head, rec_facts_tail])
+                if crit_args.critique_target == 'item':
+                    rec_facts_head = unpack_dic(item_facts_head, rec_ids)
+                    rec_facts_tail = unpack_dic(item_facts_tail, rec_ids)
+                    rec_facts = np.vstack([rec_facts_head, rec_facts_tail])
 
                 # select a crit (user action) and remove it from pool
                 #crit_node, crit_pair = select_critique(ht_facts, rec_facts, crit_args.critique_mode, pop_counts, items_facts_tail_gt)
 
-                # to me to only select a critique if it's not satisfied by all recommended items. e.g., if ALL recommended items are from USA, why should a 
-                # user's critique be "I like USA"? Do you think this is assuming a too intelligent user?
                 crit, ht_facts = beta_crit(ht_facts) # crit in (node, rel) format
-                
                 crit_rel_emb = rel_emb[crit[1]] 
+
                 # get d for p(user | d) bayesian update
                 d = get_d(model, crit, rel_emb, obj2items, crit_args, model_args)
                 update_info.store(d=d, crit_rel_emb=crit_rel_emb)
 
                 # fast updater
                 beta_update(update_info, sn, crit_args, model_args, device)
-                print('done')
-                sys.exit()
 
-                # TODO: default on gpu
-                # update prior class with new user data
-                user_emb_updated = (torch.tensor(user_emb_f).to(device), torch.tensor(user_emb_inv).to(device))
-                ranked = get_scores(user_emb_updated, rel_emb[0], item_emb, dataloader, model_args.learning_rel)
+                # track rank in training
+                new_user_emb, _ = update_info.get_priorinfo()
+                ranked = get_scores(new_user_emb, rel_emb[0], item_emb, dataloader, model_args.learning_rel)
                 rank = get_rank(ranked, [gt], all_gt, id2index)
                 sub_track[sn + 1] = rank
 
             # update w new data
-            st = np.expand_dims(sub_track, axis=0)
+            st = np.expand_dims(sub_track, axis=0).astype(np.int32)
             if rank_track is None: rank_track = st
             else: rank_track = np.concatenate((rank_track, st))
-    sys.exit()
+
 
     # save results
     if mode == 'val':
-        print(args.test_name)
-        sys.exit()
-        mrr = save_metrics_critiquing(rank_track, args.test_name, mode)
+        mrr = save_metrics_critiquing(rank_track, crit_args.test_name, mode)
         return mrr
     else:
+        print('not done')
+        sys.exit()
         save_metrics_critiquing(rank_track, args.test_name, mode)
 
 # TODO: just make this a function?? 
 if __name__ == '__main__':
     crit_args = get_args_critique()
-    critiquing(crit_args, 'test')
+    critiquing(crit_args, 'val')
 
 # TODO: make fast updaters...
 #if crit_args.evidence_type == 'direct':
