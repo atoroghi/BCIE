@@ -25,7 +25,7 @@ def beta_update_indirect(update_info, sn, crit_args, model_args, device):
 
     #(evidence_mean_f, evidence_mean_inv), (evidence_prec_f, evidence_prec_inv) = update_info.get_mean_prec()
     (user_mean_f, user_mean_inv), (user_prec_f, user_prec_inv) = update_info.get_priorinfo()
-    (likes_emb_f, likes_emb_inv) = (update_info.likes_emb_f[0] , update_info.likes_emb_inv[0])
+    (likes_emb_f, likes_emb_inv) = (update_info.likes_emb_f , update_info.likes_emb_inv)
     (evidence_f, evidence_inv), _ = update_info.get_sampleinfo()
     (rel_emb_f, rel_emb_inv) = (update_info.crit_rel_emb_f, update_info.crit_rel_emb_inv)
     (item_mean_f, item_mean_inv) = (update_info.z_mean, update_info.z_mean)

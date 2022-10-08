@@ -218,8 +218,8 @@ def critiquing(crit_args, mode):
             ##############################################################
             ##############################################################
                 if sn == 0: 
-                    if crit_args.evidence_type == 'direct':
-                        update_info = UpdateInfo(user_emb, etta, crit_args, model_args, device)
+
+                    update_info = UpdateInfo(user_emb, etta, crit_args, model_args, device, likes_emb=likes_rel)
 
                 # TODO: move this somewhere else, not important...
                 # get all facts related to top n movies rec (from model)
@@ -236,12 +236,14 @@ def critiquing(crit_args, mode):
 
                 # get d for p(user | d) bayesian update
                 d = get_d(model, crit, rel_emb, obj2items, crit_args, model_args)
-                if crit_args.evidence_type == 'indirect':
-                    update_info = UpdateInfo(user_emb, etta, crit_args, model_args, device, crit_rel_emb, likes_rel)
                 update_info.store(d=d, crit_rel_emb=crit_rel_emb)
+                if crit_args.evidence_type == 'direct':
+                    beta_update(update_info, sn, crit_args, model_args, device)
+                if crit_args.evidence_type == 'indirect':
+                    beta_update_indirect(update_info, sn, crit_args, model_args, device)
 
                 # fast updater
-                beta_update_indirect(update_info, sn, crit_args, model_args, device)
+                
                 sys.exit()
 
                 # track rank in training
