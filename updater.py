@@ -9,7 +9,7 @@ import sys
 # fast gaussian update
 def beta_update(update_info, sn, crit_args, model_args, device):
 	n = sn + 1
-	mean_0, covar_0  = update_info.mean_covar(sn)
+	mean_0, covar_0 = update_info.mean_covar(sn)
 	prec_0 = torch.inverse(covar_0)
 
 	n = user.shape[0]

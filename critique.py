@@ -93,6 +93,24 @@ def get_dics(args):
         pop_counts = pickle.load(f)
     return (item_facts_head, item_facts_tail, obj2items, pop_counts)
 
+# return info about each of the priors
+class Priors:
+    #TODO: this is for more complex prior
+    def __init__(self, crit_args, model_args):
+        # we assume this (this is a hp)
+        self.user_prec_f = crit_args.user_prec * np.eye(model_args.emb_dim)
+        self.user_prec_inv = crit_args.user_prec * np.eye(model_args.emb_dim)
+
+        # the model defines this. N(0, lambda*I)
+        # prior over items for I^2
+        #if crit_args.evidence_type == 'indirect':
+
+        # Armin: shouldn't this be precision? so 1/reg_lambda ? 
+        self.z_prec_f = model_args.reg_lambda * np.eye(model_args.emb_dim)
+        self.z_prec_inv = model_args.reg_lambda * np.eye(model_args.emb_dim)
+        self.z_mean_f = np.zeros(model_args.emb_dim)
+        self.z_mean_inv = np.zeros(model_args.emb_dim)
+
 # get d embedding, used for p(u | d) baysian update
 def get_d(model, crit, rel_emb, obj2items, crit_args, model_args):
     (crit_node, crit_rel) = crit
@@ -112,6 +130,7 @@ def get_d(model, crit, rel_emb, obj2items, crit_args, model_args):
         liked_embeddings_list_f = []
         liked_embeddings_list_inv = []
         # TODO: this should be random or something...
+        # Armin: this is not changed yet right? shall I change it?
         for x in liked_items_list[:10]:
             liked_embeddings_list_f.append(get_emb(torch.tensor(x),model)[1])
             liked_embeddings_list_inv.append(get_emb(torch.tensor(x),model)[0])
@@ -204,13 +223,16 @@ def critiquing(crit_args, mode):
 
                 # TODO: move this somewhere else, not important...
                 # get all facts related to top n movies rec (from model)
-                if crit_args.critique_target == 'item':
-                    rec_facts_head = unpack_dic(item_facts_head, rec_ids)
-                    rec_facts_tail = unpack_dic(item_facts_tail, rec_ids)
-                    rec_facts = np.vstack([rec_facts_head, rec_facts_tail])
+                #if crit_args.critique_target == 'item':
+                    #rec_facts_head = unpack_dic(item_facts_head, rec_ids)
+                    #rec_facts_tail = unpack_dic(item_facts_tail, rec_ids)
+                    #rec_facts = np.vstack([rec_facts_head, rec_facts_tail])
 
                 # select a crit (user action) and remove it from pool
                 #crit_node, crit_pair = select_critique(ht_facts, rec_facts, crit_args.critique_mode, pop_counts, items_facts_tail_gt)
+
+                # to me to only select a critique if it's not satisfied by all recommended items. e.g., if ALL recommended items are from USA, why should a 
+                # user's critique be "I like USA"? Do you think this is assuming a too intelligent user?
                 crit, ht_facts = beta_crit(ht_facts) # crit in (node, rel) format
 
                 # get d for p(user | d) bayesian update
