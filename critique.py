@@ -39,7 +39,7 @@ def get_args_critique():
     parser.add_argument('-critique_target', default='item', type=str, help='object or item')
 
     # single only
-    parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
+    parser.add_argument('-evidence_type', default='indirect', type=str, help='direct or indirect')
     
     # likelihood
     parser.add_argument('-update_type', default='gauss', type=str, help='laplace or gauss')
@@ -195,8 +195,8 @@ def critiquing(crit_args, mode):
 ##############################################################
 ##############################################################
     rank_track = None
-    for i, user in enumerate(all_users):
-        if i == 2: break
+    for i, user in tqdm(enumerate(all_users)):
+        #if i == 10: break
 
         # get ids of top k recs, and all gt from user
         user_emb = get_emb(user, model)
@@ -243,8 +243,7 @@ def critiquing(crit_args, mode):
                     beta_update_indirect(update_info, sn, crit_args, model_args, device)
 
                 # fast updater
-                
-                sys.exit()
+
 
                 # track rank in training
                 new_user_emb, _ = update_info.get_priorinfo()

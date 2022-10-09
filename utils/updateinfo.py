@@ -17,8 +17,10 @@ class UpdateInfo:
         self.crit_rel_emb_inv = None
 
         if likes_emb is not None:
-            self.likes_emb_f = torch.unsqueeze(likes_emb[0], axis=0)
-            self.likes_emb_inv = torch.unsqueeze(likes_emb[1], axis=0)
+            #self.likes_emb_f = torch.unsqueeze(likes_emb[0], axis=1)
+            #self.likes_emb_inv = torch.unsqueeze(likes_emb[1], axis=1)
+            self.likes_emb_f = likes_emb[0]
+            self.likes_emb_inv = likes_emb[1]
 
         self.user_emb_f = user_emb[0]
         self.user_emb_inv = user_emb[1]
@@ -30,7 +32,7 @@ class UpdateInfo:
         
         # p(d | u)
         self.likelihood_prec = crit_args.default_prec * torch.eye(model_args.emb_dim).to(device)
-        self.z_mean = torch.zeros(model_args.emb_dim)
+        self.z_mean = torch.zeros(model_args.emb_dim).to(device)
         self.z_prec = crit_args.z_prec * torch.eye(model_args.emb_dim).to(device)
 
     # get last element (these are being stored and saved for tracking)

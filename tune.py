@@ -99,6 +99,7 @@ class Launch:
         path = os.path.join('results', self.tune_name, self.cv_type, 'fold_{}'.format(self.fold_num))
         os.makedirs(path, exist_ok=True)
 
+
         subs = []
         for i in range(p.shape[0]): 
             # convert gp [0, 1] to proper parameter vals
@@ -138,10 +139,11 @@ class Launch:
 def tuner(cv_type, meta_args, args, fold, epochs, batch, n):
     # if critique, set model to load
     args.fold = fold
+
     if cv_type == 'crit':
         (best_score, best_run, best_epoch) = best_model(meta_args.tune_name, fold)
         args.load_name = os.path.join('results', meta_args.tune_name, 'train', 'fold_{}'.format(fold), 'train_{}'.format(best_run))
-    
+
     # build important classes
     param = Params(cv_type, args, meta_args)
     launch = Launch(cv_type, args, param, meta_args.tune_name, fold)
@@ -153,9 +155,9 @@ def tuner(cv_type, meta_args, args, fold, epochs, batch, n):
     os.makedirs(path, exist_ok=True)
     gp_path = os.path.join(path, 'fold_{}'.format(fold)) 
     os.makedirs(gp_path, exist_ok=True)
-
     # save args
     param.save()
+
 
     if os.path.isfile(os.path.join(gp_path, 'x_train.pt')):
         begin = False
@@ -174,6 +176,8 @@ def tuner(cv_type, meta_args, args, fold, epochs, batch, n):
             x_out, score = launch.train(torch.rand(batch, dim))
             y_train = score
             x_train = x_out
+
+        
         else:
             # run gaussian process
             x_test = torch.rand((n, dim))
