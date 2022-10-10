@@ -158,7 +158,7 @@ def critiquing(crit_args, mode):
     save_path = os.path.join('results', crit_args.test_name)
     os.makedirs(save_path, exist_ok=True)
 
-    with open(os.path.join(save_path, 'info.yml'), 'r') as f:
+    with open(os.path.join(crit_args.load_name, 'info.yml'), 'r') as f:
         yml = yaml.safe_load(f)
         for key in yml.keys():
             if key != "test_name":
@@ -166,6 +166,13 @@ def critiquing(crit_args, mode):
     # TODO: save these in yaml file
     model_args.learning_rel = 'learn'
     model_args.type_checking = 'yes'
+    save_dict = {}
+    for k, v in crit_args.items():
+        save_dict.update({k : str(v)})
+
+     with open(os.path.join(save_path, 'crit hps.yml'), 'w') as f:
+                yaml.dump(save_dict, f, sort_keys=False,
+                        default_flow_style=False)
 
     # load model
     model_path = os.path.join(crit_args.load_name, 'models/best_model.pt')
