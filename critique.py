@@ -209,6 +209,8 @@ def critiquing(crit_args, mode):
         for j, gt in enumerate(test_gt):
             # stack facts, either [-1, rel, tail] or [head, rel, -1]
             ht_facts = fact_stack(item_facts_head[gt], item_facts_tail[gt])
+            if ht_facts.shape[0] < crit_args.session_length:
+                continue
 
             # save initial rank and previous user crits 
             sub_track = np.empty(crit_args.session_length + 1)
@@ -232,13 +234,9 @@ def critiquing(crit_args, mode):
                 # select a crit (user action) and remove it from pool
                 #crit_node, crit_pair = select_critique(ht_facts, rec_facts, crit_args.critique_mode, pop_counts, items_facts_tail_gt)
 
-                try:
-                    crit, ht_facts = beta_crit(ht_facts) # crit in (node, rel) format
-                except:
-                    print(gt)
-                    print(ht_facts)
-                    print(ht_facts.shape)
-                    sys.exit()
+
+                crit, ht_facts = beta_crit(ht_facts) # crit in (node, rel) format
+
                 crit_rel_emb = rel_emb[crit[1]] 
 
                 # get d for p(user | d) bayesian update
