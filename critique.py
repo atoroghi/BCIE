@@ -167,7 +167,7 @@ def critiquing(crit_args, mode):
     model_args.learning_rel = 'learn'
     model_args.type_checking = 'yes'
     save_dict = {}
-    for k, v in vars(crit_args.Namespace()).items():
+    for k, v in vars(crit_args).items():
         save_dict.update({k : str(v)})
     with open(os.path.join(save_path, 'crit hps.yml'), 'w') as f:
         yaml.dump(save_dict, f, sort_keys=False,default_flow_style=False)
