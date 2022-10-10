@@ -133,6 +133,7 @@ def save_metrics_critiquing(rank_track, test_name, mode):
         # take this and plot it, look at it etc...
         y = np.mean(improv)
         np.save(os.path.join(save_path, 'stop_metric.npy'), y)
+        np.save(os.path.join(save_path, 'rank_track.npy'), rank_track)
         return y
 
     else:

@@ -155,7 +155,10 @@ def critiquing(crit_args, mode):
     etta = [crit_args.etta_0, crit_args.etta_1, crit_args.etta_2, crit_args.etta_3, crit_args.etta_4]
 
     # load model and get parameter from file
-    with open(os.path.join(crit_args.load_name, 'info.yml'), 'r') as f:
+    save_path = os.path.join('results', crit_args.test_name)
+    os.makedirs(save_path, exist_ok=True)
+
+    with open(os.path.join(save_path, 'info.yml'), 'r') as f:
         yml = yaml.safe_load(f)
         for key in yml.keys():
             if key != "test_name":

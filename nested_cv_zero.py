@@ -42,7 +42,7 @@ if __name__ == '__main__':
     # hp tuning parameters
     cv_type = 'crit' # train or crit
     folds = 5
-    epochs = 3
+    epochs = 15
     batch = 4
     n = 10000
 
