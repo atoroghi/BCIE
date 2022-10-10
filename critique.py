@@ -196,7 +196,7 @@ def critiquing(crit_args, mode):
 ##############################################################
 ##############################################################
     rank_track = None
-    for i, user in tqdm(enumerate(all_users)):
+    for i, user in enumerate(all_users):
         #if i == 10: break
 
         # get ids of top k recs, and all gt from user
@@ -260,6 +260,7 @@ def critiquing(crit_args, mode):
             st = np.expand_dims(sub_track, axis=0).astype(np.int32)
             if rank_track is None: rank_track = st
             else: rank_track = np.concatenate((rank_track, st))
+        print("no of processed users: {}".format(i))
 
 
     # save results
