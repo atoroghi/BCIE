@@ -3,7 +3,7 @@
 #SBATCH --nodes=1
 #SBATCH --gpus-per-node=1
 #SBATCH --exclusive
-#SBATCH --time=00:05:00
+#SBATCH --time=03:00:00
 #SBATCH --account=rrg-ssanner
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=16G
