@@ -18,7 +18,7 @@ class Params:
                 # covar [1e-5, 1]
                 'default_prec' : ([-5, 5], float, 10),
                 'user_prec' : ([-5, 5], float, 10),
-                #'z_prec' : ([-5, 5], float, 10),
+                'z_prec' : ([-5, 5], float, 10),
                 #'etta_0' : ([-5, 5], float, 10),
                 #'etta_1' : ([-5, 5], float, 10),
                 #'etta_2' : ([-5, 5], float, 10),

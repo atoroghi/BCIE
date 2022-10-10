@@ -43,8 +43,8 @@ def beta_update_indirect(update_info, sn, crit_args, model_args, device):
     h_z_f = item_prec_f @ torch.unsqueeze(item_mean_f, dim=1)
     h_z_inv = item_prec_inv @ torch.unsqueeze(item_mean_inv, dim=1)
 
-    h_u_updated_f = h_u_f - 0.5*D_r2 @ J_z_f_inv @ (h_z_f + D_r1 @ torch.unsqueeze(evidence_f, dim=1))
-    h_u_updated_inv = h_u_inv - 0.5*D_r2_inv @ J_z_inv_inv @ (h_z_inv + D_r1_inv @ torch.unsqueeze(evidence_inv, dim=1))
+    h_u_updated_f = h_u_f - D_r2 @ J_z_f_inv @ (h_z_f - D_r1 @ torch.unsqueeze(evidence_f, dim=1))
+    h_u_updated_inv = h_u_inv - D_r2_inv @ J_z_inv_inv @ (h_z_inv - D_r1_inv @ torch.unsqueeze(evidence_inv, dim=1))
 
     
     user_prec_updated_f = user_prec_f - D_r1 @ J_z_f_inv @ D_r1

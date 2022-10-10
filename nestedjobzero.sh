@@ -17,4 +17,4 @@
 source ~/projects/def-ssanner/mahab/project/ENV/bin/activate
 cd ~/projects/def-ssanner/mahab/project/BK-KGE
 #python3 nested_cv_zero.py -tune_name soft_best -reg_type gauss -loss_type softplus -reduce_type sum -optim_type adagrad -sample_type split_rev -init_type uniform -kg kg 
-python3 nested_cv_zero.py -evidence_type direct
+python3 nested_cv_zero.py -evidence_type indirect
