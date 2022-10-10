@@ -53,11 +53,11 @@ def fact_stack(head, tail):
     if head.shape[0] != 0 and tail.shape[0] != 0:
         head = np.hstack((-np.ones((head.shape[0], 1)), head))
         tail = np.hstack((tail, -np.ones((tail.shape[0], 1))))
-        return np.vstack((head, tail))
+        return np.vstack((head, tail)).astype(np.int32)
     if head.shape[0] != 0:
-        return np.hstack((-np.ones((head.shape[0], 1)), head))
+        return np.hstack((-np.ones((head.shape[0], 1)), head)).astype(np.int32)
     if head.shape[0] != 0:
-        return np.hstack((tail, -np.ones((tail.shape[0], 1))))
+        return np.hstack((tail, -np.ones((tail.shape[0], 1)))).astype(np.int32)
 
 # to numpy array
 def unpack_dic(dic, ids):
@@ -172,6 +172,7 @@ def critiquing(crit_args, mode):
     dataloader = DataLoader(model_args)
     (item_facts_head, item_facts_tail, obj2items, pop_counts) = get_dics(model_args)
 
+
     # make arrays with embeddings, and dict to map 
     rec_h, rec_t, id2index, index2id = get_array(model, dataloader, model_args, rec=True)
     item_emb = (rec_h, rec_t)
@@ -231,11 +232,7 @@ def critiquing(crit_args, mode):
                 # select a crit (user action) and remove it from pool
                 #crit_node, crit_pair = select_critique(ht_facts, rec_facts, crit_args.critique_mode, pop_counts, items_facts_tail_gt)
 
-                try:
-                    crit, ht_facts = beta_crit(ht_facts) # crit in (node, rel) format
-                except:
-                    print(gt)
-                    sys.exit()
+                crit, ht_facts = beta_crit(ht_facts) # crit in (node, rel) format
                 crit_rel_emb = rel_emb[crit[1]] 
 
                 # get d for p(user | d) bayesian update
