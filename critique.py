@@ -169,10 +169,8 @@ def critiquing(crit_args, mode):
     save_dict = {}
     for k, v in crit_args.items():
         save_dict.update({k : str(v)})
-
-     with open(os.path.join(save_path, 'crit hps.yml'), 'w') as f:
-                yaml.dump(save_dict, f, sort_keys=False,
-                        default_flow_style=False)
+    with open(os.path.join(save_path, 'crit hps.yml'), 'w') as f:
+        yaml.dump(save_dict, f, sort_keys=False,default_flow_style=False)
 
     # load model
     model_path = os.path.join(crit_args.load_name, 'models/best_model.pt')
