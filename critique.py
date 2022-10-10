@@ -236,6 +236,8 @@ def critiquing(crit_args, mode):
                     crit, ht_facts = beta_crit(ht_facts) # crit in (node, rel) format
                 except:
                     print(gt)
+                    print(ht_facts)
+                    print(ht_facts.shape)
                     sys.exit()
                 crit_rel_emb = rel_emb[crit[1]] 
 
