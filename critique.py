@@ -277,8 +277,6 @@ def critiquing(crit_args, mode):
         mrr = save_metrics_critiquing(rank_track, crit_args.test_name, mode)
         return mrr
     else:
-        print('not done')
-        sys.exit()
         save_metrics_critiquing(rank_track, args.test_name, mode)
 
 # TODO: just make this a function?? 

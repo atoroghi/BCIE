@@ -123,6 +123,8 @@ def save_metrics(rank_track, test_name, epoch, mode):
 
 def save_metrics_critiquing(rank_track, test_name, mode):
     # for validation loop
+
+    assert mode in ['val','test']
     if mode == 'val':
         save_path = os.path.join('results', test_name)
         os.makedirs(save_path, exist_ok=True)
@@ -137,7 +139,15 @@ def save_metrics_critiquing(rank_track, test_name, mode):
         return y
 
     else:
-        print('impliment this and make it nice!!!')
+        save_path = os.path.abspath(os.path.join(test_name, '..'))
+        os.makedirs(save_path, exist_ok=True)
+
+        for i in range(rank_track.shape[1]):
+            mrr = np.mean(rank_track[:,i])
+
+            with open(os.path.join(save_path, 'results.txt'), 'a') as f:
+                f.write('MRR at session{}: {}\n'.format(i, mrr))
+            
 
 # plot distribution of ranks and line plot of hits @ k per epoch
 def rank_plot(rank_track, test_name, epoch):

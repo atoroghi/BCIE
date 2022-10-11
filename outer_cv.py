@@ -20,16 +20,17 @@ def get_args():
     parser.add_argument('-learnin_rel', default='learn')
     return parser.parse_args() 
 
-def test_fold(tune_name, best_run, best_epoch):
+def test_fold(tune_name, best_run, best_epoch, cv_type):
     args = get_args()
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    path = os.path.join('results', tune_name, cv_type, 'fold_{}'.format(i), 'train_{}'.format(best_run))
 
     # get args from file
-    path = os.path.join('results', tune_name, 'fold_{}'.format(i), 'train_{}'.format(best_run))
-    with open(os.path.join(path, 'info.yml'), 'r') as f:
-        yml = yaml.safe_load(f)
-        for key in yml.keys():
-            setattr(args, key, yml[key])
+    if cv_type == 'train':
+        with open(os.path.join(path, 'info.yml'), 'r') as f:
+            yml = yaml.safe_load(f)
+            for key in yml.keys():
+                setattr(args, key, yml[key])
     
     dataloader = DataLoader(args)
 
@@ -41,14 +42,17 @@ def test_fold(tune_name, best_run, best_epoch):
 
     elif args.model_type == 'wrmf':
         wrmf(dataloader, args, 'test', device)
-    elif args.model_type == 'critiquing':
-        load_path = os.path.join(path, 'models', 'best_model.pt')
-        model = torch.load(load_path).to(device)
-        critiquing(model, args, 'test')
+    if cv_type == 'crit':
+        with open(os.path.join(path, 'crit hps.yml'), 'r') as f:
+            yml = yaml.safe_load(f)
+            for key in yml.keys():
+                setattr(args, key, yml[key])
+
+        critiquing(args, 'test')
 
 # get best model in nested cv
-def best_model(tune_name, fold):
-    path = 'results/{}/train/fold_{}'.format(tune_name, fold)
+def best_model(tune_name, cv_type, fold):
+    path = 'results/{}/{}/train/fold_{}'.format(tune_name, cv_type, fold)
     folders = os.listdir(path)
     folders = [f for f in folders if 'train' in f]
     folders = sorted(folders, key=natural_key)
@@ -70,14 +74,15 @@ def best_model(tune_name, fold):
     
 # TODO: clean this up, it's bad
 if __name__ == '__main__':
-    tune_name = 'gausslargenegnokg'
+    tune_name = 'gausstypereg'
     folds = 5
     opt = 'test'
+    cv_type = 'crit' # train or crit
 
     # search through all folders
     for i in range(folds):
         if opt == 'test':
-            (best_score, best_run, best_epoch) = best_model(tune_name, i)
+            (best_score, best_run, best_epoch) = best_model(tune_name,cv_type, i)
             print('best score: {}, best folder: {}, best epoch: {}'.format(best_score, best_run, best_epoch))
             test_fold(tune_name, best_run, best_epoch)
 
