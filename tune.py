@@ -28,7 +28,7 @@ class Params:
                 #'-tau_z_inv': ([-5, 5], float, 10),
             }
             if 'z_prec' in self.param_dict:
-                assert meta_args.edidence_type == 'indirect'
+                assert meta_args.evidence_type == 'indirect'
             if 'etta_0' in self.param_dict:
                 assert meta_args.update_type == 'laplace'
 
