@@ -205,7 +205,7 @@ def critiquing(crit_args, mode):
 ##############################################################
     rank_track = None
     for i, user in enumerate(all_users):
-        print(i)
+        #print(i)
         #if i == 10: break
 
         # get ids of top k recs, and all gt from user
