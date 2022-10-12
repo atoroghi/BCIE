@@ -23,36 +23,42 @@ def get_args():
 def test_fold(tune_name, best_run, best_epoch, cv_type):
     args = get_args()
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    path = os.path.join('results', tune_name, cv_type, 'fold_{}'.format(i), 'train_{}'.format(best_run))
 
-    # get args from file
+
+    # load model
     if cv_type == 'train':
+        path = os.path.join('results', tune_name, 'train', 'fold_{}'.format(i), 'train_{}'.format(best_run))
         with open(os.path.join(path, 'info.yml'), 'r') as f:
             yml = yaml.safe_load(f)
             for key in yml.keys():
                 setattr(args, key, yml[key])
-    
-    dataloader = DataLoader(args)
+        dataloader = DataLoader(args)
+        if args.model_type == 'simple':
+            load_path = os.path.join(path, 'models', 'best_model.pt')
+            model = torch.load(load_path).to(device)
+            test(model, dataloader, best_epoch, args, 'test')
 
-    # load model
-    if args.model_type == 'simple':
-        load_path = os.path.join(path, 'models', 'best_model.pt')
-        model = torch.load(load_path).to(device)
-        test(model, dataloader, best_epoch, args, 'test')
-
-    elif args.model_type == 'wrmf':
-        wrmf(dataloader, args, 'test', device)
+        elif args.model_type == 'wrmf':
+            wrmf(dataloader, args, 'test', device)
     if cv_type == 'crit':
+        path = os.path.join('results', tune_name, cv_type, 'fold_{}'.format(i), 'train_{}'.format(best_run))
         with open(os.path.join(path, 'crit hps.yml'), 'r') as f:
             yml = yaml.safe_load(f)
             for key in yml.keys():
-                setattr(args, key, yml[key])
+                #TODO: fix this, while saving the yml file the numerical values shouldn't be strings
+                if key == 'session_length':
+                    setattr(args, key, int(yml[key]))
+                else:
+                    try:
+                        setattr(args, key, float(yml[key]))
+                    except:
+                        setattr(args, key, yml[key])
 
         critiquing(args, 'test')
 
 # get best model in nested cv
 def best_model(tune_name, cv_type, fold):
-    path = 'results/{}/{}/train/fold_{}'.format(tune_name, cv_type, fold)
+    path = 'results/{}/{}/fold_{}'.format(tune_name, cv_type, fold)
     folders = os.listdir(path)
     folders = [f for f in folders if 'train' in f]
     folders = sorted(folders, key=natural_key)
@@ -84,7 +90,7 @@ if __name__ == '__main__':
         if opt == 'test':
             (best_score, best_run, best_epoch) = best_model(tune_name,cv_type, i)
             print('best score: {}, best folder: {}, best epoch: {}'.format(best_score, best_run, best_epoch))
-            test_fold(tune_name, best_run, best_epoch)
+            test_fold(tune_name, best_run, best_epoch, cv_type)
 
         elif opt == 'hp':
             load_path = os.path.join('gp', tune_name, 'fold_{}'.format(i))
