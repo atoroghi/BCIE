@@ -36,7 +36,7 @@ def get_args_critique():
 
     # TODO: put in asserts
     # single vs mult
-    parser.add_argument('-critique_target', default='item', type=str, help='object or item')
+    parser.add_argument('-critique_target', default='multi', type=str, help='single or multi')
 
     # single only
     parser.add_argument('-evidence_type', default='indirect', type=str, help='direct or indirect')
@@ -119,22 +119,23 @@ def get_d(model, crit, rel_emb, obj2items, crit_args, model_args):
     (crit_node, crit_rel) = crit
     
     # single embedding of crit node
-    if crit_args.critique_target == 'object':
+    if crit_args.critique_target == 'single':
         node_emb = get_emb(crit_node, model)
         d_f = rel_emb[0,0] * node_emb[1]
         d_inv = rel_emb[0,1] * node_emb[0]
 
     # TODO: clean this up.. too many lines!
     # make stack of likes * items related to feedback node
-    elif crit_args.critique_target == 'item':
-        liked_items_list = obj2items[crit_node]
+    elif crit_args.critique_target == 'multi':
+        liked_items = obj2items[crit_node]
+        liked_items = np.random.permutation(liked_items)
 
         # get and stack things
         liked_embeddings_list_f = []
         liked_embeddings_list_inv = []
+
         # TODO: this should be random or something...
-        # Armin: this is not changed yet right? shall I change it?
-        for x in liked_items_list[:10]:
+        for x in liked_items[:10]:
             liked_embeddings_list_f.append(get_emb(torch.tensor(x),model)[1])
             liked_embeddings_list_inv.append(get_emb(torch.tensor(x),model)[0])
         liked_embeddings_f = torch.stack(liked_embeddings_list_f, dim=0)
@@ -205,8 +206,7 @@ def critiquing(crit_args, mode):
 ##############################################################
     rank_track = None
     for i, user in enumerate(all_users):
-        #print(i)
-        #if i == 10: break
+        if i == 10: break
 
         # get ids of top k recs, and all gt from user
         user_emb = get_emb(user, model)
@@ -218,8 +218,7 @@ def critiquing(crit_args, mode):
         for j, gt in enumerate(test_gt):
             # stack facts, either [-1, rel, tail] or [head, rel, -1]
             ht_facts = fact_stack(item_facts_head[gt], item_facts_tail[gt])
-            if ht_facts.shape[0] < crit_args.session_length:
-                continue
+            if ht_facts.shape[0] < crit_args.session_length: continue
 
             # save initial rank and previous user crits 
             sub_track = np.empty(crit_args.session_length + 1)
@@ -230,34 +229,27 @@ def critiquing(crit_args, mode):
             ##############################################################
             ##############################################################
                 if sn == 0: 
-
                     update_info = UpdateInfo(user_emb, etta, crit_args, model_args, device, likes_emb=likes_rel)
 
                 # TODO: move this somewhere else, not important...
                 # get all facts related to top n movies rec (from model)
-                if crit_args.critique_target == 'item':
-                    rec_facts_head = unpack_dic(item_facts_head, rec_ids)
-                    rec_facts_tail = unpack_dic(item_facts_tail, rec_ids)
-                    rec_facts = np.vstack([rec_facts_head, rec_facts_tail])
+                #rec_facts_head = unpack_dic(item_facts_head, rec_ids)
+                #rec_facts_tail = unpack_dic(item_facts_tail, rec_ids)
+                #rec_facts = np.vstack([rec_facts_head, rec_facts_tail])
 
                 # select a crit (user action) and remove it from pool
-                #crit_node, crit_pair = select_critique(ht_facts, rec_facts, crit_args.critique_mode, pop_counts, items_facts_tail_gt)
-
-
                 crit, ht_facts = beta_crit(ht_facts) # crit in (node, rel) format
-
                 crit_rel_emb = rel_emb[crit[1]] 
 
                 # get d for p(user | d) bayesian update
                 d = get_d(model, crit, rel_emb, obj2items, crit_args, model_args)
                 update_info.store(d=d, crit_rel_emb=crit_rel_emb)
+
+                # perform update
                 if crit_args.evidence_type == 'direct':
                     beta_update(update_info, sn, crit_args, model_args, device)
                 if crit_args.evidence_type == 'indirect':
                     beta_update_indirect(update_info, sn, crit_args, model_args, device)
-
-                # fast updater
-
 
                 # track rank in training
                 new_user_emb, _ = update_info.get_priorinfo()

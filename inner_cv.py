@@ -29,8 +29,8 @@ def get_metacrit_args():
     parser = argparse.ArgumentParser()
     # other hyper-params
     parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
-    parser.add_argument('-critique_target', default='object', type=str, help='object or item')
-    parser.add_argument('-tune_name', default='dev', type=str, help="tuner process name")
+    parser.add_argument('-critique_target', default='multi', type=str, help='single or multi')
+    parser.add_argument('-tune_name', default='gauss', type=str, help="tuner process name")
     parser.add_argument('-update_type', default='gaussian', type=str, help='laplace or gaussian')
     parser.add_argument('-critique_mode', default='random', type=str, help='random or pop or diff')
 
@@ -46,6 +46,7 @@ if __name__ == '__main__':
     batch = 4
     n = 10000
 
+    # TODO: more asserts for all params
     assert cv_type in ['crit', 'train']
 
     # TODO: rename these to be better

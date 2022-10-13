@@ -7,10 +7,11 @@ import scipy.linalg as sp
 import sys
 
 # fast gaussian update
+# TODO: this is wrong, update tn
 def beta_update(update_info, sn, crit_args, model_args, device):
-	n = update_info.d_f.shape[0] # number of update samples
-	(f, inv), prec = update_info.get_sampleinfo()
+	(f, inv), prec, n = update_info.get_sampleinfo()
 	(f0, inv0), (prec_f0, prec_inv0) = update_info.get_priorinfo()
+	#print(f.shape, f0.shape, n)
 
 	# update forward and backward, new priors for user
 	out_f = torch.inverse(prec_f0 + n*prec) @ (prec_f0@f0 + n*prec@f)
@@ -22,14 +23,13 @@ def beta_update(update_info, sn, crit_args, model_args, device):
 	update_info.store(user_emb=(out_f, out_inv), user_prec=(out_prec_f, out_prec_inv))
 
 def beta_update_indirect(update_info, sn, crit_args, model_args, device):
-
-    #(evidence_mean_f, evidence_mean_inv), (evidence_prec_f, evidence_prec_inv) = update_info.get_mean_prec()
     (user_mean_f, user_mean_inv), (user_prec_f, user_prec_inv) = update_info.get_priorinfo()
     (likes_emb_f, likes_emb_inv) = (update_info.likes_emb_f , update_info.likes_emb_inv)
     (evidence_f, evidence_inv), _ = update_info.get_sampleinfo()
     (rel_emb_f, rel_emb_inv) = (update_info.crit_rel_emb_f, update_info.crit_rel_emb_inv)
     (item_mean_f, item_mean_inv) = (update_info.z_mean, update_info.z_mean)
     (item_prec_f, item_prec_inv) = (update_info.z_prec, update_info.z_prec)
+
     user_mean_f_T = torch.unsqueeze(user_mean_f, dim=1)
     user_mean_inv_T = torch.unsqueeze(user_mean_inv, dim=1)
     h_u_f = user_prec_f @ user_mean_f_T
@@ -51,12 +51,9 @@ def beta_update_indirect(update_info, sn, crit_args, model_args, device):
     user_prec_updated_inv = user_prec_inv - D_r1_inv @ J_z_inv_inv @ D_r1_inv
 
     user_mean_updated_f = torch.inverse(user_prec_updated_f) @ h_u_updated_f
-
     user_mean_updated_inv = torch.inverse(user_prec_updated_inv) @ h_u_updated_inv
-    update_info.store(user_emb=(torch.squeeze(user_mean_updated_f,dim=1), torch.squeeze(user_mean_updated_inv,dim=1)), user_prec=(user_prec_updated_f, user_prec_updated_inv))
+    update_info.store(user_emb=(torch.squeeze(user_mean_updated_f, dim=1), torch.squeeze(user_mean_updated_inv, dim=1)), user_prec=(user_prec_updated_f, user_prec_updated_inv))
     
-
-
 # TODO: no comments or explanation of how this is supposed to work
 class Updater:
 	def __init__(self, X, y, mu_prior, tau_prior, crit_args, model_args, device, etta):

@@ -92,6 +92,8 @@ if __name__ == '__main__':
             print('best score: {}, best folder: {}, best epoch: {}'.format(best_score, best_run, best_epoch))
             test_fold(tune_name, best_run, best_epoch, cv_type)
 
+            sys.exit()
+
         elif opt == 'hp':
             load_path = os.path.join('gp', tune_name, 'fold_{}'.format(i))
             hp_ = torch.load(os.path.join(load_path, 'x_train.pt')).numpy()

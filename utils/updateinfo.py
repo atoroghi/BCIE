@@ -10,11 +10,12 @@ def stack_(x):
 class UpdateInfo:
     def __init__(self, user_emb, etta, crit_args, model_args, device, crit_rel_emb=None, likes_emb=None):
         self.etta = etta
+        self.crit_rel_emb_f = None
+        self.crit_rel_emb_inv = None
         
         self.d_f = None
         self.d_inv = None
-        self.crit_rel_emb_f = None
-        self.crit_rel_emb_inv = None
+        self.n = None # update amount, ie. size of last d that was appended 
 
         if likes_emb is not None:
             #self.likes_emb_f = torch.unsqueeze(likes_emb[0], axis=1)
@@ -37,7 +38,7 @@ class UpdateInfo:
 
     # get last element (these are being stored and saved for tracking)
     def get_sampleinfo(self):
-        return (self.d_f[-1], self.d_inv[-1]), self.likelihood_prec
+        return (torch.mean(self.d_f[-self.n:], axis=0), torch.mean(self.d_inv[-self.n:], axis=0)), self.likelihood_prec, self.n
 
     def get_priorinfo(self):
         return (self.user_emb_f[-1], self.user_emb_inv[-1]), (self.user_prec_f[-1], self.user_prec_inv[-1])
@@ -60,6 +61,7 @@ class UpdateInfo:
             else:                
                 self.d_f = torch.cat((self.d_f, d[0]))
                 self.d_inv = torch.cat((self.d_inv, d[1]))
+            self.n = d[0].shape[0]
    
         if crit_rel_emb is not None:
             if self.crit_rel_emb_f is None:
