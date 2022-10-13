@@ -130,7 +130,7 @@ def save_metrics_critiquing(rank_track, test_name, mode):
         os.makedirs(save_path, exist_ok=True)
 
         # reduce track, save single number in stop_metric.npy
-        improv = rank_track[:, 0] - rank_track[:, -1]
+        improv = rank_track[:, -1] - rank_track[:, 0]
         
         # take this and plot it, look at it etc...
         y = np.mean(improv)
