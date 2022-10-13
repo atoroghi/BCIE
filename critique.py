@@ -31,6 +31,7 @@ def get_args_critique():
     parser.add_argument('-etta_2', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-etta_3', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-etta_4', default=1.0, type=float, help='Precision for Laplace Approximation')
+    parser.add_argument('-multi_k', default=10, type=int, help='number of samples for multi type update')
     parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
     parser.add_argument('-num_users', default=100, type=int, help='number of users')
 
@@ -135,7 +136,7 @@ def get_d(model, crit, rel_emb, obj2items, crit_args, model_args):
         liked_embeddings_list_inv = []
 
         # TODO: this should be random or something...
-        for x in liked_items[:10]:
+        for x in liked_items[:crit_args.multi_k]:
             liked_embeddings_list_f.append(get_emb(torch.tensor(x),model)[1])
             liked_embeddings_list_inv.append(get_emb(torch.tensor(x),model)[0])
         liked_embeddings_f = torch.stack(liked_embeddings_list_f, dim=0)

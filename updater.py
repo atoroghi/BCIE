@@ -11,7 +11,7 @@ import sys
 def beta_update(update_info, sn, crit_args, model_args, device):
 	(f, inv), prec, n = update_info.get_sampleinfo()
 	(f0, inv0), (prec_f0, prec_inv0) = update_info.get_priorinfo()
-	#print(f.shape, f0.shape, n)
+	print(f.shape, f0.shape, n)
 
 	# update forward and backward, new priors for user
 	out_f = torch.inverse(prec_f0 + n*prec) @ (prec_f0@f0 + n*prec@f)

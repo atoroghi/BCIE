@@ -18,6 +18,7 @@ class Params:
                 # covar [1e-5, 1]
                 'default_prec' : ([-5, 5], float, 10),
                 'user_prec' : ([-5, 5], float, 10),
+                'multi_k' : ([1, 100], int, None)
                 #'z_prec' : ([-5, 5], float, 10),
                 #'etta_0' : ([-5, 5], float, 10),
                 #'etta_1' : ([-5, 5], float, 10),
@@ -31,6 +32,8 @@ class Params:
                 assert meta_args.evidence_type == 'indirect'
             if 'etta_0' in self.param_dict:
                 assert meta_args.update_type == 'laplace'
+            if 'multi_k' in self.param_dict:
+                assert meta_args.critique_target == 'multi'
 
         elif cv_type == 'train':
             if args.model_type == 'svd':
