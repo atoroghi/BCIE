@@ -223,7 +223,8 @@ def critiquing(crit_args, mode):
 
             # save initial rank and previous user crits 
             sub_track = np.empty(crit_args.session_length + 1)
-            sub_track[0] = 1 / get_rank(ranked, [gt], all_gt, id2index) 
+            rank = get_rank(ranked, [gt], all_gt, id2index) 
+            sub_track[0] = 1 / rank
 
             # a few sessions for each user 
             for sn in range(crit_args.session_length):
