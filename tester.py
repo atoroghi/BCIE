@@ -3,9 +3,9 @@ import numpy as np
 from utils.plots import RankTrack, rank_plot, save_metrics
 
 # make array of all items to suggest (rec or all possible head tail)
-def get_array(model, dataloader, args, rec):
+def get_array(model, dataloader, args, device, rec):
     if rec:
-        all_items = torch.tensor(dataloader.rec_train[:,2]).to('cuda')
+        all_items = torch.tensor(dataloader.rec_train[:,2]).to(device)
         items = torch.unique(all_items, sorted=False)
     else:
         print('error, kg tester not implimented')
@@ -142,10 +142,10 @@ def get_Rprec(ranked, test_gt, train_gt, id2index):
     return Rprec
 
 # get embedding for a head or tail id
-def get_emb(test_item, model):
+def get_emb(test_item, model, device):
     # get embedding for test item
     with torch.no_grad():
-        t = torch.tensor([test_item]).long().to('cuda')
+        t = torch.tensor([test_item]).long().to(device)
         head = model.ent_h_embs(t)
         tail = model.ent_t_embs(t)
         test_emb = (head, tail)

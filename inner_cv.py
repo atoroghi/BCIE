@@ -28,9 +28,9 @@ def get_metatrain_args():
 def get_metacrit_args():
     parser = argparse.ArgumentParser()
     # other hyper-params
-    parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
-    parser.add_argument('-critique_target', default='multi', type=str, help='single or multi')
-    parser.add_argument('-tune_name', default='gauss', type=str, help="tuner process name")
+    parser.add_argument('-evidence_type', default='indirect', type=str, help='direct or indirect')
+    parser.add_argument('-critique_target', default='single', type=str, help='single or multi')
+    parser.add_argument('-tune_name', default='base', type=str, help="tuner process name")
     parser.add_argument('-update_type', default='gaussian', type=str, help='laplace or gaussian')
     parser.add_argument('-critique_mode', default='random', type=str, help='random or pop or diff')
 

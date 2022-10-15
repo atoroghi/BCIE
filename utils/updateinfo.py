@@ -1,5 +1,5 @@
-from os import X_OK
 import sys, torch
+import numpy as np
 
 def stack_(x):
     x_ = torch.stack((x[0], x[1]))
@@ -9,7 +9,9 @@ def stack_(x):
 # INFO: this is gaussian
 class UpdateInfo:
     def __init__(self, user_emb, etta, crit_args, model_args, device, crit_rel_emb=None, likes_emb=None):
-        self.etta = etta
+        self.etta = 0.5 * np.array([1, 1, 1, 1, 1])
+        #self.etta = etta
+        
         self.crit_rel_emb_f = None
         self.crit_rel_emb_inv = None
         
@@ -27,12 +29,15 @@ class UpdateInfo:
         self.user_emb_inv = user_emb[1]
 
         # p(u)
-        prec = crit_args.user_prec * torch.eye(model_args.emb_dim).to(device)
+        print('hard coding prior mag(s), n = 1: this must be fixed!')
+        prec = 1 * torch.eye(model_args.emb_dim).to(device)
+        #prec = crit_args.user_prec * torch.eye(model_args.emb_dim).to(device)
         self.user_prec_f = torch.unsqueeze(prec, axis=0) 
         self.user_prec_inv = torch.unsqueeze(prec, axis=0)
         
         # p(d | u)
-        self.likelihood_prec = crit_args.default_prec * torch.eye(model_args.emb_dim).to(device)
+        self.likelihood_prec = 0.5 * torch.eye(model_args.emb_dim).to(device)
+        #self.likelihood_prec = crit_args.default_prec * torch.eye(model_args.emb_dim).to(device)
         self.z_mean = torch.zeros(model_args.emb_dim).to(device)
         self.z_prec = crit_args.z_prec * torch.eye(model_args.emb_dim).to(device)
 

@@ -11,7 +11,7 @@ import sys
 def beta_update(update_info, sn, crit_args, model_args, device):
 	(f, inv), prec, n = update_info.get_sampleinfo()
 	(f0, inv0), (prec_f0, prec_inv0) = update_info.get_priorinfo()
-	print(f.shape, f0.shape, n)
+	n = 1
 
 	# update forward and backward, new priors for user
 	out_f = torch.inverse(prec_f0 + n*prec) @ (prec_f0@f0 + n*prec@f)
@@ -19,13 +19,15 @@ def beta_update(update_info, sn, crit_args, model_args, device):
 	out_prec_f = prec_f0 + n*prec
 	out_prec_inv = prec_inv0 + n*prec
 
+	print('difference: {}'.format(torch.linalg.norm(f0 - out_f)))
+
 	# store new user prior
 	update_info.store(user_emb=(out_f, out_inv), user_prec=(out_prec_f, out_prec_inv))
 
 def beta_update_indirect(update_info, sn, crit_args, model_args, device):
     (user_mean_f, user_mean_inv), (user_prec_f, user_prec_inv) = update_info.get_priorinfo()
     (likes_emb_f, likes_emb_inv) = (update_info.likes_emb_f , update_info.likes_emb_inv)
-    (evidence_f, evidence_inv), _ = update_info.get_sampleinfo()
+    (evidence_f, evidence_inv), _, _ = update_info.get_sampleinfo()
     (rel_emb_f, rel_emb_inv) = (update_info.crit_rel_emb_f, update_info.crit_rel_emb_inv)
     (item_mean_f, item_mean_inv) = (update_info.z_mean, update_info.z_mean)
     (item_prec_f, item_prec_inv) = (update_info.z_prec, update_info.z_prec)

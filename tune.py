@@ -18,7 +18,7 @@ class Params:
                 # covar [1e-5, 1]
                 'default_prec' : ([-5, 5], float, 10),
                 'user_prec' : ([-5, 5], float, 10),
-                'multi_k' : ([1, 100], int, None)
+                #'multi_k' : ([1, 100], int, None)
                 #'z_prec' : ([-5, 5], float, 10),
                 #'etta_0' : ([-5, 5], float, 10),
                 #'etta_1' : ([-5, 5], float, 10),
@@ -28,6 +28,8 @@ class Params:
                 #'-tau_z_f': ([-5, 5], float, 10),
                 #'-tau_z_inv': ([-5, 5], float, 10),
             }
+
+            # TODO: better asserts to automatically set hps
             if 'z_prec' in self.param_dict:
                 assert meta_args.evidence_type == 'indirect'
             if 'etta_0' in self.param_dict:
@@ -102,7 +104,6 @@ class Launch:
         path = os.path.join('results', self.tune_name, self.cv_type, 'fold_{}'.format(self.fold_num))
         os.makedirs(path, exist_ok=True)
 
-
         subs = []
         for i in range(p.shape[0]): 
             # convert gp [0, 1] to proper parameter vals
@@ -147,6 +148,8 @@ def tuner(cv_type, meta_args, args, fold, epochs, batch, n):
 
     if cv_type == 'crit':
         (best_score, best_run, best_epoch) = best_model(meta_args.tune_name, 'train', fold)
+        print('hard coding best run: this must be fixed!')
+        best_run = 59
         args.load_name = os.path.join('results', meta_args.tune_name, 'train', 'fold_{}'.format(fold), 'train_{}'.format(best_run))
 
     # build important classes
@@ -181,7 +184,6 @@ def tuner(cv_type, meta_args, args, fold, epochs, batch, n):
             x_out, score = launch.train(torch.rand(batch, dim))
             y_train = score
             x_train = x_out
-
         
         else:
             # run gaussian process
