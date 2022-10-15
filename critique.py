@@ -31,12 +31,13 @@ def get_args_critique():
     parser.add_argument('-etta_2', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-etta_3', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-etta_4', default=1.0, type=float, help='Precision for Laplace Approximation')
+    parser.add_argument('-multi_k', default=10, type=int, help='number of samples for multi type update')
     parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
     parser.add_argument('-num_users', default=100, type=int, help='number of users')
 
     # TODO: put in asserts
     # single vs mult
-    parser.add_argument('-critique_target', default='item', type=str, help='object or item')
+    parser.add_argument('-critique_target', default='multi', type=str, help='single or multi')
 
     # single only
     parser.add_argument('-evidence_type', default='indirect', type=str, help='direct or indirect')
@@ -68,10 +69,10 @@ def unpack_dic(dic, ids):
         else: array = np.vstack((array, out))
     return array
 
-def stack_emb(get_emb, model, items): # currying would be useful here
+def stack_emb(get_emb, model, items, device): # currying would be useful here
     # TODO: this should be random....
     for i, x in enumerate(items[:10]):
-        out = get_emb(torch.tensor(x), model)
+        out = get_emb(torch.tensor(x), model, device)
         if i == 0:
             array_f = out[0]
             array_inv = out[0]
@@ -115,35 +116,37 @@ class Priors:
         self.z_mean_inv = np.zeros(model_args.emb_dim)
 
 # get d embedding, used for p(u | d) baysian update
-def get_d(model, crit, rel_emb, obj2items, crit_args, model_args):
+def get_d(model, crit, rel_emb, obj2items, crit_args, model_args, device):
     (crit_node, crit_rel) = crit
+    rel_emb = rel_emb[crit_rel]
     
     # single embedding of crit node
-    if crit_args.critique_target == 'object':
-        node_emb = get_emb(crit_node, model)
-        d_f = rel_emb[0,0] * node_emb[1]
-        d_inv = rel_emb[0,1] * node_emb[0]
+    if crit_args.critique_target == 'single':
+        node_emb = get_emb(crit_node, model, device)
+        d_f = rel_emb[0] * node_emb[1]
+        d_inv = rel_emb[1] * node_emb[0]
 
     # TODO: clean this up.. too many lines!
     # make stack of likes * items related to feedback node
-    elif crit_args.critique_target == 'item':
-        liked_items_list = obj2items[crit_node]
+    elif crit_args.critique_target == 'multi':
+        liked_items = obj2items[crit_node]
+        liked_items = np.random.permutation(liked_items)
 
         # get and stack things
         liked_embeddings_list_f = []
         liked_embeddings_list_inv = []
+
         # TODO: this should be random or something...
-        # Armin: this is not changed yet right? shall I change it?
-        for x in liked_items_list[:10]:
-            liked_embeddings_list_f.append(get_emb(torch.tensor(x),model)[1])
-            liked_embeddings_list_inv.append(get_emb(torch.tensor(x),model)[0])
+        for x in liked_items[:crit_args.multi_k]:
+            liked_embeddings_list_f.append(get_emb(torch.tensor(x), model, device)[1])
+            liked_embeddings_list_inv.append(get_emb(torch.tensor(x), model, device)[0])
         liked_embeddings_f = torch.stack(liked_embeddings_list_f, dim=0)
         liked_embeddings_inv = torch.stack(liked_embeddings_list_inv, dim=0)
         true_object_embedding_f = torch.reshape(liked_embeddings_f,(liked_embeddings_f.shape[0], model_args.emb_dim))
         true_object_embedding_inv = torch.reshape(liked_embeddings_inv,(liked_embeddings_inv.shape[0], model_args.emb_dim))
     
-        d_f = rel_emb[0,0] * true_object_embedding_f
-        d_inv = rel_emb[0,1] * true_object_embedding_inv
+        d_f = rel_emb[0] * true_object_embedding_f
+        d_inv = rel_emb[1] * true_object_embedding_inv
     return (d_f, d_inv)
 
 # main loop
@@ -180,9 +183,8 @@ def critiquing(crit_args, mode):
     dataloader = DataLoader(model_args)
     (item_facts_head, item_facts_tail, obj2items, pop_counts) = get_dics(model_args)
 
-
     # make arrays with embeddings, and dict to map 
-    rec_h, rec_t, id2index, index2id = get_array(model, dataloader, model_args, rec=True)
+    rec_h, rec_t, id2index, index2id = get_array(model, dataloader, model_args, device, rec=True)
     item_emb = (rec_h, rec_t)
 
     # get all relationships
@@ -205,11 +207,10 @@ def critiquing(crit_args, mode):
 ##############################################################
     rank_track = None
     for i, user in enumerate(all_users):
-        #print(i)
-        #if i == 10: break
+        if i == 10: break
 
         # get ids of top k recs, and all gt from user
-        user_emb = get_emb(user, model)
+        user_emb = get_emb(user, model, device)
         ranked = get_scores(user_emb, rel_emb[0], item_emb, dataloader, model_args.learning_rel)
         rec_ids = [index2id[int(x)] for x in ranked[:20]]
         test_gt, all_gt, train_gt = get_gt.get(user)
@@ -218,8 +219,7 @@ def critiquing(crit_args, mode):
         for j, gt in enumerate(test_gt):
             # stack facts, either [-1, rel, tail] or [head, rel, -1]
             ht_facts = fact_stack(item_facts_head[gt], item_facts_tail[gt])
-            if ht_facts.shape[0] < crit_args.session_length:
-                continue
+            if ht_facts.shape[0] < crit_args.session_length: continue
 
             # save initial rank and previous user crits 
             sub_track = np.empty(crit_args.session_length + 1)
@@ -231,47 +231,51 @@ def critiquing(crit_args, mode):
             ##############################################################
             ##############################################################
                 if sn == 0: 
-
                     update_info = UpdateInfo(user_emb, etta, crit_args, model_args, device, likes_emb=likes_rel)
 
                 # TODO: move this somewhere else, not important...
                 # get all facts related to top n movies rec (from model)
-                if crit_args.critique_target == 'item':
-                    rec_facts_head = unpack_dic(item_facts_head, rec_ids)
-                    rec_facts_tail = unpack_dic(item_facts_tail, rec_ids)
-                    rec_facts = np.vstack([rec_facts_head, rec_facts_tail])
+                #rec_facts_head = unpack_dic(item_facts_head, rec_ids)
+                #rec_facts_tail = unpack_dic(item_facts_tail, rec_ids)
+                #rec_facts = np.vstack([rec_facts_head, rec_facts_tail])
 
+                # TODO: maybe just convert crit to embedding right here?
                 # select a crit (user action) and remove it from pool
-                #crit_node, crit_pair = select_critique(ht_facts, rec_facts, crit_args.critique_mode, pop_counts, items_facts_tail_gt)
-
-
                 crit, ht_facts = beta_crit(ht_facts) # crit in (node, rel) format
-
-                crit_rel_emb = rel_emb[crit[1]] 
+                crit = (gt, 0)
 
                 # get d for p(user | d) bayesian update
-                d = get_d(model, crit, rel_emb, obj2items, crit_args, model_args)
-                update_info.store(d=d, crit_rel_emb=crit_rel_emb)
+                d = get_d(model, crit, rel_emb, obj2items, crit_args, model_args, device)
+                #d = get_d(model, crit, rel_emb, obj2items, crit_args, model_args, device)
+                update_info.store(d=d, crit_rel_emb=rel_emb[crit[1]])
+
+                # perform update
                 if crit_args.evidence_type == 'direct':
                     beta_update(update_info, sn, crit_args, model_args, device)
                 if crit_args.evidence_type == 'indirect':
                     beta_update_indirect(update_info, sn, crit_args, model_args, device)
 
-                # fast updater
-
-
                 # track rank in training
                 new_user_emb, _ = update_info.get_priorinfo()
                 ranked = get_scores(new_user_emb, rel_emb[0], item_emb, dataloader, model_args.learning_rel)
                 rank = get_rank(ranked, [gt], all_gt, id2index)
-                sub_track[sn + 1] = 1 / rank
+                sub_track[sn + 1] = 1 / (rank + 1)
 
             # update w new data
-            st = np.expand_dims(sub_track, axis=0).astype(np.int32)
+            st = np.expand_dims(sub_track, axis=0)#.astype(np.int32)
             if rank_track is None: rank_track = st
             else: rank_track = np.concatenate((rank_track, st))
-        print("no of processed users: {}".format(i))
+       
+        # plotting
+        fig = plt.figure(figsize=(10,5))
+        ax1 = fig.add_subplot(121)  
 
+        m = np.mean(rank_track, axis=0)
+        std = np.std(rank_track, axis=0)
+        x_ = np.arange(m.shape[0])
+        ax1.errorbar(x_, m, std)  
+        plt.show()
+        sys.exit()
 
     # save results
     if mode == 'val':
