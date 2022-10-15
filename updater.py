@@ -27,7 +27,9 @@ def beta_update(update_info, sn, crit_args, model_args, device):
 def beta_update_indirect(update_info, sn, crit_args, model_args, device):
     (user_mean_f, user_mean_inv), (user_prec_f, user_prec_inv) = update_info.get_priorinfo()
     (likes_emb_f, likes_emb_inv) = (update_info.likes_emb_f , update_info.likes_emb_inv)
-    (evidence_f, evidence_inv), _, _ = update_info.get_sampleinfo()
+
+    (evidence_f, evidence_inv), prec_evidence = update_info.get_sampleinfo()
+
     (rel_emb_f, rel_emb_inv) = (update_info.crit_rel_emb_f, update_info.crit_rel_emb_inv)
     (item_mean_f, item_mean_inv) = (update_info.z_mean, update_info.z_mean)
     (item_prec_f, item_prec_inv) = (update_info.z_prec, update_info.z_prec)
@@ -40,8 +42,18 @@ def beta_update_indirect(update_info, sn, crit_args, model_args, device):
     D_r1_inv = torch.diag(rel_emb_inv)
     D_r2 = torch.diag(likes_emb_f)
     D_r2_inv = torch.diag(likes_emb_inv)
-    J_z_f_inv = torch.inverse(item_prec_f).to(device)
-    J_z_inv_inv = torch.inverse(item_prec_inv).to(device)
+	## the second term added
+
+	prec_evidence_inv = torch.inverse(prec_evidence).to(device)
+
+	J_z_f = (item_prec_f).to(device) - D_r1 @ prec_evidence_inv @ D_r1
+	J_z_inv = (item_prec_inv).to(device) - D_r1_inv @ prec_evidence_inv @ D_r1_inv
+
+	#h_z_f = item_prec_f @ torch.unsqueeze(item_mean_f, dim=1) - D_r1 @ evidence_f
+	#h_z_inv = item_prec_inv @ torch.unsqueeze(item_mean_inv, dim=1) - D_r1 @ evidence_inv
+
+    J_z_f_inv = torch.inverse(J_z_f).to(device)
+    J_z_inv_inv = torch.inverse(J_z_inv).to(device)
     h_z_f = item_prec_f @ torch.unsqueeze(item_mean_f, dim=1)
     h_z_inv = item_prec_inv @ torch.unsqueeze(item_mean_inv, dim=1)
 
