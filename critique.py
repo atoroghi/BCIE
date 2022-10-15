@@ -274,7 +274,10 @@ def critiquing(crit_args, mode):
         std = np.std(rank_track, axis=0)
         x_ = np.arange(m.shape[0])
         ax1.errorbar(x_, m, std)  
-        plt.show()
+
+        plt.tight_layout() 
+        plt.savefig(os.path.join(save_path, 'debug.jpg'))
+        #plt.show()
         sys.exit()
 
     # save results
