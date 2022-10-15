@@ -36,7 +36,7 @@ def beta_update_indirect(update_info, sn, crit_args, model_args, device):
 
     user_mean_f_T = torch.unsqueeze(user_mean_f, dim=1)
     user_mean_inv_T = torch.unsqueeze(user_mean_inv, dim=1)
-    h_u_f = user_prec_f @ user_mean_f_T
+	h_u_f = user_prec_f @ user_mean_f_T
     h_u_inv = user_prec_inv @ user_mean_inv_T
     D_r1 = torch.diag(rel_emb_f)
     D_r1_inv = torch.diag(rel_emb_inv)
@@ -52,16 +52,16 @@ def beta_update_indirect(update_info, sn, crit_args, model_args, device):
 	#h_z_f = item_prec_f @ torch.unsqueeze(item_mean_f, dim=1) - D_r1 @ evidence_f
 	#h_z_inv = item_prec_inv @ torch.unsqueeze(item_mean_inv, dim=1) - D_r1 @ evidence_inv
 
-    J_z_f_inv = torch.inverse(J_z_f).to(device)
-    J_z_inv_inv = torch.inverse(J_z_inv).to(device)
-    h_z_f = item_prec_f @ torch.unsqueeze(item_mean_f, dim=1)
-    h_z_inv = item_prec_inv @ torch.unsqueeze(item_mean_inv, dim=1)
+	J_z_f_inv = torch.inverse(J_z_f).to(device)
+	J_z_inv_inv = torch.inverse(J_z_inv).to(device)
+	h_z_f = item_prec_f @ torch.unsqueeze(item_mean_f, dim=1)
+	h_z_inv = item_prec_inv @ torch.unsqueeze(item_mean_inv, dim=1)
 
-    h_u_updated_f = h_u_f - D_r2 @ J_z_f_inv @ (h_z_f - D_r1 @ torch.unsqueeze(evidence_f, dim=1))
-    h_u_updated_inv = h_u_inv - D_r2_inv @ J_z_inv_inv @ (h_z_inv - D_r1_inv @ torch.unsqueeze(evidence_inv, dim=1))
+	h_u_updated_f = h_u_f - D_r2 @ J_z_f_inv @ (h_z_f - D_r1 @ torch.unsqueeze(evidence_f, dim=1))
+	h_u_updated_inv = h_u_inv - D_r2_inv @ J_z_inv_inv @ (h_z_inv - D_r1_inv @ torch.unsqueeze(evidence_inv, dim=1))
 
     
-    user_prec_updated_f = user_prec_f - D_r1 @ J_z_f_inv @ D_r1
+	user_prec_updated_f = user_prec_f - D_r1 @ J_z_f_inv @ D_r1
     user_prec_updated_inv = user_prec_inv - D_r1_inv @ J_z_inv_inv @ D_r1_inv
 
     user_mean_updated_f = torch.inverse(user_prec_updated_f) @ h_u_updated_f
