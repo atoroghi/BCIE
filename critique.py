@@ -267,6 +267,7 @@ def critiquing(crit_args, mode):
             else: rank_track = np.concatenate((rank_track, st))
        
         # plotting
+        print("plotting")
         fig = plt.figure(figsize=(10,5))
         ax1 = fig.add_subplot(121)  
 
@@ -277,6 +278,9 @@ def critiquing(crit_args, mode):
 
         plt.tight_layout() 
         plt.savefig(os.path.join(save_path, 'debug.jpg'))
+        plt.close()
+        print("plotted")
+        
         #plt.show()
         sys.exit()
 
