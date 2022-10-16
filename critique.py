@@ -229,10 +229,7 @@ def critiquing(crit_args, mode):
             # stack facts, either [-1, rel, tail] or [head, rel, -1]
             ht_facts = fact_stack(item_facts_head[gt], item_facts_tail[gt])
             rec_facts = rec_fact_stack(rec_ids, item_facts_head, item_facts_tail)
-            crit, ht_facts = beta_crit_selector(ht_facts, rec_facts, "diff", pop_counts)
-            print(crit)
-
-            sys.exit()
+            
             if ht_facts.shape[0] < crit_args.session_length: continue
 
             # save initial rank and previous user crits 
@@ -255,7 +252,8 @@ def critiquing(crit_args, mode):
 
                 # TODO: maybe just convert crit to embedding right here?
                 # select a crit (user action) and remove it from pool
-                crit, ht_facts = beta_crit(ht_facts) # crit in (node, rel) format
+                #crit, ht_facts = beta_crit(ht_facts) # crit in (node, rel) format
+                crit, ht_facts = beta_crit_selector(ht_facts, rec_facts, crit_args.citique_mode, pop_counts)
                 crit = (gt, 0)
 
                 # get d for p(user | d) bayesian update
@@ -265,9 +263,9 @@ def critiquing(crit_args, mode):
 
                 # perform update
                 if crit_args.evidence_type == 'direct':
-                    beta_update(update_info, sn, crit_args, model_args, device)
+                    beta_update(update_info, sn, crit_args, model_args, device, crit_args.update_type)
                 if crit_args.evidence_type == 'indirect':
-                    beta_update_indirect(update_info, sn, crit_args, model_args, device)
+                    beta_update_indirect(update_info, sn, crit_args, model_args, device, crit_args.update_type)
 
                 # track rank in training
                 new_user_emb, _ = update_info.get_priorinfo()
