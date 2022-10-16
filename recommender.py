@@ -13,6 +13,47 @@ def beta_crit(ht_facts):
 	if crit[0] == -1.0: return (crit[2], crit[1]), ht_facts
 	else: return (crit[0], crit[1]), ht_facts
 
+# actual critique selection function
+def beta_crit_selector(ht_facts, rec_facts, critique_mode, pop_counts):
+    facts_diff = {}
+    to_del = []
+    for i, fact in enumerate(ht_facts):
+        condition = (fact[0] == rec_facts[:, 0]) & (fact[1] == rec_facts[:, 1]) & (fact[2] == rec_facts[:, 2])
+        facts_diff[i] = np.count_nonzero(condition)
+
+        # if a fact is satisfied by all recommended items, it should be deleted
+        if facts_diff[i] == 20:
+            to_del.append(i)
+    
+
+    if critique_mode == "random":
+        # in this case, we want to randomly choose a critique from either head or tail
+        ht_facts = np.delete(ht_facts, to_del, axis=0)
+        pick = np.random.randint(ht_facts.shape[0])
+        crit = ht_facts[pick]
+	# remove from pool and return in (node, rel) format
+        ht_facts = np.delete(ht_facts, pick, axis=0)
+    if critique_mode == "pop":
+        ht_facts = np.delete(ht_facts, to_del, axis=0)
+        popularities = {}
+        for i , fact in enumerate(ht_facts):
+            if fact[0] == -1:
+                popularities[i] = pop_counts[fact[2]]
+            else:
+                popularities[i] = pop_counts[fact[0]]
+        pick = max(popularities.items(), key=operator.itemgetter(1))[0]
+        crit = ht_facts[pick]
+        if crit[0] == -1: return (crit[2], crit[1]), ht_facts
+        else: return (crit[0], crit[1]), ht_facts
+    if critique_mode == "diff":
+        pick = min(facts_diff.items(), key=operator.itemgetter(1))[0]
+        crit = ht_facts[pick]
+    if crit[0] == -1: return (crit[2], crit[1]), ht_facts
+    else: return (crit[0], crit[1]), ht_facts
+
+
+
+
 ### inputs: facts about the ground truth and facts about the recommended items as well as the critique mode and the dictionary containing popularities of each object
 ### Also, we input the facts in which the gt is placed in their tail to differentiate between objects and relations
 def select_critique(critique_selection_data, rec_facts, critique_mode, pop_counts, items_facts_tail_gt):

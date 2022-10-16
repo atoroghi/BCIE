@@ -8,7 +8,7 @@ from updater import Updater, beta_update, beta_update_indirect
 from updater_indirect import Updater_Indirect
 from dataload import DataLoader
 from tester import get_array, get_emb, get_scores, get_rank, GetGT
-from recommender import select_critique, beta_crit, remove_chosen_critiques, obj2item
+from recommender import select_critique, beta_crit, remove_chosen_critiques, obj2item, beta_crit_selector
 from utils.plots import RankTrack, rank_plot, save_metrics_critiquing
 from utils.updateinfo import UpdateInfo
 from launch import get_model_args
@@ -18,8 +18,8 @@ import time
 def get_args_critique():
     # TODO: load all hp's from load_name
     parser = argparse.ArgumentParser()
-    parser.add_argument('-test_name', default='dev', type=str, help='name of folder where results are saved')
-    parser.add_argument('-load_name', default='dev', type=str, help='name of folder where model is')
+    parser.add_argument('-test_name', default='gausstypereg', type=str, help='name of folder where results are saved')
+    parser.add_argument('-load_name', default='results/gausstypereg/train/fold_0/train_59', type=str, help='name of folder where model is')
     parser.add_argument('-fold', default=0, type=int, help='fold number')
 
     # TODO: list for etta?
@@ -57,8 +57,16 @@ def fact_stack(head, tail):
         return np.vstack((head, tail)).astype(np.int32)
     if head.shape[0] != 0:
         return np.hstack((-np.ones((head.shape[0], 1)), head)).astype(np.int32)
-    if head.shape[0] != 0:
+    if tail.shape[0] != 0:
         return np.hstack((tail, -np.ones((tail.shape[0], 1)))).astype(np.int32)
+
+def rec_fact_stack(ids, items_facts_head, items_facts_tail):
+    rec_facts = []
+    for rec_id in ids:
+        rec_facts.append(fact_stack(items_facts_head[rec_id], items_facts_tail[rec_id]))
+    return(np.vstack(rec_facts))
+
+
 
 # to numpy array
 def unpack_dic(dic, ids):
@@ -207,19 +215,24 @@ def critiquing(crit_args, mode):
 ##############################################################
     rank_track = None
     for i, user in enumerate(all_users):
-        print(i)
+        #print(i)
         if i == 10: break
 
         # get ids of top k recs, and all gt from user
         user_emb = get_emb(user, model, device)
         ranked = get_scores(user_emb, rel_emb[0], item_emb, dataloader, model_args.learning_rel)
-        rec_ids = [index2id[int(x)] for x in ranked[:20]]
+        rec_ids = [index2id[int(x)] for x in ranked[:2]]
         test_gt, all_gt, train_gt = get_gt.get(user)
 
         # iterature through all gt for single user
         for j, gt in enumerate(test_gt):
             # stack facts, either [-1, rel, tail] or [head, rel, -1]
             ht_facts = fact_stack(item_facts_head[gt], item_facts_tail[gt])
+            rec_facts = rec_fact_stack(rec_ids, item_facts_head, item_facts_tail)
+            crit, ht_facts = beta_crit_selector(ht_facts, rec_facts, "diff", pop_counts)
+            print(crit)
+
+            sys.exit()
             if ht_facts.shape[0] < crit_args.session_length: continue
 
             # save initial rank and previous user crits 
@@ -282,7 +295,7 @@ def critiquing(crit_args, mode):
         plt.close()
         print("plotted")
         
-        #plt.show()
+        plt.show()
         sys.exit()
 
     # save results
