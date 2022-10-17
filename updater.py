@@ -8,7 +8,7 @@ import sys
 
 # fast gaussian update
 # TODO: this is wrong, update tn
-def beta_update(update_info, sn, crit_args, model_args, device, update_type):
+def beta_update(update_info, sn, crit_args, model_args, device, update_type,etta):
     if update_type == "gauss":
         (f, inv), prec, n = update_info.get_sampleinfo()
         (f0, inv0), (prec_f0, prec_inv0) = update_info.get_priorinfo()
@@ -22,8 +22,24 @@ def beta_update(update_info, sn, crit_args, model_args, device, update_type):
         # store new user prior
         update_info.store(user_emb=(out_f, out_inv), user_prec=(out_prec_f, out_prec_inv))
 
-def beta_update_indirect(update_info, sn, crit_args, model_args, device, update_type):
-    if update_type == "laplace":
+    elif update_type == "laplace":
+        (X_f, X_inv), prec, n = update_info.get_sampleinfo()
+        (mu_prior_f, mu_prior_inv), (tau_prior_f, tau_prior_inv) = update_info.get_priorinfo()
+        alpha = crit_args.alpha
+        etta_sn = etta[sn]
+        W_new_f = SDR_cvxopt(tau_prior_f, X_f, mu_prior_f, model_args.emb_dim, etta_sn)
+        W_new_inv = SDR_cvxopt(tau_prior_inv, X_inv, mu_prior_inv, model_args.emb_dim, etta_sn)
+        H_map_f = log_likelihood(X_f, W_new_f, etta)
+        H_map_inv = log_likelihood(X_inv, W_new_inv, etta)
+        za_f = tau_prior_f + etta * H_map_f
+        za_inv = tau_prior_inv + etta * H_map_inv
+        H_out_f = np.maximum(za_f,za_f.T)
+        H_out_inv = np.maximum(za_inv,za_inv.T)
+        update_info.store(user_emb=(W_new_f, W_new_inv), user_prec=(H_out_f, H_out_inv))
+
+ 
+def beta_update_indirect(update_info, sn, crit_args, model_args, device, update_type, etta):
+    if update_type == "gauss":
         (user_mean_f, user_mean_inv), (user_prec_f, user_prec_inv) = update_info.get_priorinfo()
         (likes_emb_f, likes_emb_inv) = (update_info.likes_emb_f , update_info.likes_emb_inv)
         (evidence_f, evidence_inv), prec_evidence, _ = update_info.get_sampleinfo()
@@ -60,6 +76,47 @@ def beta_update_indirect(update_info, sn, crit_args, model_args, device, update_
         user_mean_updated_f = torch.inverse(user_prec_updated_f) @ h_u_updated_f
         user_mean_updated_inv = torch.inverse(user_prec_updated_inv) @ h_u_updated_inv
         update_info.store(user_emb=(torch.squeeze(user_mean_updated_f, dim=1), torch.squeeze(user_mean_updated_inv, dim=1)), user_prec=(user_prec_updated_f, user_prec_updated_inv))
+    
+    if update_type == "laplace":
+        (X_f, X_inv), prec, n = update_info.get_sampleinfo()
+        (mu_prior_f, mu_prior_inv), (tau_prior_f, tau_prior_inv) = update_info.get_priorinfo()
+        (item_mean_f, item_mean_inv) = (update_info.z_mean, update_info.z_mean)
+        (item_prec_f, item_prec_inv) = (update_info.z_prec, update_info.z_prec)
+        alpha = crit_args.alpha
+        etta_sn = etta[sn]
+        z_map_f = SDR_cvxopt(item_prec_f, X_f, item_mean_f, model_args.emb_dim, etta_sn)
+        z_map_inv = SDR_cvxopt(item_prec_inv, X_inv, item_mean_inv, model_args.emb_dim, etta_sn)
+        X_new_f = update_info.likes_emb_f  * z_map_f
+        X_new_inv = update_info.likes_emb_inv * z_map_inv
+        W_new_f = SDR_cvxopt(tau_prior_f, X_new_f, mu_prior_f, model_args.emb_dim, etta_sn)
+        W_new_inv = SDR_cvxopt(tau_prior_inv, X_new_inv, mu_prior_inv, model_args.emb_dim, etta_sn)
+        H_map_f = log_likelihood(X_new_f, W_new_f, etta)
+        H_map_inv = log_likelihood(X_new_inv, W_new_inv, etta)
+        za_f = tau_prior_f + etta * H_map_f
+        za_inv = tau_prior_inv + etta * H_map_inv
+        H_out_f = np.maximum(za_f,za_f.T)
+        H_out_inv = np.maximum(za_inv,za_inv.T)
+        update_info.store(user_emb=(W_new_f, W_new_inv), user_prec=(H_out_f, H_out_inv))
+
+def SDR_cvxopt(landa, X_all , previous_w, emb_dim, etta):
+    w = cp.Variable(emb_dim)
+    constraints = [cp.norm(w) <= 100*np.sqrt(128)]
+    previous_w = np.reshape(previous_w, emb_dim)
+    objective_function = cp.quad_form(w-previous_w, landa)
+    for i in range(len(X_all)):
+        var= (X_all[i] @ w)
+        objective_function += etta * cp.logistic(-1 * var)
+    prob2 = cp.Problem(cp.Minimize(objective_function),constraints)
+    prob2.solve()
+    #print(prob2.status)
+    return w.value
+
+def log_likelihood(X, W, etta):
+    N = np.shape(X)[0]
+    logits = np.matmul(X, W)
+    probs = np.clip(expit(logits * etta), 1e-20, 1-1e-20)
+    H = np.matmul(np.matmul(np.transpose(X),np.diag((probs*(1 - probs)))), X)
+    return H
     
 # TODO: no comments or explanation of how this is supposed to work
 class Updater:

@@ -263,9 +263,9 @@ def critiquing(crit_args, mode):
 
                 # perform update
                 if crit_args.evidence_type == 'direct':
-                    beta_update(update_info, sn, crit_args, model_args, device, crit_args.update_type)
+                    beta_update(update_info, sn, crit_args, model_args, device, crit_args.update_type, etta)
                 if crit_args.evidence_type == 'indirect':
-                    beta_update_indirect(update_info, sn, crit_args, model_args, device, crit_args.update_type)
+                    beta_update_indirect(update_info, sn, crit_args, model_args, device, crit_args.update_type, etta)
 
                 # track rank in training
                 new_user_emb, _ = update_info.get_priorinfo()
