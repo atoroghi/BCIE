@@ -36,9 +36,9 @@ class UpdateInfo:
         self.likelihood_prec = 1 * torch.eye(model_args.emb_dim).to(device)
         #self.likelihood_prec = crit_args.default_prec * torch.eye(model_args.emb_dim).to(device)
 
-        #self.z_mean = torch.zeros(model_args.emb_dim).to(device)
-        #self.z_prec = crit_args.z_prec * torch.eye(model_args.emb_dim).to(device)
-        #self.z_prec = 0.05 * torch.eye(model_args.emb_dim).to(device)
+        self.z_mean = torch.zeros(model_args.emb_dim).to(device)
+        self.z_prec = crit_args.z_prec * torch.eye(model_args.emb_dim).to(device)
+        self.z_prec = 0.05 * torch.eye(model_args.emb_dim).to(device)
 
     # get last element (these are being stored and saved for tracking)
     def get_sampleinfo(self):
