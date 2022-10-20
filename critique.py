@@ -8,7 +8,7 @@ from updater import Updater, beta_update, beta_update_indirect
 from updater_indirect import Updater_Indirect
 from dataload import DataLoader
 from tester import get_array, get_emb, get_scores, get_rank, GetGT
-from recommender import select_critique, beta_crit, remove_chosen_critiques, obj2item, beta_crit_selector
+from recommender import crit_selector, test_crit
 from utils.plots import RankTrack, rank_plot, save_metrics_critiquing
 from utils.updateinfo import UpdateInfo
 from launch import get_model_args
@@ -32,15 +32,15 @@ def get_args_critique():
     parser.add_argument('-etta_3', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-etta_4', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-multi_k', default=10, type=int, help='number of samples for multi type update')
-    parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
+    parser.add_argument('-session_length', default=10, type=int, help='number of critiquing sessions')
     parser.add_argument('-num_users', default=100, type=int, help='number of users')
 
     # TODO: put in asserts
     # single vs mult
-    parser.add_argument('-critique_target', default='multi', type=str, help='single or multi')
+    parser.add_argument('-critique_target', default='single', type=str, help='single or multi')
 
     # single only
-    parser.add_argument('-evidence_type', default='indirect', type=str, help='direct or indirect')
+    parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
     
     # likelihood
     parser.add_argument('-update_type', default='gauss', type=str, help='laplace or gauss')
@@ -64,9 +64,7 @@ def rec_fact_stack(ids, items_facts_head, items_facts_tail):
     rec_facts = []
     for rec_id in ids:
         rec_facts.append(fact_stack(items_facts_head[rec_id], items_facts_tail[rec_id]))
-    return(np.vstack(rec_facts))
-
-
+    return rec_facts
 
 # to numpy array
 def unpack_dic(dic, ids):
@@ -131,8 +129,14 @@ def get_d(model, crit, rel_emb, obj2items, crit_args, model_args, device):
     # single embedding of crit node
     if crit_args.critique_target == 'single':
         node_emb = get_emb(crit_node, model, device)
-        d_f = rel_emb[0] * node_emb[1]
-        d_inv = rel_emb[1] * node_emb[0]
+
+        # TODO: this is bad bad bad bad bad 
+        if crit_args.evidence_type == 'direct':
+            d_f = rel_emb[0] * node_emb[1]
+            d_inv = rel_emb[1] * node_emb[0]
+        else: 
+            d_f = node_emb[1]
+            d_inv = node_emb[0]
 
     # TODO: clean this up.. too many lines!
     # make stack of likes * items related to feedback node
@@ -156,6 +160,29 @@ def get_d(model, crit, rel_emb, obj2items, crit_args, model_args, device):
         d_f = rel_emb[0] * true_object_embedding_f
         d_inv = rel_emb[1] * true_object_embedding_inv
     return (d_f, d_inv)
+
+# return the difference in performance for each upate
+def get_diff(x):
+    x = x.T
+    out = np.empty((x.shape[0] - 1, x.shape[1]))
+    for i in range(x.shape[0] - 1):
+        out[i] = x[i+1] - x[i]
+    return out.T
+
+# make fake item close to gt for testing
+def fake_d(gt, rel_emb, model, device, sigma=1):
+    while True:
+        gt_emb = get_emb(gt, model, device)
+        fake_0 = gt_emb[0] + sigma * torch.linalg.norm(gt_emb[0]) * torch.randn(gt_emb[0].shape[0]).to(device)
+        fake_1 = gt_emb[1] + sigma * torch.linalg.norm(gt_emb[1]) * torch.randn(gt_emb[1].shape[0]).to(device)
+        r = 0.5 * (sim(gt_emb[0], fake_0) + (sim(gt_emb[1], fake_1))) 
+        if r > 0.38 and r < 0.52: break
+    return (rel_emb[0] * fake_1, rel_emb[1] * fake_0), r.cpu().item() 
+
+def sim(a, b):
+    a = torch.squeeze(a)
+    b = torch.squeeze(b)
+    return (a / torch.linalg.norm(a)) @ (b / torch.linalg.norm(b))
 
 # main loop
 def critiquing(crit_args, mode):
@@ -195,6 +222,7 @@ def critiquing(crit_args, mode):
     rec_h, rec_t, id2index, index2id = get_array(model, dataloader, model_args, device, rec=True)
     item_emb = (rec_h, rec_t)
 
+
     # get all relationships
     with torch.no_grad():
         rels = dataloader.num_rel
@@ -213,29 +241,30 @@ def critiquing(crit_args, mode):
     # main test loop (each user)
 ##############################################################
 ##############################################################
+    print('hard coding prior mag(s), n = 1: this must be fixed!')
+    print('normalizing scores')
     rank_track = None
+    t0 = time.time()
+    rec_k = 4 # TODO: this must be an hp
+    r_track = []
     for i, user in enumerate(all_users):
-        #print(i)
-        if i == 10: break
+        if i > 100: break
+        # print('user / sec: {:.3f}'.format(i / (time.time() - t0) ))
 
         # get ids of top k recs, and all gt from user
         user_emb = get_emb(user, model, device)
-        ranked = get_scores(user_emb, rel_emb[0], item_emb, dataloader, model_args.learning_rel)
-        rec_ids = [index2id[int(x)] for x in ranked[:2]]
         test_gt, all_gt, train_gt = get_gt.get(user)
 
         # iterature through all gt for single user
         for j, gt in enumerate(test_gt):
-            # stack facts, either [-1, rel, tail] or [head, rel, -1]
-            ht_facts = fact_stack(item_facts_head[gt], item_facts_tail[gt])
-            rec_facts = rec_fact_stack(rec_ids, item_facts_head, item_facts_tail)
-            
-            if ht_facts.shape[0] < crit_args.session_length: continue
+            # get all triplets w gt
+            gt_facts = fact_stack(item_facts_head[gt], item_facts_tail[gt])
 
             # save initial rank and previous user crits 
             sub_track = np.empty(crit_args.session_length + 1)
+            ranked = get_scores(user_emb, rel_emb[0], item_emb, model_args.learning_rel)
             rank = get_rank(ranked, [gt], all_gt, id2index) 
-            sub_track[0] = 1 / rank
+            sub_track[0] = 1 / (rank + 1) 
 
             # a few sessions for each user 
             for sn in range(crit_args.session_length):
@@ -244,22 +273,29 @@ def critiquing(crit_args, mode):
                 if sn == 0: 
                     update_info = UpdateInfo(user_emb, etta, crit_args, model_args, device, likes_emb=likes_rel)
 
-                # TODO: move this somewhere else, not important...
-                # get all facts related to top n movies rec (from model)
-                #rec_facts_head = unpack_dic(item_facts_head, rec_ids)
-                #rec_facts_tail = unpack_dic(item_facts_tail, rec_ids)
-                #rec_facts = np.vstack([rec_facts_head, rec_facts_tail])
+                # stack facts, either [-1, rel, tail] or [head, rel, -1]
+                rec_ids = [index2id[int(x)] for x in ranked[:rec_k]]
+                rec_facts = rec_fact_stack(rec_ids, item_facts_head, item_facts_tail)
+                if gt_facts.shape[0] <= 0: continue
 
-                # TODO: maybe just convert crit to embedding right here?
                 # select a crit (user action) and remove it from pool
-                #crit, ht_facts = beta_crit(ht_facts) # crit in (node, rel) format
-                crit, ht_facts = beta_crit_selector(ht_facts, rec_facts, crit_args.citique_mode, pop_counts)
-                crit = (gt, 0)
+                #crit = crit_selector(gt_facts, rec_facts, crit_args.critique_mode, pop_counts)
 
-                # get d for p(user | d) bayesian update
-                d = get_d(model, crit, rel_emb, obj2items, crit_args, model_args, device)
-                #d = get_d(model, crit, rel_emb, obj2items, crit_args, model_args, device)
-                update_info.store(d=d, crit_rel_emb=rel_emb[crit[1]])
+                # TESTING: get item most similar to gt in emb space
+
+                real = True
+                if real:
+                    crit, r = test_crit(gt, model, item_emb, index2id, device)
+                    crit = (gt, 0)
+
+                    # get d for p(user | d) bayesian update
+                    d = get_d(model, crit, rel_emb, obj2items, crit_args, model_args, device)
+                    update_info.store(d=d, crit_rel_emb=rel_emb[crit[1]]) # crit[1]
+                else: 
+                    d, r = fake_d(gt, rel_emb[0], model, device, sigma=1.5)
+                    update_info.store(d=d, crit_rel_emb=rel_emb[0])
+
+                r_track.append(r)
 
                 # perform update
                 if crit_args.evidence_type == 'direct':
@@ -269,32 +305,37 @@ def critiquing(crit_args, mode):
 
                 # track rank in training
                 new_user_emb, _ = update_info.get_priorinfo()
-                ranked = get_scores(new_user_emb, rel_emb[0], item_emb, dataloader, model_args.learning_rel)
+                ranked = get_scores(new_user_emb, rel_emb[0], item_emb, model_args.learning_rel)
                 rank = get_rank(ranked, [gt], all_gt, id2index)
                 sub_track[sn + 1] = 1 / (rank + 1)
+                #sub_track[sn + 1] = rank
 
             # update w new data
-            st = np.expand_dims(sub_track, axis=0)#.astype(np.int32)
+            st = np.expand_dims(sub_track, axis=0)
             if rank_track is None: rank_track = st
             else: rank_track = np.concatenate((rank_track, st))
        
-        # plotting
-        print("plotting")
-        fig = plt.figure(figsize=(10,5))
-        ax1 = fig.add_subplot(121)  
+    # plotting
+    print("plotting")
+    #print(np.mean(r_track), np.std(r_track))
 
-        m = np.mean(rank_track, axis=0)
-        std = np.std(rank_track, axis=0)
+    fig = plt.figure(figsize=(10,5))
+    ax1 = fig.add_subplot(121)  
+    ax2 = fig.add_subplot(122)  
+
+    for (data, ax) in [(rank_track, ax1), (get_diff(rank_track), ax2)]:
+        m = np.mean(data, axis=0)
+        std = np.std(data, axis=0)
         x_ = np.arange(m.shape[0])
-        ax1.errorbar(x_, m, std)  
+        ax.errorbar(x_, m, std)  
 
-        plt.tight_layout() 
-        plt.savefig(os.path.join(save_path, 'debug.jpg'))
-        plt.close()
-        print("plotted")
-        
-        plt.show()
-        sys.exit()
+    ax1.set_title('mrr')
+    ax2.set_title('$\Delta$ mrr')
+    ax2.axhline(0, color='r')
+    plt.tight_layout() 
+    plt.savefig(os.path.join(save_path, 'debug.jpg'))
+    plt.show()
+    sys.exit()
 
     # save results
     if mode == 'val':

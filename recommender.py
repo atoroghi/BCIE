@@ -1,146 +1,77 @@
+import torch, os, sys, random, operator
+from itertools import count
 import numpy as np
-import os, sys
-import random
-import operator
 
-# dummy function for initial testing
-def beta_crit(ht_facts):
-	pick = np.random.randint(ht_facts.shape[0])
-	crit = ht_facts[pick]
+# either head or tail isn't -1 [h, r, t]
+def get_node(t):
+    if t[0] == -1: return t[2]
+    else: return t[0]
 
-	# remove from pool and return in (node, rel) format
-	ht_facts = np.delete(ht_facts, pick, axis=0)
-	if crit[0] == -1.0: return (crit[2], crit[1]), ht_facts
-	else: return (crit[0], crit[1]), ht_facts
+# [node, rel]
+def return_crit(t):
+    if t[0] == -1: return (t[2], t[1])
+    else: return (t[0], t[1])
+
+# normalize list of vectors:
+def list_norm(x):
+    norm = torch.linalg.norm(x, axis=1)
+    return (x.T / norm).T
+
+def norm(x): return x / torch.linalg.norm(x)
+
+# get crit of item that is most similar in emb space
+def test_crit(gt, model, item_emb, index2id, device):
+    a = torch.tensor(gt).to(device)
+    gt_emb = (model.ent_h_embs(a), model.ent_t_embs(a))
+    gt_emb = (norm(gt_emb[0]), norm(gt_emb[1]))
+    item_emb = (list_norm(item_emb[0]), list_norm(item_emb[1]))
+    
+    for_prod = torch.sum(gt_emb[0] * item_emb[1], axis=1)
+    inv_prod = torch.sum(gt_emb[1] * item_emb[0], axis=1)
+    scores = (for_prod + inv_prod) / 2
+    (scores, ind) = torch.sort(scores, descending=True)
+
+    crit = (index2id[ind[0].cpu().item()], 0)
+    return crit, scores[0].cpu().item()
 
 # actual critique selection function
-def beta_crit_selector(ht_facts, rec_facts, critique_mode, pop_counts):
-    facts_diff = {}
-    to_del = []
-    for i, fact in enumerate(ht_facts):
-        condition = (fact[0] == rec_facts[:, 0]) & (fact[1] == rec_facts[:, 1]) & (fact[2] == rec_facts[:, 2])
-        facts_diff[i] = np.count_nonzero(condition)
+# ht facts is facts of gt, other are facts about top k rec (naming is terrible)
+# pop count is number of connections for each node in kg
+def crit_selector(gt_facts, rec_facts, critique_mode, pop_counts):
+    # TODO: there must be a better way...
+    # get counts for each triplet
+    count = np.zeros(gt_facts.shape[0])
+    for i in range(gt_facts.shape[0]):
+        for j in range(len(rec_facts)):
+            if (gt_facts[i] == rec_facts[j]).all(axis=1).any():
+                count[i] += 1
 
-        # if a fact is satisfied by all recommended items, it should be deleted
-        if facts_diff[i] == 20:
-            to_del.append(i)
-    
+    # inds that are unique (aren't in all rec_facts)        
+    inds = np.where(count < len(rec_facts))[0]
+    inds = np.random.permutation(inds) # TODO: this is extra silly
 
+    # select random triplet
     if critique_mode == "random":
-        # in this case, we want to randomly choose a critique from either head or tail
-        ht_facts = np.delete(ht_facts, to_del, axis=0)
-        pick = np.random.randint(ht_facts.shape[0])
-        crit = ht_facts[pick]
-	# remove from pool and return in (node, rel) format
-        ht_facts = np.delete(ht_facts, pick, axis=0)
+        return return_crit(gt_facts[np.random.choice(inds)])
+
+    # select tripet that is most popular
     if critique_mode == "pop":
-        ht_facts = np.delete(ht_facts, to_del, axis=0)
-        popularities = {}
-        for i , fact in enumerate(ht_facts):
-            if fact[0] == -1:
-                popularities[i] = pop_counts[fact[2]]
-            else:
-                popularities[i] = pop_counts[fact[0]]
-        pick = max(popularities.items(), key=operator.itemgetter(1))[0]
-        crit = ht_facts[pick]
-        if crit[0] == -1: return (crit[2], crit[1]), ht_facts
-        else: return (crit[0], crit[1]), ht_facts
+        best_ind = inds[0]
+        most_pop = pop_counts[get_node(gt_facts[0])]
+
+        for i, ind in enumerate(inds):
+            if pop_counts[get_node(gt_facts[i])] > most_pop: best_ind = inds[i]
+        return return_crit(gt_facts[best_ind])
+    
+    # select tripet that is least popular
+    if critique_mode == "antipop":
+        best_ind = inds[0]
+        most_pop = pop_counts[get_node(gt_facts[0])]
+
+        for i, ind in enumerate(inds):
+            if pop_counts[get_node(gt_facts[i])] < most_pop: best_ind = inds[i]
+        return return_crit(gt_facts[best_ind])
+
+    # get triplet that has least similarity
     if critique_mode == "diff":
-        pick = min(facts_diff.items(), key=operator.itemgetter(1))[0]
-        crit = ht_facts[pick]
-    if crit[0] == -1: return (crit[2], crit[1]), ht_facts
-    else: return (crit[0], crit[1]), ht_facts
-
-
-
-
-### inputs: facts about the ground truth and facts about the recommended items as well as the critique mode and the dictionary containing popularities of each object
-### Also, we input the facts in which the gt is placed in their tail to differentiate between objects and relations
-def select_critique(critique_selection_data, rec_facts, critique_mode, pop_counts, items_facts_tail_gt):
-	facts_diff = {}
-	#we want to count how many times each ground truth fact is satisfied by the facts about recommended items
-	for fact in critique_selection_data:
-		condition = (fact[0] == rec_facts[:, 0]) & (fact[1] == rec_facts[:, 1])
-		facts_diff[tuple(fact)] = np.count_nonzero(condition)
-
-	if critique_mode=="random":
-		# in this case, we want to randomly choose a critique from either head or tail
-		if critique_selection_data.size:
-			#we're only keeping the facts that are not satisfied by all recommended items
-			candidate_facts = [k for k, v in facts_diff.items() if v < 20]
-			critique_fact = random.choice(candidate_facts)
-			if any((items_facts_tail_gt[:] == np.array((critique_fact)+(-1,))).all(1)):
-				obj = critique_fact[0]
-			else:
-				obj = critique_fact[1]
-		else:
-			obj , critique_fact = None, None
-
-	# In this case, we want to select the fact about the most famous object as the crtique
-	if critique_mode == "pop":
-		if critique_selection_data.size:
-			candidate_facts = [k for k, v in facts_diff.items() if v < 20]
-			popularities = {}
-			facts = {}
-			for fact in candidate_facts:
-				# Checking if the obj is in the head (gt in the tail)
-				if any((items_facts_tail_gt[:] == np.array((fact)+(-1,))).all(1)):
-					candidate_obj = fact[0]
-					popularities[candidate_obj] = pop_counts[fact[0]]
-					facts[candidate_obj] = fact
-				else:
-					candidate_obj = fact[1]
-					popularities[candidate_obj] = pop_counts[fact[1]]
-					facts[candidate_obj] = fact
-			obj = max(popularities.items(), key=operator.itemgetter(1))[0]
-			critique_fact = facts[obj]
-		else:
-			obj , critique_fact = None, None
-
-    # in this case, we should take the fact that deviates the most from the facts related to recommended items, i.e. least satisfaction counts
-	if critique_mode == "diff":        
-		if bool(facts_diff):
-			# this is the number of times the most deviating fact is satisfied
-			minval = min(facts_diff.values())
-			# in the most deviating fact, gt is in the tail 
-			# we might have multiple facts satisfied minval times. In this case, we choose the most famous object as the critique
-			candidates_list = [k for k, v in facts_diff.items() if v == minval]
-			if len(candidates_list)>1:
-				popularities = {}
-				facts = {}
-				for fact in candidates_list:
-					if any((items_facts_tail_gt[:] == np.array((fact)+(-1,))).all(1)):
-						candidate_obj = fact[0]
-						popularities[candidate_obj] = pop_counts[fact[0]]
-						facts[candidate_obj] = fact
-					else:
-						candidate_obj = fact[1]
-						popularities[candidate_obj] = pop_counts[fact[1]]
-						facts[candidate_obj] = fact
-				obj = max(popularities.items(), key=operator.itemgetter(1))[0]
-				critique_fact = facts[obj]
-			else:
-				if any((items_facts_tail_gt[:] == np.array((candidates_list[0])+(-1,))).all(1)):
-					obj = candidates_list[0][0]
-				else:
-					obj = candidates_list[0][1]
-					critique_fact = candidates_list[0]
-
-		else:
-			obj , critique_fact = None, None
-
-	return obj , critique_fact
-
-def remove_chosen_critiques( critiquing_candidate, previous_critiques):
-	for end in ["head", "tail"]:
-		for record in previous_critiques[end]:
-			if len(critiquing_candidate[end]) > 1:
-				critiquing_candidate[end].remove(record)
-
-	return critiquing_candidate
-
-def obj2item(items,obj,data):
-	objkg=data[np.where((data[:, 0] == obj) | (data[:, 2] == obj))]
-	objkg=np.delete(objkg,1,1)
-	mapped_items=np.intersect1d(items,data)
-	return mapped_items
+        return return_crit(gt_facts[np.argmin(inds)])

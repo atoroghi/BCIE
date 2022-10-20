@@ -8,24 +8,26 @@ import sys
 
 # fast gaussian update
 # TODO: this is wrong, update tn
-def beta_update(update_info, sn, crit_args, model_args, device, update_type,etta):
+def beta_update(update_info, sn, crit_args, model_args, device, update_type, etta):
     if update_type == "gauss":
         (f, inv), prec, n = update_info.get_sampleinfo()
         (f0, inv0), (prec_f0, prec_inv0) = update_info.get_priorinfo()
+
         n = 1
         # update forward and backward, new priors for user
         out_f = torch.inverse(prec_f0 + n*prec) @ (prec_f0@f0 + n*prec@f)
         out_inv = torch.inverse(prec_inv0 + n*prec) @ (prec_inv0@inv0 + n*prec@inv)
         out_prec_f = prec_f0 + n*prec
         out_prec_inv = prec_inv0 + n*prec
-        print('difference: {}'.format(torch.linalg.norm(f0 - out_f)))
+        #print('difference: {}'.format(torch.linalg.norm(f0 - out_f)))
+
         # store new user prior
         update_info.store(user_emb=(out_f, out_inv), user_prec=(out_prec_f, out_prec_inv))
 
     elif update_type == "laplace":
         (X_f, X_inv), prec, n = update_info.get_sampleinfo()
         (mu_prior_f, mu_prior_inv), (tau_prior_f, tau_prior_inv) = update_info.get_priorinfo()
-        alpha = crit_args.alpha
+
         etta_sn = etta[sn]
         W_new_f = SDR_cvxopt(tau_prior_f, X_f, mu_prior_f, model_args.emb_dim, etta_sn)
         W_new_inv = SDR_cvxopt(tau_prior_inv, X_inv, mu_prior_inv, model_args.emb_dim, etta_sn)
@@ -37,52 +39,70 @@ def beta_update(update_info, sn, crit_args, model_args, device, update_type,etta
         H_out_inv = np.maximum(za_inv,za_inv.T)
         update_info.store(user_emb=(W_new_f, W_new_inv), user_prec=(H_out_f, H_out_inv))
 
- 
 def beta_update_indirect(update_info, sn, crit_args, model_args, device, update_type, etta):
     if update_type == "gauss":
         (user_mean_f, user_mean_inv), (user_prec_f, user_prec_inv) = update_info.get_priorinfo()
         (likes_emb_f, likes_emb_inv) = (update_info.likes_emb_f , update_info.likes_emb_inv)
         (evidence_f, evidence_inv), prec_evidence, _ = update_info.get_sampleinfo()
-        (rel_emb_f, rel_emb_inv) = (update_info.crit_rel_emb_f, update_info.crit_rel_emb_inv)
+
         (item_mean_f, item_mean_inv) = (update_info.z_mean, update_info.z_mean)
         (item_prec_f, item_prec_inv) = (update_info.z_prec, update_info.z_prec)
-        user_mean_f_T = torch.unsqueeze(user_mean_f, dim=1)
-        user_mean_inv_T = torch.unsqueeze(user_mean_inv, dim=1)
-        h_u_f = user_prec_f @ user_mean_f_T
-        h_u_inv = user_prec_inv @ user_mean_inv_T
-        D_r1 = torch.diag(rel_emb_f)
-        D_r1_inv = torch.diag(rel_emb_inv)
+
+
+        # get information matrix
+        h_u_f = user_prec_f @ user_mean_f
+        h_u_inv = user_prec_inv @ user_mean_inv
+
+        # get factor between user and z (likes relation)
         D_r2 = torch.diag(likes_emb_f)
         D_r2_inv = torch.diag(likes_emb_inv)
-        ## the second term added
-        prec_evidence_inv = torch.inverse(prec_evidence).to(device)
-        #J_z_f = (item_prec_f).to(device) - D_r1 @ prec_evidence_inv @ D_r1
-        #J_z_inv = (item_prec_inv).to(device) - D_r1_inv @ prec_evidence_inv @ D_r1_inv
-        J_z_f = (item_prec_f).to(device) - prec_evidence_inv
-        J_z_inv = (item_prec_inv).to(device) - prec_evidence_inv 
-        J_z_f_inv = torch.inverse(J_z_f).to(device)
-        J_z_inv_inv = torch.inverse(J_z_inv).to(device)
-        h_z_f = item_prec_f @ torch.unsqueeze(item_mean_f, dim=1)
-        h_z_inv = item_prec_inv @ torch.unsqueeze(item_mean_inv, dim=1)
-        #h_u_updated_f = h_u_f - D_r2 @ J_z_f_inv @ (h_z_f - D_r1 @ torch.unsqueeze(evidence_f, dim=1))
-        h_u_updated_f = h_u_f - D_r2 @ J_z_f_inv @ (h_z_f -  torch.unsqueeze(evidence_f, dim=1))
-        #h_u_updated_inv = h_u_inv - D_r2_inv @ J_z_inv_inv @ (h_z_inv - D_r1_inv @ torch.unsqueeze(evidence_inv, dim=1))
-        h_u_updated_inv = h_u_inv - D_r2_inv @ J_z_inv_inv @ (h_z_inv - torch.unsqueeze(evidence_inv, dim=1))
-        #TODO: check this with the derivation
-        #user_prec_updated_f = user_prec_f - D_r1 @ J_z_f_inv @ D_r1
-        user_prec_updated_f = user_prec_f - D_r2 @ J_z_f_inv @ D_r2
-        #user_prec_updated_inv = user_prec_inv - D_r1_inv @ J_z_inv_inv @ D_r1_inv
-        user_prec_updated_inv = user_prec_inv - D_r2_inv @ J_z_inv_inv @ D_r2_inv
-        user_mean_updated_f = torch.inverse(user_prec_updated_f) @ h_u_updated_f
-        user_mean_updated_inv = torch.inverse(user_prec_updated_inv) @ h_u_updated_inv
-        update_info.store(user_emb=(torch.squeeze(user_mean_updated_f, dim=1), torch.squeeze(user_mean_updated_inv, dim=1)), user_prec=(user_prec_updated_f, user_prec_updated_inv))
+
+        # update z given evidence d
+        #item_mean_f = evidence_f
+        #item_mean_inv = evidence_inv
+        n = 1 # TODO: this is for later?
+        temp_f = (item_prec_f @ item_mean_f + n * prec_evidence @ evidence_f)
+        mu_z_f = torch.inverse(item_prec_f + n * prec_evidence) @ temp_f 
+
+        temp_inv = (item_prec_inv @ item_mean_inv + n * prec_evidence @ evidence_inv)
+        mu_z_inv = torch.inverse(item_prec_inv + n * prec_evidence) @ temp_inv
+
+        # update prec of z given evidence d
+        J_z_f = item_prec_f + n * prec_evidence
+        J_z_inv = item_prec_inv + n * prec_evidence
+
+        # p(u|z)
+        temp_f = (user_prec_f @ user_mean_f + n * J_z_f @ mu_z_f)
+        user_mean_updated_f= torch.inverse(user_prec_f + n * J_z_f) @ temp_f 
+        temp_inv = (user_prec_inv @ user_mean_inv + n * J_z_inv @ mu_z_inv)
+        user_mean_updated_inv = torch.inverse(user_prec_inv + n * J_z_inv) @ temp_inv
+        user_prec_updated_f = user_prec_f + n * J_z_f
+        user_prec_updated_inv = user_prec_inv + n * J_z_inv
+
+        #joint approach
+        #J_z_f_inv = torch.inverse(J_z_f)
+        #J_z_inv_inv = torch.inverse(J_z_inv)
+
+        # potential of user updated (information form)
+        #h_u_updated_f = h_u_f - D_r2 @ mu_z_f
+        #h_u_updated_inv = h_u_inv - D_r2_inv @ mu_z_inv
+
+        # precision of user updated
+        #user_prec_updated_f = user_prec_f - D_r2 @ J_z_f_inv @ D_r2
+        #user_prec_updated_inv = user_prec_inv - D_r2_inv @ J_z_inv_inv @ D_r2_inv
+
+        # convert from information to mean prec form
+        #user_mean_updated_f = torch.inverse(user_prec_updated_f) @ h_u_updated_f
+        #user_mean_updated_inv = torch.inverse(user_prec_updated_inv) @ h_u_updated_inv
+
+        update_info.store(user_emb=(user_mean_updated_f, user_mean_updated_inv), user_prec=(user_prec_updated_f, user_prec_updated_inv))
     
     if update_type == "laplace":
         (X_f, X_inv), prec, n = update_info.get_sampleinfo()
         (mu_prior_f, mu_prior_inv), (tau_prior_f, tau_prior_inv) = update_info.get_priorinfo()
         (item_mean_f, item_mean_inv) = (update_info.z_mean, update_info.z_mean)
         (item_prec_f, item_prec_inv) = (update_info.z_prec, update_info.z_prec)
-        alpha = crit_args.alpha
+
         etta_sn = etta[sn]
         z_map_f = SDR_cvxopt(item_prec_f, X_f, item_mean_f, model_args.emb_dim, etta_sn)
         z_map_inv = SDR_cvxopt(item_prec_inv, X_inv, item_mean_inv, model_args.emb_dim, etta_sn)
@@ -94,8 +114,8 @@ def beta_update_indirect(update_info, sn, crit_args, model_args, device, update_
         H_map_inv = log_likelihood(X_new_inv, W_new_inv, etta)
         za_f = tau_prior_f + etta * H_map_f
         za_inv = tau_prior_inv + etta * H_map_inv
-        H_out_f = np.maximum(za_f,za_f.T)
-        H_out_inv = np.maximum(za_inv,za_inv.T)
+        H_out_f = np.maximum(za_f, za_f.T)
+        H_out_inv = np.maximum(za_inv, za_inv.T)
         update_info.store(user_emb=(W_new_f, W_new_inv), user_prec=(H_out_f, H_out_inv))
 
 def SDR_cvxopt(landa, X_all , previous_w, emb_dim, etta):
@@ -103,12 +123,13 @@ def SDR_cvxopt(landa, X_all , previous_w, emb_dim, etta):
     constraints = [cp.norm(w) <= 100*np.sqrt(128)]
     previous_w = np.reshape(previous_w, emb_dim)
     objective_function = cp.quad_form(w-previous_w, landa)
+
     for i in range(len(X_all)):
         var= (X_all[i] @ w)
         objective_function += etta * cp.logistic(-1 * var)
+
     prob2 = cp.Problem(cp.Minimize(objective_function),constraints)
     prob2.solve()
-    #print(prob2.status)
     return w.value
 
 def log_likelihood(X, W, etta):
