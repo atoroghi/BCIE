@@ -17,8 +17,8 @@ folders = [f for f in folders if 'train' in f]
 stop = []
 emb_dim = []
 
-for i in range(len(folders)-1):
-    stop_path = os.path.join(path, 'train_{}'.format(len(folders) + i), 'stop_metric.npy')
+for i in range(len(folders)):
+    stop_path = os.path.join(path, 'train_{}'.format(i), 'stop_metric.npy')
     hits = np.load(stop_path)
     stop.append(hits)
     print("hits",hits)
