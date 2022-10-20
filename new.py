@@ -21,9 +21,9 @@ for i in range(len(folders)):
     stop_path = os.path.join(path, 'train_{}'.format(i), 'stop_metric.npy')
     hits = np.load(stop_path)
     stop.append(hits)
-    yaml_path = os.path.join(path, 'train_{}'.format(len(folders) + i), 'info.yml')
+    yaml_path = os.path.join(path, 'train_{}'.format( i), 'info.yml')
 
-    with open(os.path.join(path, 'train_{}'.format(len(folders) + i), 'info.yml'), 'r') as f:
+    with open(os.path.join(path, 'train_{}'.format( i), 'info.yml'), 'r') as f:
         yml = yaml.safe_load(f)
         emb_dim.append(yml["emb_dim"])
 
