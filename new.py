@@ -21,17 +21,15 @@ for i in range(len(folders)):
     stop_path = os.path.join(path, 'train_{}'.format(i), 'stop_metric.npy')
     hits = np.load(stop_path)
     stop.append(hits)
-    print("hits",hits)
     yaml_path = os.path.join(path, 'train_{}'.format(len(folders) + i), 'info.yml')
 
     with open(os.path.join(path, 'train_{}'.format(len(folders) + i), 'info.yml'), 'r') as f:
         yml = yaml.safe_load(f)
         emb_dim.append(yml["emb_dim"])
 
-        print("emb_dim:",emb_dim)
 
 for i in range (len(stop)):
-
+    print("model:",i)
     print('stop metric:',stop[i])
     print('emb_dim:', emb_dim[i])
 
