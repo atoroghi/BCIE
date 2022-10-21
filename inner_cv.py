@@ -31,7 +31,7 @@ def get_metacrit_args():
     parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
     parser.add_argument('-critique_target', default='single', type=str, help='single or multi')
     parser.add_argument('-tune_name', default='gausstypereg', type=str, help="tuner process name")
-    parser.add_argument('-update_type', default='gaussian', type=str, help='laplace or gaussian')
+    parser.add_argument('-update_type', default='gauss', type=str, help='laplace or gaussian')
     parser.add_argument('-critique_mode', default='random', type=str, help='random or pop or diff')
 
     args = parser.parse_args()

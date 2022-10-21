@@ -47,15 +47,15 @@ def list_norm(x):
     norm = torch.linalg.norm(a, axis=1)
     a = (a.T / norm).T
 
-    norm = torch.linalg.norm(a, axis=1)
+    norm = torch.linalg.norm(b, axis=1)
     b = (b.T / norm).T
     return (a, b)
 
 # get scores
 def get_scores(test_emb, rel_emb, item_emb, learning_rel):
-    test_emb = norm(test_emb)
-    rel_emb = norm(rel_emb)
-    item_emb = list_norm(item_emb)
+    #test_emb = norm(test_emb)
+    #rel_emb = norm(rel_emb)
+    #item_emb = list_norm(item_emb)
 
     # get score, based on if test item is head or tail
     if learning_rel == 'freeze':

@@ -32,7 +32,7 @@ def get_args_critique():
     parser.add_argument('-etta_3', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-etta_4', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-multi_k', default=10, type=int, help='number of samples for multi type update')
-    parser.add_argument('-session_length', default=10, type=int, help='number of critiquing sessions')
+    parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
     parser.add_argument('-num_users', default=100, type=int, help='number of users')
 
     # TODO: put in asserts
@@ -184,6 +184,32 @@ def sim(a, b):
     b = torch.squeeze(b)
     return (a / torch.linalg.norm(a)) @ (b / torch.linalg.norm(b))
 
+def norm(x):
+    (a, b) = x
+    a = torch.squeeze(a)
+    a = torch.unsqueeze(a / torch.linalg.norm(a), axis=0) 
+
+    b = torch.squeeze(b)
+    b = torch.unsqueeze(b / torch.linalg.norm(b), axis=0) 
+
+    return (a, b)
+
+def list_norm(x):
+    (a, b) = x
+    norm = torch.linalg.norm(a, axis=1)
+    a = (a.T / norm).T
+
+    norm = torch.linalg.norm(b, axis=1)
+    b = (b.T / norm).T
+    return (a, b)
+
+def single_norm(x):
+    a = x / torch.linalg.norm(x)
+    return a
+
+
+
+
 # main loop
 def critiquing(crit_args, mode):
 # setup
@@ -222,6 +248,9 @@ def critiquing(crit_args, mode):
     rec_h, rec_t, id2index, index2id = get_array(model, dataloader, model_args, device, rec=True)
     item_emb = (rec_h, rec_t)
 
+    #NORMALIZING
+    #item_emb = list_norm(item_emb)
+
 
     # get all relationships
     with torch.no_grad():
@@ -229,6 +258,9 @@ def critiquing(crit_args, mode):
         r = torch.linspace(0, rels - 1, rels).long().to(device)
         rel_f = model.rel_embs(r)
         rel_inv = model.rel_inv_embs(r)
+        #NORMALIZING
+        #rel_f = single_norm(rel_f)
+        #rel_inv = single_norm(rel_inv)
         rel_emb = torch.stack((rel_f, rel_inv))
         rel_emb = torch.permute(rel_emb, (1,0,2))
     likes_rel = rel_emb[0]
@@ -242,7 +274,7 @@ def critiquing(crit_args, mode):
 ##############################################################
 ##############################################################
     print('hard coding prior mag(s), n = 1: this must be fixed!')
-    print('normalizing scores')
+    #print('normalizing scores')
     rank_track = None
     t0 = time.time()
     rec_k = 4 # TODO: this must be an hp
@@ -253,6 +285,9 @@ def critiquing(crit_args, mode):
 
         # get ids of top k recs, and all gt from user
         user_emb = get_emb(user, model, device)
+
+        #NORMALIZING 
+        #user_emb = norm(user_emb)
         test_gt, all_gt, train_gt = get_gt.get(user)
 
         # iterature through all gt for single user
@@ -265,6 +300,7 @@ def critiquing(crit_args, mode):
             ranked = get_scores(user_emb, rel_emb[0], item_emb, model_args.learning_rel)
             rank = get_rank(ranked, [gt], all_gt, id2index) 
             sub_track[0] = 1 / (rank + 1) 
+            #sub_track[0] = 1 / (rank)
 
             # a few sessions for each user 
             for sn in range(crit_args.session_length):
@@ -308,6 +344,7 @@ def critiquing(crit_args, mode):
                 ranked = get_scores(new_user_emb, rel_emb[0], item_emb, model_args.learning_rel)
                 rank = get_rank(ranked, [gt], all_gt, id2index)
                 sub_track[sn + 1] = 1 / (rank + 1)
+                #sub_track[sn + 1] = 1 / (rank)
                 #sub_track[sn + 1] = rank
 
             # update w new data

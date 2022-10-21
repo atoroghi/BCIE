@@ -212,14 +212,15 @@ class Updater:
     # using the convex solver to update user belief
     def SDR_cvxopt(self,landa, X_all, y , previous_w):
         w = cp.Variable(self.emb_dim)
-        constraints = [cp.norm(w) <= 100*np.sqrt(128)]
+        #constraints = [cp.norm(w) <= 100*np.sqrt(128)]
         previous_w = np.reshape(previous_w, self.emb_dim)
         objective_function = cp.quad_form(w-previous_w, landa)
         for i in range(len(X_all)):
             var= (X_all[i] @ w) * y[i]
             objective_function += self.etta * cp.logistic(-1 * var)
         #prob = cp.Problem(cp.Minimize(objective_function), constraints)
-        prob2 = cp.Problem(cp.Minimize(objective_function),constraints)
+        #prob2 = cp.Problem(cp.Minimize(objective_function),constraints)
+        prob2 = cp.Problem(cp.Minimize(objective_function))
 
         # TODO: this is bad 
         # armin: this is bad, but it's because cvxpy is unstable with small 
