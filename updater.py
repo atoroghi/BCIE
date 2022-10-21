@@ -29,14 +29,32 @@ def beta_update(update_info, sn, crit_args, model_args, device, update_type, ett
         (mu_prior_f, mu_prior_inv), (tau_prior_f, tau_prior_inv) = update_info.get_priorinfo()
 
         etta_sn = etta[sn]
+
+        # in general, the updater is written in the matrix form
+        if len(X_f.shape) == 1:
+            X_f = torch.unsqueeze(X_f , dim = 0)
+            X_inv = torch.unsqueeze(X_inv , dim = 0)
+
+        
+        # finding the new user belief mean
         W_new_f = SDR_cvxopt(tau_prior_f, X_f, mu_prior_f, model_args.emb_dim, etta_sn)
         W_new_inv = SDR_cvxopt(tau_prior_inv, X_inv, mu_prior_inv, model_args.emb_dim, etta_sn)
-        H_map_f = log_likelihood(X_f, W_new_f, etta)
-        H_map_inv = log_likelihood(X_inv, W_new_inv, etta)
-        za_f = tau_prior_f + etta * H_map_f
-        za_inv = tau_prior_inv + etta * H_map_inv
-        H_out_f = np.maximum(za_f,za_f.T)
-        H_out_inv = np.maximum(za_inv,za_inv.T)
+
+        # finding the new user belief precision 
+            # first, calculate Hessian of the log likelihood
+        W_new_f = torch.tensor(W_new_f).float().to(device)
+        W_new_inv = torch.tensor(W_new_inv).float().to(device)
+        H_map_f = log_likelihood(X_f, W_new_f, etta_sn)
+        H_map_inv = log_likelihood(X_inv, W_new_inv, etta_sn)
+
+        #making sure the returned precision is symmetric
+
+        za_f = tau_prior_f + etta_sn * H_map_f
+        za_inv = tau_prior_inv + etta_sn * H_map_inv
+
+        H_out_f = torch.maximum(za_f,za_f.T)
+        H_out_inv = torch.maximum(za_inv,za_inv.T)
+
         update_info.store(user_emb=(W_new_f, W_new_inv), user_prec=(H_out_f, H_out_inv))
 
 def beta_update_indirect(update_info, sn, crit_args, model_args, device, update_type, etta):
@@ -120,23 +138,32 @@ def beta_update_indirect(update_info, sn, crit_args, model_args, device, update_
 
 def SDR_cvxopt(landa, X_all , previous_w, emb_dim, etta):
     w = cp.Variable(emb_dim)
-    constraints = [cp.norm(w) <= 100*np.sqrt(128)]
-    previous_w = np.reshape(previous_w, emb_dim)
+    previous_w = previous_w.cpu()
+    landa = landa.cpu()
+    X_all = X_all.cpu()
+    #constraints = [cp.norm(w) <= 100*np.sqrt(128)]
     objective_function = cp.quad_form(w-previous_w, landa)
-
+    
     for i in range(len(X_all)):
         var= (X_all[i] @ w)
         objective_function += etta * cp.logistic(-1 * var)
 
-    prob2 = cp.Problem(cp.Minimize(objective_function),constraints)
+    #prob2 = cp.Problem(cp.Minimize(objective_function),constraints)
+    prob2 = cp.Problem(cp.Minimize(objective_function))
     prob2.solve()
     return w.value
 
 def log_likelihood(X, W, etta):
-    N = np.shape(X)[0]
-    logits = np.matmul(X, W)
-    probs = np.clip(expit(logits * etta), 1e-20, 1-1e-20)
-    H = np.matmul(np.matmul(np.transpose(X),np.diag((probs*(1 - probs)))), X)
+    N = (X.shape)[0]
+    
+    logits = X@ W
+
+    probs = torch.clip(torch.sigmoid(logits * etta), 1e-20, 1-1e-20)
+
+    #probs = np.clip(expit(logits * etta), 1e-20, 1-1e-20)
+    H = X.T @ torch.diag(((probs*(1 - probs)))) @ X
+
+    #H = np.matmul(np.matmul(np.transpose(X),np.diag((probs*(1 - probs)))), X)
     return H
     
 # TODO: no comments or explanation of how this is supposed to work
