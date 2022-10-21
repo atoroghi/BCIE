@@ -277,7 +277,7 @@ def critiquing(crit_args, mode):
     #print('normalizing scores')
     rank_track = None
     t0 = time.time()
-    rec_k = 4 # TODO: this must be an hp
+    rec_k = 10 # TODO: this must be an hp
     r_track = []
     for i, user in enumerate(all_users):
         if i > 100: break
