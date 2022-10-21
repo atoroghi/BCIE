@@ -32,8 +32,8 @@ def get_args_critique():
     parser.add_argument('-etta_3', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-etta_4', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-multi_k', default=10, type=int, help='number of samples for multi type update')
-    parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
-    parser.add_argument('-num_users', default=100, type=int, help='number of users')
+    parser.add_argument('-session_length', default=10, type=int, help='number of critiquing sessions')
+    parser.add_argument('-num_users', default=50, type=int, help='number of users')
 
     # TODO: put in asserts
     # single vs mult
@@ -194,6 +194,7 @@ def norm(x):
 
     return (a, b)
 
+# this assumes a list of vectors
 def list_norm(x):
     (a, b) = x
     norm = torch.linalg.norm(a, axis=1)
@@ -203,12 +204,15 @@ def list_norm(x):
     b = (b.T / norm).T
     return (a, b)
 
+# this assumes only 1 vector
 def single_norm(x):
     a = x / torch.linalg.norm(x)
     return a
 
-
-
+def get_distance(a,b):
+    a = torch.squeeze(a)
+    b = torch.squeeze(b)
+    return torch.linalg.norm(a-b)
 
 # main loop
 def critiquing(crit_args, mode):
@@ -249,8 +253,7 @@ def critiquing(crit_args, mode):
     item_emb = (rec_h, rec_t)
 
     #NORMALIZING
-    #item_emb = list_norm(item_emb)
-
+    item_emb = list_norm(item_emb)
 
     # get all relationships
     with torch.no_grad():
@@ -258,9 +261,10 @@ def critiquing(crit_args, mode):
         r = torch.linspace(0, rels - 1, rels).long().to(device)
         rel_f = model.rel_embs(r)
         rel_inv = model.rel_inv_embs(r)
+
         #NORMALIZING
-        #rel_f = single_norm(rel_f)
-        #rel_inv = single_norm(rel_inv)
+        # this is weird [num, 2, dim]
+        (rel_f, rel_inv) = list_norm((rel_f, rel_inv))
         rel_emb = torch.stack((rel_f, rel_inv))
         rel_emb = torch.permute(rel_emb, (1,0,2))
     likes_rel = rel_emb[0]
@@ -273,21 +277,21 @@ def critiquing(crit_args, mode):
     # main test loop (each user)
 ##############################################################
 ##############################################################
-    #print('hard coding prior mag(s), n = 1: this must be fixed!')
-    #print('normalizing scores')
+    print('hard coding prior mag(s), n = 1: this must be fixed!')
+    print('normalizing scores')
     rank_track = None
     t0 = time.time()
-    rec_k = 10 # TODO: this must be an hp
+    rec_k = 4 # TODO: this must be an hp
     r_track = []
     for i, user in enumerate(all_users):
-        #if i > 100: break
+        if i > crit_args.num_users: break
         # print('user / sec: {:.3f}'.format(i / (time.time() - t0) ))
 
         # get ids of top k recs, and all gt from user
         user_emb = get_emb(user, model, device)
 
         #NORMALIZING 
-        #user_emb = norm(user_emb)
+        user_emb = norm(user_emb)
         test_gt, all_gt, train_gt = get_gt.get(user)
 
         # iterature through all gt for single user
@@ -300,7 +304,6 @@ def critiquing(crit_args, mode):
             ranked = get_scores(user_emb, rel_emb[0], item_emb, model_args.learning_rel)
             rank = get_rank(ranked, [gt], all_gt, id2index) 
             sub_track[0] = 1 / (rank + 1) 
-            #sub_track[0] = 1 / (rank)
 
             # a few sessions for each user 
             for sn in range(crit_args.session_length):
@@ -318,11 +321,11 @@ def critiquing(crit_args, mode):
                 #crit = crit_selector(gt_facts, rec_facts, crit_args.critique_mode, pop_counts)
 
                 # TESTING: get item most similar to gt in emb space
-
                 real = True
                 if real:
-                    crit, r = test_crit(gt, model, item_emb, index2id, device)
-                    #crit = (gt, 0)
+                    # NOTE: this used to be return_crit
+                    #crit, r = crit_selector(gt, model, item_emb, index2id, device)
+                    crit = (gt, 0)
 
                     # get d for p(user | d) bayesian update
                     d = get_d(model, crit, rel_emb, obj2items, crit_args, model_args, device)
@@ -330,7 +333,6 @@ def critiquing(crit_args, mode):
                 else: 
                     d, r = fake_d(gt, rel_emb[0], model, device, sigma=1.5)
                     update_info.store(d=d, crit_rel_emb=rel_emb[0])
-
                 r_track.append(r)
 
                 # perform update
@@ -343,9 +345,10 @@ def critiquing(crit_args, mode):
                 new_user_emb, _ = update_info.get_priorinfo()
                 ranked = get_scores(new_user_emb, rel_emb[0], item_emb, model_args.learning_rel)
                 rank = get_rank(ranked, [gt], all_gt, id2index)
+                post_distance = get_distance(new_user_emb[0], d[0])
+                print(post_distance)
                 sub_track[sn + 1] = 1 / (rank + 1)
-                #sub_track[sn + 1] = 1 / (rank)
-                #sub_track[sn + 1] = rank
+            print()
 
             # update w new data
             st = np.expand_dims(sub_track, axis=0)
@@ -353,27 +356,27 @@ def critiquing(crit_args, mode):
             else: rank_track = np.concatenate((rank_track, st))
        
     # plotting
-    #print("plotting")
+    print("plotting")
     #print(np.mean(r_track), np.std(r_track))
 
-    #fig = plt.figure(figsize=(10,5))
-    #ax1 = fig.add_subplot(121)  
-    #ax2 = fig.add_subplot(122)  
+    fig = plt.figure(figsize=(10,5))
+    ax1 = fig.add_subplot(121)  
+    ax2 = fig.add_subplot(122)  
 
-    #for (data, ax) in [(rank_track, ax1), (get_diff(rank_track), ax2)]:
-        #m = np.mean(data, axis=0)
-        #std = np.std(data, axis=0)
-        #x_ = np.arange(m.shape[0])
-        #ax.errorbar(x_, m, std)  
+    for (data, ax) in [(rank_track, ax1), (get_diff(rank_track), ax2)]:
+        m = np.mean(data, axis=0)
+        std = np.std(data, axis=0)
+        x_ = np.arange(m.shape[0])
+        ax.errorbar(x_, m, std)  
 
 
-    #ax1.set_title('mrr')
-    #ax2.set_title('$\Delta$ mrr')
-    #ax2.axhline(0, color='r')
-    #plt.tight_layout() 
-    #plt.savefig(os.path.join(save_path, 'debug.jpg'))
-    #plt.show()
-    #sys.exit()
+    ax1.set_title('Distance')
+    ax2.set_title('$\Delta$ Distance')
+    ax2.axhline(0, color='r')
+    plt.tight_layout() 
+    plt.savefig(os.path.join(save_path, 'debug.jpg'))
+    plt.show()
+    sys.exit()
 
     # save results
     if mode == 'val':
