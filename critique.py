@@ -273,14 +273,14 @@ def critiquing(crit_args, mode):
     # main test loop (each user)
 ##############################################################
 ##############################################################
-    print('hard coding prior mag(s), n = 1: this must be fixed!')
+    #print('hard coding prior mag(s), n = 1: this must be fixed!')
     #print('normalizing scores')
     rank_track = None
     t0 = time.time()
     rec_k = 10 # TODO: this must be an hp
     r_track = []
     for i, user in enumerate(all_users):
-        if i > 100: break
+        #if i > 100: break
         # print('user / sec: {:.3f}'.format(i / (time.time() - t0) ))
 
         # get ids of top k recs, and all gt from user
@@ -322,7 +322,7 @@ def critiquing(crit_args, mode):
                 real = True
                 if real:
                     crit, r = test_crit(gt, model, item_emb, index2id, device)
-                    crit = (gt, 0)
+                    #crit = (gt, 0)
 
                     # get d for p(user | d) bayesian update
                     d = get_d(model, crit, rel_emb, obj2items, crit_args, model_args, device)
@@ -353,26 +353,27 @@ def critiquing(crit_args, mode):
             else: rank_track = np.concatenate((rank_track, st))
        
     # plotting
-    print("plotting")
+    #print("plotting")
     #print(np.mean(r_track), np.std(r_track))
 
-    fig = plt.figure(figsize=(10,5))
-    ax1 = fig.add_subplot(121)  
-    ax2 = fig.add_subplot(122)  
+    #fig = plt.figure(figsize=(10,5))
+    #ax1 = fig.add_subplot(121)  
+    #ax2 = fig.add_subplot(122)  
 
-    for (data, ax) in [(rank_track, ax1), (get_diff(rank_track), ax2)]:
-        m = np.mean(data, axis=0)
-        std = np.std(data, axis=0)
-        x_ = np.arange(m.shape[0])
-        ax.errorbar(x_, m, std)  
+    #for (data, ax) in [(rank_track, ax1), (get_diff(rank_track), ax2)]:
+        #m = np.mean(data, axis=0)
+        #std = np.std(data, axis=0)
+        #x_ = np.arange(m.shape[0])
+        #ax.errorbar(x_, m, std)  
 
-    ax1.set_title('mrr')
-    ax2.set_title('$\Delta$ mrr')
-    ax2.axhline(0, color='r')
-    plt.tight_layout() 
-    plt.savefig(os.path.join(save_path, 'debug.jpg'))
-    plt.show()
-    sys.exit()
+
+    #ax1.set_title('mrr')
+    #ax2.set_title('$\Delta$ mrr')
+    #ax2.axhline(0, color='r')
+    #plt.tight_layout() 
+    #plt.savefig(os.path.join(save_path, 'debug.jpg'))
+    #plt.show()
+    #sys.exit()
 
     # save results
     if mode == 'val':
