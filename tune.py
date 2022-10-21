@@ -147,9 +147,9 @@ def tuner(cv_type, meta_args, args, fold, epochs, batch, n):
     args.fold = fold
 
     if cv_type == 'crit':
-        #(best_score, best_run, best_epoch) = best_model(meta_args.tune_name, 'train', fold)
-        print('hard coding best run: this must be fixed!')
-        best_run = 59
+        (best_score, best_run, best_epoch) = best_model(meta_args.tune_name, 'train', fold)
+        #print('hard coding best run: this must be fixed!')
+        #best_run = 59
         args.load_name = os.path.join('results', meta_args.tune_name, 'train', 'fold_{}'.format(fold), 'train_{}'.format(best_run))
 
     # build important classes
