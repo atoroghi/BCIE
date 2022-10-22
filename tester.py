@@ -15,6 +15,7 @@ def get_array(model, dataloader, args, device, rec):
             dataloader.kg[:,0], dataloader.kg[:,2]))).tolist()
     
     # get output array
+
     out = make_array(model, items, args.emb_dim)
     return out
 
@@ -22,7 +23,7 @@ def get_array(model, dataloader, args, device, rec):
 def make_array(model, items, emb_dim):
     # to map id to array location
     id2index = dict(zip(items.cpu().tolist(), list(range(0, len(items)))))
-    index2id = dict(zip(list(range(0, len(items))), items.cpu().tolist()))
+    index2id = {v: k for k, v in id2index.items()}
 
     with torch.no_grad():
         items_temp = items.long()
@@ -62,11 +63,19 @@ def get_scores(test_emb, rel_emb, item_emb, learning_rel):
         for_prod = torch.sum(test_emb[0] * item_emb[1], axis=1)
         scores = torch.clip(for_prod, -40, 40)
     else:
+        d_get_scores = (item_emb[1][8584])
+        print("d_get_scores)")
+        print(d_get_scores)
+        #sys.exit()
+
         for_prod = torch.sum(test_emb[0] * rel_emb[0] * item_emb[1], axis=1)
         inv_prod = torch.sum(test_emb[1] * rel_emb[1] * item_emb[0], axis=1)
+
         scores = torch.clip((for_prod + inv_prod) / 2, -40, 40)
-    ranked = torch.argsort(scores, descending=True)
-    return ranked
+
+    #ranked = torch.argsort(scores, descending=True)
+    #return ranked
+    return scores
 
 # get ground truth
 class GetGT:

@@ -124,16 +124,23 @@ class Priors:
 # get d embedding, used for p(u | d) baysian update
 def get_d(model, crit, rel_emb, obj2items, crit_args, model_args, device):
     (crit_node, crit_rel) = crit
+
     rel_emb = rel_emb[crit_rel]
+
+
     
     # single embedding of crit node
     if crit_args.critique_target == 'single':
+
         node_emb = get_emb(crit_node, model, device)
 
         # TODO: this is bad bad bad bad bad 
         if crit_args.evidence_type == 'direct':
             d_f = rel_emb[0] * node_emb[1]
             d_inv = rel_emb[1] * node_emb[0]
+            print("node_emb[1]")
+            print(node_emb[1])
+
         else: 
             d_f = node_emb[1]
             d_inv = node_emb[0]
@@ -194,7 +201,7 @@ def norm(x):
 
     return (a, b)
 
-# this assumes a list of vectors
+#  assumes a tuple of tensors and normalizes each row of tensor
 def list_norm(x):
     (a, b) = x
     norm = torch.linalg.norm(a, axis=1)
@@ -204,15 +211,21 @@ def list_norm(x):
     b = (b.T / norm).T
     return (a, b)
 
-# this assumes only 1 vector
+#  assumes only 1 row tensor (vector) and normalizes
 def single_norm(x):
     a = x / torch.linalg.norm(x)
     return a
-
+# calculates the distance between two vecotrs
 def get_distance(a,b):
     a = torch.squeeze(a)
     b = torch.squeeze(b)
     return torch.linalg.norm(a-b)
+
+def scores(a,b):
+    for_prod = torch.sum(a[0] * b[0], axis=1)
+    rev_prod = torch.sum(a[1] * b[1], axis=1)
+    return for_prod + rev_prod /2
+
 
 # main loop
 def critiquing(crit_args, mode):
@@ -249,11 +262,14 @@ def critiquing(crit_args, mode):
     (item_facts_head, item_facts_tail, obj2items, pop_counts) = get_dics(model_args)
 
     # make arrays with embeddings, and dict to map 
-    rec_h, rec_t, id2index, index2id = get_array(model, dataloader, model_args, device, rec=True)
-    item_emb = (rec_h, rec_t)
+    items_h, items_t, id2index, index2id = get_array(model, dataloader, model_args, device, rec=True)
+    item_emb = (items_h, items_t)
 
     #NORMALIZING
     item_emb = list_norm(item_emb)
+
+
+
 
     # get all relationships
     with torch.no_grad():
@@ -266,44 +282,62 @@ def critiquing(crit_args, mode):
         # this is weird [num, 2, dim]
         (rel_f, rel_inv) = list_norm((rel_f, rel_inv))
         rel_emb = torch.stack((rel_f, rel_inv))
+
         rel_emb = torch.permute(rel_emb, (1,0,2))
+
     likes_rel = rel_emb[0]
 
     # all users, gt + data (based on test / train)
     get_gt = GetGT(dataloader.fold, mode)
     data = dataloader.rec_test if mode == 'test' else dataloader.rec_val
-    all_users = torch.tensor(data[:, 0]).cpu().numpy()
+
+    # NOTE: Armin: This was not unique before
+    all_users = np.unique(torch.tensor(data[:, 0]).cpu().numpy(), return_counts = False)
+
+    
 
     # main test loop (each user)
 ##############################################################
 ##############################################################
     print('hard coding prior mag(s), n = 1: this must be fixed!')
-    print('normalizing scores')
+    print('normalizing embedding vectors')
     rank_track = None
     t0 = time.time()
     rec_k = 4 # TODO: this must be an hp
     r_track = []
+
     for i, user in enumerate(all_users):
-        if i > crit_args.num_users: break
+        #if i > crit_args.num_users: break
+        if i >1: break
         # print('user / sec: {:.3f}'.format(i / (time.time() - t0) ))
 
         # get ids of top k recs, and all gt from user
         user_emb = get_emb(user, model, device)
 
+
         #NORMALIZING 
         user_emb = norm(user_emb)
-        test_gt, all_gt, train_gt = get_gt.get(user)
+
+        val_or_test_gt, all_gt, train_gt = get_gt.get(user)
+        
 
         # iterature through all gt for single user
-        for j, gt in enumerate(test_gt):
+        for j, gt in enumerate(val_or_test_gt):
+
+
+            if j == 3: break
             # get all triplets w gt
             gt_facts = fact_stack(item_facts_head[gt], item_facts_tail[gt])
 
             # save initial rank and previous user crits 
             sub_track = np.empty(crit_args.session_length + 1)
+
             ranked = get_scores(user_emb, rel_emb[0], item_emb, model_args.learning_rel)
-            rank = get_rank(ranked, [gt], all_gt, id2index) 
-            sub_track[0] = 1 / (rank + 1) 
+
+            print(gt)
+            print((id2index[gt]))
+            #rank = get_rank(ranked, [gt], all_gt, id2index) 
+            #sub_track[0] = 1 / (rank + 1) 
 
             # a few sessions for each user 
             for sn in range(crit_args.session_length):
@@ -317,18 +351,42 @@ def critiquing(crit_args, mode):
                 rec_facts = rec_fact_stack(rec_ids, item_facts_head, item_facts_tail)
                 if gt_facts.shape[0] <= 0: continue
 
-                # select a crit (user action) and remove it from pool
-                #crit = crit_selector(gt_facts, rec_facts, crit_args.critique_mode, pop_counts)
-
                 # TESTING: get item most similar to gt in emb space
                 real = True
                 if real:
                     # NOTE: this used to be return_crit
                     #crit, r = crit_selector(gt, model, item_emb, index2id, device)
                     crit = (gt, 0)
+                    gt_ind = id2index[gt]
 
                     # get d for p(user | d) bayesian update
                     d = get_d(model, crit, rel_emb, obj2items, crit_args, model_args, device)
+                    distance_f = get_distance(user_emb[0], d[0])
+                    distance_inv = get_distance(user_emb[1], d[1])
+                    print("gt:")
+                    print(gt)
+                    print("sn:")
+                    print(sn)
+                    #print("pre_rank")
+                    #print(rank)
+                    print("distance_f")
+                    print(distance_f)
+                    print("distance_inv")
+                    print(distance_inv)
+                    print("norm of user_emb_f:")
+                    print(torch.linalg.norm(user_emb[0]))
+                    print("norm of user_emb_inv:")
+                    print(torch.linalg.norm(user_emb[1]))
+                    pre_score = scores(user_emb, d)
+                    print("pre_score:")
+                    print(pre_score)
+                    print(ranked.shape)
+                    print("pre_ranked:")
+                    print(ranked[gt_ind])
+                    print("user_emb[0]:")
+                    print(d[0])
+                    sys.exit()
+
                     update_info.store(d=d, crit_rel_emb=rel_emb[crit[1]]) # crit[1]
                 else: 
                     d, r = fake_d(gt, rel_emb[0], model, device, sigma=1.5)
@@ -343,17 +401,43 @@ def critiquing(crit_args, mode):
 
                 # track rank in training
                 new_user_emb, _ = update_info.get_priorinfo()
+                #new_user_emb = norm(new_user_emb)
+                print("norm of new_user_emb_f:")
+                print(torch.linalg.norm(new_user_emb[0]))
+                print("norm of new_user_emb_inv:")
+                print(torch.linalg.norm(new_user_emb[1]))
                 ranked = get_scores(new_user_emb, rel_emb[0], item_emb, model_args.learning_rel)
-                rank = get_rank(ranked, [gt], all_gt, id2index)
-                post_distance = get_distance(new_user_emb[0], d[0])
-                print(post_distance)
-                sub_track[sn + 1] = 1 / (rank + 1)
+                #post_rank = get_rank(ranked, [gt], all_gt, id2index)
+                #print("post rank")
+                #print(post_rank)
+                post_distance_f = get_distance(new_user_emb[0], d[0])
+                post_distance_inv = get_distance(new_user_emb[1], d[1])
+                print("post distance_f")
+                print(post_distance_f)
+                print("post distance_inv")
+                print(post_distance_inv)
+                print("post score:")
+                post_score = scores(new_user_emb, d)
+                print(post_score)
+                print("post ranked:")
+                print(ranked[gt_ind])
+                
+                
+                #sub_track[sn + 1] = 1 / (post_rank + 1)
+                #print("sub_track")
+                #print(sub_track)
+
             print()
 
             # update w new data
-            st = np.expand_dims(sub_track, axis=0)
-            if rank_track is None: rank_track = st
-            else: rank_track = np.concatenate((rank_track, st))
+            #st = np.expand_dims(sub_track, axis=0)
+            #print("st:")
+            #print(st)
+            #if rank_track is None: rank_track = st
+            #else: rank_track = np.concatenate((rank_track, st))
+            #print("rank_track")
+            #print(rank_track)
+    sys.exit()
        
     # plotting
     print("plotting")
