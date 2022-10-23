@@ -63,19 +63,14 @@ def get_scores(test_emb, rel_emb, item_emb, learning_rel):
         for_prod = torch.sum(test_emb[0] * item_emb[1], axis=1)
         scores = torch.clip(for_prod, -40, 40)
     else:
-        d_get_scores = (item_emb[1][8584])
-        print("d_get_scores)")
-        print(d_get_scores)
-        #sys.exit()
-
         for_prod = torch.sum(test_emb[0] * rel_emb[0] * item_emb[1], axis=1)
         inv_prod = torch.sum(test_emb[1] * rel_emb[1] * item_emb[0], axis=1)
 
         scores = torch.clip((for_prod + inv_prod) / 2, -40, 40)
 
-    #ranked = torch.argsort(scores, descending=True)
-    #return ranked
-    return scores
+
+    ranked = torch.argsort(scores, descending=True)
+    return ranked
 
 # get ground truth
 class GetGT:
