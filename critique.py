@@ -198,6 +198,15 @@ def norm(x):
 
     return (a, b)
 
+# counts number of similar items to the ground truth
+
+def count_similars(gt_emb, all_embs, likes_emb):
+    counter = 0
+    for other_emb in all_embs:
+        if sim(likes_emb * gt_emb, likes_emb * other_emb) > 0.9:
+            counter +=1
+    return counter
+
 #  assumes a tuple of tensors and normalizes each row of tensor
 def list_norm(x):
     (a, b) = x
@@ -306,7 +315,7 @@ def critiquing(crit_args, mode):
     r_track = []
     for i, user in enumerate(all_users):
         #if i > crit_args.num_users: break
-        if i >1: break
+        if i >100: break
         # print('user / sec: {:.3f}'.format(i / (time.time() - t0) ))
 
         # get ids of top k recs, and all gt from user
@@ -320,7 +329,7 @@ def critiquing(crit_args, mode):
 
         # iterature through all gt for single user
         for j, gt in enumerate(val_or_test_gt):
-            if j == 2: break
+            #if j == 2: break
             # get all triplets w gt
             gt_facts = fact_stack(item_facts_head[gt], item_facts_tail[gt])
 
@@ -370,6 +379,12 @@ def critiquing(crit_args, mode):
                     print(gt)
                     print("gt_ind:")
                     print(gt_ind)
+                    similar_heads = count_similars(item_emb[0][gt_ind], item_emb[0], likes_rel[1])
+                    print("similar heads:")
+                    print(similar_heads)
+                    similar_tails = count_similars(item_emb[1][gt_ind], item_emb[1], likes_rel[0])
+                    print("similar tails:")
+                    print(similar_tails)
                     print("sn:")
                     print(sn)
                     print("pre_rank from get ranked")
@@ -382,10 +397,10 @@ def critiquing(crit_args, mode):
                     #print(torch.linalg.norm(user_emb[0]))
                     #print("norm of user_emb_inv:")
                     #print(torch.linalg.norm(user_emb[1]))
-                    #pre_score = scores(user_emb, d)
-                    #print("pre_score:")
-                    #print(pre_score)
-                    sys.exit()
+                    pre_score = scores(user_emb, d)
+                    print("pre_score:")
+                    print(pre_score)
+                    sub_track[0] = pre_score
 
                     update_info.store(d=d, crit_rel_emb=rel_emb[crit[1]]) # crit[1]
                 else: 
@@ -408,29 +423,29 @@ def critiquing(crit_args, mode):
                 #print(torch.linalg.norm(new_user_emb[1]))
                 ranked = get_scores(new_user_emb, rel_emb[0], item_emb, model_args.learning_rel)
                 post_rank = get_rank(ranked, [gt], all_gt, id2index)
-                #print("post rank")
-                #print(post_rank)
+                print("post rank")
+                print(post_rank)
                 post_distance_f = get_distance(new_user_emb[0], d[0])
                 post_distance_inv = get_distance(new_user_emb[1], d[1])
-                #print("post distance_f")
-                #print(post_distance_f)
-                #print("post distance_inv")
-                #print(post_distance_inv)
-                #print("post score:")
-                #post_score = scores(new_user_emb, d)
-                #print(post_score)
+                print("post distance_f")
+                print(post_distance_f)
+                print("post distance_inv")
+                print(post_distance_inv)
+                print("post score:")
+                post_score = scores(new_user_emb, d)
+                print(post_score)
               
                 #sub_track[sn + 1] = 1 / (post_rank + 1)
-                sub_track[sn + 1] = post_rank
+                #sub_track[sn + 1] = post_rank
+                sub_track[sn+1] = post_score
 
                 #MNR_post = MNR_calculator(post_rank, total_items, all_gt)
                 #sub_track[sn + 1] = MNR_post
                 #sub_track[sn + 1] = post_distance_f
 
-                print("sub_track")
-                print(sub_track)
+                #print("sub_track")
+                #print(sub_track)
 
-            print()
 
             # update w new data
             st = np.expand_dims(sub_track, axis=0)
@@ -457,8 +472,8 @@ def critiquing(crit_args, mode):
         ax.errorbar(x_, m, std)  
 
 
-    ax1.set_title('Distance')
-    ax2.set_title('$\Delta$ Distance')
+    ax1.set_title('Score')
+    ax2.set_title('$\Delta$ Score')
     ax2.axhline(0, color='r')
     plt.tight_layout() 
     plt.savefig(os.path.join(save_path, 'debug.jpg'))
