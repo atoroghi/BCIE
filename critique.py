@@ -183,10 +183,15 @@ def fake_d(gt, rel_emb, model, device, sigma=1):
         if r > 0.38 and r < 0.52: break
     return (rel_emb[0] * fake_1, rel_emb[1] * fake_0), r.cpu().item() 
 
-def sim(a, b):
+def sim_cos(a, b):
     a = torch.squeeze(a)
     b = torch.squeeze(b)
     return (a / torch.linalg.norm(a)) @ (b / torch.linalg.norm(b))
+
+def sim_euc(a, b):
+    a = torch.squeeze(a)
+    b = torch.squeeze(b)
+    return (a) @ (b)
 
 def norm(x):
     (a, b) = x
@@ -200,11 +205,15 @@ def norm(x):
 
 # counts number of similar items to the ground truth
 
-def count_similars(gt_emb, all_embs, likes_emb):
+def count_similars(gt_emb, all_embs, likes_emb, sim_metric):
     counter = 0
     for other_emb in all_embs:
-        if sim(likes_emb * gt_emb, likes_emb * other_emb) > 0.9:
-            counter +=1
+        if sim_metric == "cos":
+            if sim_cos(likes_emb * gt_emb, likes_emb * other_emb) > 0.9:
+                counter +=1
+        elif sim_metric == "euc":
+            if sim_euc(likes_emb * gt_emb, likes_emb * other_emb) > 0.9:
+                counter +=1
     return counter
 
 #  assumes a tuple of tensors and normalizes each row of tensor
@@ -277,7 +286,7 @@ def critiquing(crit_args, mode):
     total_items = items_h.shape[0]
 
     #NORMALIZING
-    item_emb = list_norm(item_emb)
+    #item_emb = list_norm(item_emb)
 
     # get all relationships
     with torch.no_grad():
@@ -288,7 +297,7 @@ def critiquing(crit_args, mode):
 
         #NORMALIZING
         # this is weird [num, 2, dim]
-        (rel_f, rel_inv) = list_norm((rel_f, rel_inv))
+        #(rel_f, rel_inv) = list_norm((rel_f, rel_inv))
         rel_emb = torch.stack((rel_f, rel_inv))
 
         rel_emb = torch.permute(rel_emb, (1,0,2))
@@ -310,19 +319,24 @@ def critiquing(crit_args, mode):
     print('hard coding prior mag(s), n = 1: this must be fixed!')
     print('normalizing embedding vectors')
     rank_track = None
+    df_track = None
+    dinv_track = None
+    score_track = None
+    sim_head_track = None
+    sim_tail_track = None
     t0 = time.time()
     rec_k = 4 # TODO: this must be an hp
     r_track = []
     for i, user in enumerate(all_users):
         #if i > crit_args.num_users: break
-        if i >100: break
+        if i >5: break
         # print('user / sec: {:.3f}'.format(i / (time.time() - t0) ))
 
         # get ids of top k recs, and all gt from user
         user_emb = get_emb(user, model, device)
 
         #NORMALIZING 
-        user_emb = norm(user_emb)
+        #user_emb = norm(user_emb)
 
         val_or_test_gt, all_gt, train_gt = get_gt.get(user)
         
@@ -335,12 +349,18 @@ def critiquing(crit_args, mode):
 
             # save initial rank and previous user crits 
             sub_track = np.empty(crit_args.session_length + 1)
+            sub_track_rank = np.empty(crit_args.session_length + 1)
+            sub_track_distance_f = np.empty(crit_args.session_length + 1)
+            sub_track_distance_inv = np.empty(crit_args.session_length + 1)
+            sub_track_score = np.empty(crit_args.session_length + 1)
+            sub_track_sim_head = np.empty(crit_args.session_length + 1)
+            sub_track_sim_tail = np.empty(crit_args.session_length + 1)
 
             ranked = get_scores(user_emb, rel_emb[0], item_emb, model_args.learning_rel)
 
             rank = get_rank(ranked, [gt], all_gt, id2index) 
             #sub_track[0] = 1 / (rank + 1) 
-            sub_track[0] = rank
+            #sub_track[0] = rank
 
             #MNR_pre = MNR_calculator(rank, total_items, all_gt)
             #sub_track[0] = MNR_pre
@@ -375,32 +395,40 @@ def critiquing(crit_args, mode):
                     distance_f = get_distance(user_emb[0], d[0])
 
                     distance_inv = get_distance(user_emb[1], d[1])
-                    print("gt:")
-                    print(gt)
-                    print("gt_ind:")
-                    print(gt_ind)
-                    similar_heads = count_similars(item_emb[0][gt_ind], item_emb[0], likes_rel[1])
-                    print("similar heads:")
-                    print(similar_heads)
-                    similar_tails = count_similars(item_emb[1][gt_ind], item_emb[1], likes_rel[0])
-                    print("similar tails:")
-                    print(similar_tails)
-                    print("sn:")
-                    print(sn)
-                    print("pre_rank from get ranked")
-                    print(rank)
-                    print("distance_f")
-                    print(distance_f)
-                    print("distance_inv")
-                    print(distance_inv)
+                    #print("gt:")
+                    #print(gt)
+                    #print("gt_ind:")
+                    #print(gt_ind)
+
+                    similar_heads = count_similars(item_emb[0][gt_ind], item_emb[0], likes_rel[1], "cos")
+                    #print("similar heads:")
+                    #print(similar_heads)
+                    similar_tails = count_similars(item_emb[1][gt_ind], item_emb[1], likes_rel[0], "cos")
+                    #print("similar tails:")
+                    #print(similar_tails)
+                    #print("sn:")
+                    #print(sn)
+                    #print("pre_rank from get ranked")
+                    #print(rank)
+                    #print("distance_f")
+                    #print(distance_f)
+                    #print("distance_inv")
+                    #print(distance_inv)
                     #print("norm of user_emb_f:")
                     #print(torch.linalg.norm(user_emb[0]))
                     #print("norm of user_emb_inv:")
                     #print(torch.linalg.norm(user_emb[1]))
                     pre_score = scores(user_emb, d)
-                    print("pre_score:")
-                    print(pre_score)
-                    sub_track[0] = pre_score
+                    #print("pre_score:")
+                    #print(pre_score)
+                    #sub_track[0] = pre_score
+                    if sn == 0:
+                        sub_track_rank[0] = rank
+                        sub_track_distance_f[0] = distance_f
+                        sub_track_distance_inv[0] = distance_inv
+                        sub_track_score[0] = pre_score
+                        sub_track_sim_head[0] = similar_heads
+                        sub_track_sim_tail[0] = similar_tails
 
                     update_info.store(d=d, crit_rel_emb=rel_emb[crit[1]]) # crit[1]
                 else: 
@@ -416,6 +444,7 @@ def critiquing(crit_args, mode):
 
                 # track rank in training
                 new_user_emb, _ = update_info.get_priorinfo()
+                #NORMALIZING
                 #new_user_emb = norm(new_user_emb)
                 #print("norm of new_user_emb_f:")
                 #print(torch.linalg.norm(new_user_emb[0]))
@@ -434,10 +463,17 @@ def critiquing(crit_args, mode):
                 print("post score:")
                 post_score = scores(new_user_emb, d)
                 print(post_score)
+
+                sub_track_rank[sn + 1] = post_rank
+                sub_track_distance_f[sn+1] = post_distance_f
+                sub_track_distance_inv[sn+1] = post_distance_inv
+                sub_track_score[sn+1] = post_score
+                sub_track_sim_head[sn+1] = similar_heads
+                sub_track_sim_tail[sn+1] = similar_tails
               
                 #sub_track[sn + 1] = 1 / (post_rank + 1)
                 #sub_track[sn + 1] = post_rank
-                sub_track[sn+1] = post_score
+                #sub_track[sn+1] = post_score
 
                 #MNR_post = MNR_calculator(post_rank, total_items, all_gt)
                 #sub_track[sn + 1] = MNR_post
@@ -448,37 +484,82 @@ def critiquing(crit_args, mode):
 
 
             # update w new data
-            st = np.expand_dims(sub_track, axis=0)
-            print("st:")
-            print(st)
-            if rank_track is None: rank_track = st
-            else: rank_track = np.concatenate((rank_track, st))
-            print("rank_track")
-            print(rank_track)
+            sub_track_rank = np.expand_dims(sub_track_rank, axis=0)
+            sub_track_distance_f = np.expand_dims(sub_track_distance_f, axis=0)
+            sub_track_distance_inv = np.expand_dims(sub_track_distance_inv, axis=0)
+            sub_track_score = np.expand_dims(sub_track_score, axis=0)
+            sub_track_sim_head = np.expand_dims(sub_track_sim_head, axis=0)
+            sub_track_sim_tail = np.expand_dims(sub_track_sim_tail, axis=0)
+            if rank_track is None: rank_track = sub_track_rank
+            else: rank_track = np.concatenate((rank_track, sub_track_rank ))
+            if df_track is None: df_track = sub_track_distance_f
+            else: df_track = np.concatenate((df_track, sub_track_distance_f ))
+            if dinv_track is None: dinv_track = sub_track_distance_inv
+            else: dinv_track = np.concatenate((dinv_track, sub_track_distance_inv ))
+            if score_track is None: score_track = sub_track_score
+            else: score_track = np.concatenate((score_track, sub_track_score))
+            if sim_head_track is None: sim_head_track = sub_track_sim_head
+            else: sim_head_track = np.concatenate((sim_head_track, sub_track_sim_head))
+            if sim_tail_track is None: sim_tail_track = sub_track_sim_tail
+            else: sim_tail_track = np.concatenate((sim_tail_track, sub_track_sim_tail))
+            #st = np.expand_dims(sub_track, axis=0)
+            #print("st:")
+            #print(st)
+            #if rank_track is None: rank_track = st
+            #else: rank_track = np.concatenate((rank_track, st))
+            #print("rank_track")
+            #print(rank_track)
     #sys.exit()
        
     # plotting
     print("plotting")
     #print(np.mean(r_track), np.std(r_track))
 
-    fig = plt.figure(figsize=(10,5))
-    ax1 = fig.add_subplot(121)  
-    ax2 = fig.add_subplot(122)  
 
-    for (data, ax) in [(rank_track, ax1), (get_diff(rank_track), ax2)]:
-        m = np.mean(data, axis=0)
-        std = np.std(data, axis=0)
-        x_ = np.arange(m.shape[0])
-        ax.errorbar(x_, m, std)  
-
-
-    ax1.set_title('Score')
-    ax2.set_title('$\Delta$ Score')
-    ax2.axhline(0, color='r')
-    plt.tight_layout() 
-    plt.savefig(os.path.join(save_path, 'debug.jpg'))
-    plt.show()
+    print("rank_Track")
+    print(rank_track)
+    print("sim head track")
+    print(sim_head_track)
+    for j in range(sim_head_track.shape[0]):
+        fig = plt.figure(figsize=(12,8))
+        #ax = fig.add_subplot(141) 
+        ax1 = fig.add_subplot(141) 
+        ax2 = fig.add_subplot(142) 
+        ax3 = fig.add_subplot(143) 
+        ax4 = fig.add_subplot(144)
+        for (data, ax) in [(rank_track, ax1), (df_track, ax2), (dinv_track, ax3), (score_track, ax4)]:
+            x_ = np.arange(data.shape[1])
+            
+            ax.plot(x_, data[j,:])
+        ax2.set_title('{} similar heads and {} similar tails'.format(sim_head_track[j][0],sim_tail_track[j][0]))
+        ax1.set_ylabel('Rank')
+        ax2.set_ylabel('Distance (forward)')
+        ax3.set_ylabel('Distance (inverse)')
+        ax4.set_ylabel('Score')
+        plt.tight_layout() 
+        plt.savefig(os.path.join(save_path, 'debug{}.jpg'.format(j)))
+        plt.show()
+        
     sys.exit()
+
+    #fig = plt.figure(figsize=(10,5))
+    #ax1 = fig.add_subplot(121)  
+    #ax2 = fig.add_subplot(122)  
+
+    #for (data, ax) in [(rank_track, ax1), (get_diff(rank_track), ax2)]:
+        #m = np.mean(data, axis=0)
+        #std = np.std(data, axis=0)
+        #x_ = np.arange(m.shape[0])
+        #ax.errorbar(x_, m, std)  
+
+
+    #ax1.set_title('Score')
+    #ax2.set_title('$\Delta$ Score')
+    #ax2.axhline(0, color='r')
+    #plt.tight_layout() 
+    #plt.savefig(os.path.join(save_path, 'debug.jpg'))
+    #plt.show()
+    #sys.exit()
 
     # save results
     if mode == 'val':
