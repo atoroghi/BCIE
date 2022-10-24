@@ -25,6 +25,7 @@ class Params:
                 #'etta_2' : ([-5, 5], float, 10),
                 #'etta_3' : ([-5, 5], float, 10),
                 #'etta_4' : ([-5, 5], float, 10),
+                #'alpha' : ([-5, 0], float, 10),
                 #'-tau_z_f': ([-5, 5], float, 10),
                 #'-tau_z_inv': ([-5, 5], float, 10),
             }
@@ -129,8 +130,8 @@ class Launch:
         
         for proc in subs:
             proc.wait()
-        print('stopping')
-        sys.exit()
+        #print('stopping')
+        #sys.exit()
 
         # get recall at k
         best_hits = torch.empty(p.shape[0])
@@ -148,10 +149,15 @@ def tuner(cv_type, meta_args, args, fold, epochs, batch, n):
 
     if cv_type == 'crit':
         (best_score, best_run, best_epoch) = best_model(meta_args.tune_name, 'train', fold)
+        print("fold")
+        print(fold)
+        print("best_run")
+        print(best_run)
+        sys.exit()
         #print('hard coding best run: this must be fixed!')
         #best_run = 59
         args.load_name = os.path.join('results', meta_args.tune_name, 'train', 'fold_{}'.format(fold), 'train_{}'.format(best_run))
-
+    sys.exit()
     # build important classes
     param = Params(cv_type, args, meta_args)
     launch = Launch(cv_type, args, param, meta_args.tune_name, fold)

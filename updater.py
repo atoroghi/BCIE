@@ -8,7 +8,7 @@ import sys
 
 # fast gaussian update
 # TODO: this is wrong, update tn
-def beta_update(update_info, sn, crit_args, model_args, device, update_type, etta):
+def beta_update(update_info, sn, crit_args, model_args, device, update_type, map_finder, etta, alpha):
     if update_type == "gauss":
         (f, inv), prec, n = update_info.get_sampleinfo()
         (f0, inv0), (prec_f0, prec_inv0) = update_info.get_priorinfo()
@@ -35,17 +35,21 @@ def beta_update(update_info, sn, crit_args, model_args, device, update_type, ett
             X_f = torch.unsqueeze(X_f , dim = 0)
             X_inv = torch.unsqueeze(X_inv , dim = 0)
 
-        
         # finding the new user belief mean
-        W_new_f = SDR_cvxopt(tau_prior_f, X_f, mu_prior_f, model_args.emb_dim, etta_sn)
-        W_new_inv = SDR_cvxopt(tau_prior_inv, X_inv, mu_prior_inv, model_args.emb_dim, etta_sn)
+        # Using convext solver to find the W_MAP
+        if update_type == 'cvx':
+            W_new_f = SDR_cvxopt(tau_prior_f, X_f, mu_prior_f, model_args.emb_dim, etta_sn)
+            W_new_inv = SDR_cvxopt(tau_prior_inv, X_inv, mu_prior_inv, model_args.emb_dim, etta_sn)
+        elif update_type == 'gd':
+            W_new_f = GDOPT(tau_prior_f, X_f, mu_prior_f, model_args.emb_dim, etta_sn, alpha)
+            W_new_inv = GDOPT(tau_prior_inv, X_inv, mu_prior_inv, model_args.emb_dim, etta_sn, alpha)
 
         # finding the new user belief precision 
             # first, calculate Hessian of the log likelihood
         W_new_f = torch.tensor(W_new_f).float().to(device)
         W_new_inv = torch.tensor(W_new_inv).float().to(device)
-        H_map_f = log_likelihood(X_f, W_new_f, etta_sn)
-        H_map_inv = log_likelihood(X_inv, W_new_inv, etta_sn)
+        _, H_map_f = log_likelihood(X_f, W_new_f, etta_sn)
+        _, H_map_inv = log_likelihood(X_inv, W_new_inv, etta_sn)
 
         #making sure the returned precision is symmetric
 
@@ -57,7 +61,7 @@ def beta_update(update_info, sn, crit_args, model_args, device, update_type, ett
 
         update_info.store(user_emb=(W_new_f, W_new_inv), user_prec=(H_out_f, H_out_inv))
 
-def beta_update_indirect(update_info, sn, crit_args, model_args, device, update_type, etta):
+def beta_update_indirect(update_info, sn, crit_args, model_args, device, update_type, map_finder, etta, alpha):
     if update_type == "gauss":
         (user_mean_f, user_mean_inv), (user_prec_f, user_prec_inv) = update_info.get_priorinfo()
         (likes_emb_f, likes_emb_inv) = (update_info.likes_emb_f , update_info.likes_emb_inv)
@@ -122,14 +126,23 @@ def beta_update_indirect(update_info, sn, crit_args, model_args, device, update_
         (item_prec_f, item_prec_inv) = (update_info.z_prec, update_info.z_prec)
 
         etta_sn = etta[sn]
-        z_map_f = SDR_cvxopt(item_prec_f, X_f, item_mean_f, model_args.emb_dim, etta_sn)
-        z_map_inv = SDR_cvxopt(item_prec_inv, X_inv, item_mean_inv, model_args.emb_dim, etta_sn)
+        if update_type == 'cvx':
+            z_map_f = SDR_cvxopt(item_prec_f, X_f, item_mean_f, model_args.emb_dim, etta_sn)
+            z_map_inv = SDR_cvxopt(item_prec_inv, X_inv, item_mean_inv, model_args.emb_dim, etta_sn)
+        elif update_type == 'gd':
+            z_map_f = GDOPT(item_prec_f, X_f, item_mean_f, model_args.emb_dim, etta_sn, alpha)
+            z_map_inv = GDOPT(item_prec_inv, X_inv, item_mean_inv, model_args.emb_dim, etta_sn, alpha)
         X_new_f = update_info.likes_emb_f  * z_map_f
         X_new_inv = update_info.likes_emb_inv * z_map_inv
-        W_new_f = SDR_cvxopt(tau_prior_f, X_new_f, mu_prior_f, model_args.emb_dim, etta_sn)
-        W_new_inv = SDR_cvxopt(tau_prior_inv, X_new_inv, mu_prior_inv, model_args.emb_dim, etta_sn)
-        H_map_f = log_likelihood(X_new_f, W_new_f, etta)
-        H_map_inv = log_likelihood(X_new_inv, W_new_inv, etta)
+        if update_type == 'cvx':
+            W_new_f = SDR_cvxopt(tau_prior_f, X_new_f, mu_prior_f, model_args.emb_dim, etta_sn, alpha)
+            W_new_inv = SDR_cvxopt(tau_prior_inv, X_new_inv, mu_prior_inv, model_args.emb_dim, etta_sn, alpha)
+        elif update_type == 'gd':
+            W_new_f = GDOPT(tau_prior_f, X_new_f, mu_prior_f, model_args.emb_dim, etta_sn, alpha)
+            W_new_inv = GDOPT(tau_prior_inv, X_new_inv, mu_prior_inv, model_args.emb_dim, etta_sn,alpha)
+
+        _, H_map_f = log_likelihood(X_new_f, W_new_f, etta)
+        _, H_map_inv = log_likelihood(X_new_inv, W_new_inv, etta)
         za_f = tau_prior_f + etta * H_map_f
         za_inv = tau_prior_inv + etta * H_map_inv
         H_out_f = np.maximum(za_f, za_f.T)
@@ -161,11 +174,36 @@ def log_likelihood(X, W, etta):
     probs = torch.clip(torch.sigmoid(logits * etta), 1e-20, 1-1e-20)
 
     #probs = np.clip(expit(logits * etta), 1e-20, 1-1e-20)
+    g = torch.mv(X.t(), (probs - 1))
     H = X.T @ torch.diag(((probs*(1 - probs)))) @ X
 
     #H = np.matmul(np.matmul(np.transpose(X),np.diag((probs*(1 - probs)))), X)
-    return H
+    return g,H
     
+
+# performing gradient descent for laplace approximation    
+
+def GDOPT(tau_prior, X, W,  etta, alpha):
+    #TODO: THis should be an argument
+    max_iters = 1000
+
+    #TODO: where does etta appear in math?
+    for i in range(max_iters):
+        g_likelihood, _ = log_likelihood(X, W, etta)
+        g_prior = W * tau_prior
+        g = g_prior + g_likelihood
+        W = W - alpha * g
+
+
+
+
+
+
+
+
+
+
+
 # TODO: no comments or explanation of how this is supposed to work
 class Updater:
     def __init__(self, X, y, mu_prior, tau_prior, crit_args, model_args, device, etta):
@@ -201,7 +239,7 @@ class Updater:
             W_new = self.SDR_cvxopt(self.tau_prior, self.X, self.y , self.W)
             self.W = W_new
             # log likelihood for Hessian update
-            H_map = self.log_likelihood()
+            _, H_map = self.log_likelihood()
 
             prior_precision = self.tau_prior
             # Hessian update (prior precision + log likelihood)

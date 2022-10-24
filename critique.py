@@ -31,6 +31,7 @@ def get_args_critique():
     parser.add_argument('-etta_2', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-etta_3', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-etta_4', default=1.0, type=float, help='Precision for Laplace Approximation')
+    parser.add_argument('-alpha', default=0.1, type=float, help='Learning rate for GD in Laplace Approximation')
     parser.add_argument('-multi_k', default=10, type=int, help='number of samples for multi type update')
     parser.add_argument('-session_length', default=10, type=int, help='number of critiquing sessions')
     parser.add_argument('-num_users', default=50, type=int, help='number of users')
@@ -45,6 +46,9 @@ def get_args_critique():
     # likelihood
     parser.add_argument('-update_type', default='gauss', type=str, help='laplace or gauss')
     parser.add_argument('-critique_mode', default='random', type=str, help='random or pop or diff')
+
+    #laplace updating only
+    parser.add_argument('map_finder', default='cvx', type= str, help='cvx or gd')
 
     args = parser.parse_args()
     return args
@@ -179,7 +183,7 @@ def fake_d(gt, rel_emb, model, device, sigma=1):
         gt_emb = get_emb(gt, model, device)
         fake_0 = gt_emb[0] + sigma * torch.linalg.norm(gt_emb[0]) * torch.randn(gt_emb[0].shape[0]).to(device)
         fake_1 = gt_emb[1] + sigma * torch.linalg.norm(gt_emb[1]) * torch.randn(gt_emb[1].shape[0]).to(device)
-        r = 0.5 * (sim(gt_emb[0], fake_0) + (sim(gt_emb[1], fake_1))) 
+        r = 0.5 * (sim_cos(gt_emb[0], fake_0) + (sim_cos(gt_emb[1], fake_1))) 
         if r > 0.38 and r < 0.52: break
     return (rel_emb[0] * fake_1, rel_emb[1] * fake_0), r.cpu().item() 
 
@@ -253,6 +257,7 @@ def critiquing(crit_args, mode):
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     model_args = Namespace()
     etta = [crit_args.etta_0, crit_args.etta_1, crit_args.etta_2, crit_args.etta_3, crit_args.etta_4]
+    alpha = crit_args.alpha
 
     # load model and get parameter from file
     save_path = os.path.join('results', crit_args.test_name)
@@ -375,7 +380,7 @@ def critiquing(crit_args, mode):
             ##############################################################
             ##############################################################
                 if sn == 0: 
-                    update_info = UpdateInfo(user_emb, etta, crit_args, model_args, device, likes_emb=likes_rel)
+                    update_info = UpdateInfo(user_emb, etta, alpha, crit_args, model_args, device, likes_emb=likes_rel)
 
                 # stack facts, either [-1, rel, tail] or [head, rel, -1]
                 rec_ids = [index2id[int(x)] for x in ranked[:rec_k]]
@@ -439,9 +444,9 @@ def critiquing(crit_args, mode):
 
                 # perform update
                 if crit_args.evidence_type == 'direct':
-                    beta_update(update_info, sn, crit_args, model_args, device, crit_args.update_type, etta)
+                    beta_update(update_info, sn, crit_args, model_args, device, crit_args.update_type, crit_args.map_finder, etta, alpha)
                 if crit_args.evidence_type == 'indirect':
-                    beta_update_indirect(update_info, sn, crit_args, model_args, device, crit_args.update_type, etta)
+                    beta_update_indirect(update_info, sn, crit_args, model_args, device, crit_args.update_type, crit_args.map_finder, etta, alpha)
 
                 # track rank in training
                 new_user_emb, _ = update_info.get_priorinfo()
