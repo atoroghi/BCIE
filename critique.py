@@ -329,7 +329,7 @@ def critiquing(crit_args, mode):
     r_track = []
     for i, user in enumerate(all_users):
         #if i > crit_args.num_users: break
-        if i >5: break
+        if i >50: break
         # print('user / sec: {:.3f}'.format(i / (time.time() - t0) ))
 
         # get ids of top k recs, and all gt from user
@@ -400,10 +400,10 @@ def critiquing(crit_args, mode):
                     #print("gt_ind:")
                     #print(gt_ind)
 
-                    similar_heads = count_similars(item_emb[0][gt_ind], item_emb[0], likes_rel[1], "cos")
+                    #similar_heads = count_similars(item_emb[0][gt_ind], item_emb[0], likes_rel[1], "cos")
                     #print("similar heads:")
                     #print(similar_heads)
-                    similar_tails = count_similars(item_emb[1][gt_ind], item_emb[1], likes_rel[0], "cos")
+                    #similar_tails = count_similars(item_emb[1][gt_ind], item_emb[1], likes_rel[0], "cos")
                     #print("similar tails:")
                     #print(similar_tails)
                     #print("sn:")
@@ -424,11 +424,12 @@ def critiquing(crit_args, mode):
                     #sub_track[0] = pre_score
                     if sn == 0:
                         sub_track_rank[0] = rank
+                        #sub_track_rank[0] = 1/(rank+1)
                         sub_track_distance_f[0] = distance_f
                         sub_track_distance_inv[0] = distance_inv
                         sub_track_score[0] = pre_score
-                        sub_track_sim_head[0] = similar_heads
-                        sub_track_sim_tail[0] = similar_tails
+                        #sub_track_sim_head[0] = similar_heads
+                        #sub_track_sim_tail[0] = similar_tails
 
                     update_info.store(d=d, crit_rel_emb=rel_emb[crit[1]]) # crit[1]
                 else: 
@@ -452,24 +453,26 @@ def critiquing(crit_args, mode):
                 #print(torch.linalg.norm(new_user_emb[1]))
                 ranked = get_scores(new_user_emb, rel_emb[0], item_emb, model_args.learning_rel)
                 post_rank = get_rank(ranked, [gt], all_gt, id2index)
-                print("post rank")
-                print(post_rank)
+                #print("post rank")
+                #print(post_rank)
                 post_distance_f = get_distance(new_user_emb[0], d[0])
                 post_distance_inv = get_distance(new_user_emb[1], d[1])
-                print("post distance_f")
-                print(post_distance_f)
-                print("post distance_inv")
-                print(post_distance_inv)
-                print("post score:")
+                #print("post distance_f")
+                #print(post_distance_f)
+                #print("post distance_inv")
+                #print(post_distance_inv)
+                #print("post score:")
                 post_score = scores(new_user_emb, d)
-                print(post_score)
+                #print(post_score)
 
+                #sub_track_rank[sn + 1] = 1 / (post_rank + 1)
                 sub_track_rank[sn + 1] = post_rank
+                #sub_track[sn + 1] = 1 / (post_rank + 1)
                 sub_track_distance_f[sn+1] = post_distance_f
                 sub_track_distance_inv[sn+1] = post_distance_inv
                 sub_track_score[sn+1] = post_score
-                sub_track_sim_head[sn+1] = similar_heads
-                sub_track_sim_tail[sn+1] = similar_tails
+                #sub_track_sim_head[sn+1] = similar_heads
+                #sub_track_sim_tail[sn+1] = similar_tails
               
                 #sub_track[sn + 1] = 1 / (post_rank + 1)
                 #sub_track[sn + 1] = post_rank
@@ -488,8 +491,8 @@ def critiquing(crit_args, mode):
             sub_track_distance_f = np.expand_dims(sub_track_distance_f, axis=0)
             sub_track_distance_inv = np.expand_dims(sub_track_distance_inv, axis=0)
             sub_track_score = np.expand_dims(sub_track_score, axis=0)
-            sub_track_sim_head = np.expand_dims(sub_track_sim_head, axis=0)
-            sub_track_sim_tail = np.expand_dims(sub_track_sim_tail, axis=0)
+            #sub_track_sim_head = np.expand_dims(sub_track_sim_head, axis=0)
+            #sub_track_sim_tail = np.expand_dims(sub_track_sim_tail, axis=0)
             if rank_track is None: rank_track = sub_track_rank
             else: rank_track = np.concatenate((rank_track, sub_track_rank ))
             if df_track is None: df_track = sub_track_distance_f
@@ -498,10 +501,10 @@ def critiquing(crit_args, mode):
             else: dinv_track = np.concatenate((dinv_track, sub_track_distance_inv ))
             if score_track is None: score_track = sub_track_score
             else: score_track = np.concatenate((score_track, sub_track_score))
-            if sim_head_track is None: sim_head_track = sub_track_sim_head
-            else: sim_head_track = np.concatenate((sim_head_track, sub_track_sim_head))
-            if sim_tail_track is None: sim_tail_track = sub_track_sim_tail
-            else: sim_tail_track = np.concatenate((sim_tail_track, sub_track_sim_tail))
+            #if sim_head_track is None: sim_head_track = sub_track_sim_head
+            #else: sim_head_track = np.concatenate((sim_head_track, sub_track_sim_head))
+            #if sim_tail_track is None: sim_tail_track = sub_track_sim_tail
+            #else: sim_tail_track = np.concatenate((sim_tail_track, sub_track_sim_tail))
             #st = np.expand_dims(sub_track, axis=0)
             #print("st:")
             #print(st)
@@ -520,25 +523,28 @@ def critiquing(crit_args, mode):
     print(rank_track)
     print("sim head track")
     print(sim_head_track)
-    for j in range(sim_head_track.shape[0]):
-        fig = plt.figure(figsize=(12,8))
-        #ax = fig.add_subplot(141) 
-        ax1 = fig.add_subplot(141) 
-        ax2 = fig.add_subplot(142) 
-        ax3 = fig.add_subplot(143) 
-        ax4 = fig.add_subplot(144)
-        for (data, ax) in [(rank_track, ax1), (df_track, ax2), (dinv_track, ax3), (score_track, ax4)]:
-            x_ = np.arange(data.shape[1])
-            
-            ax.plot(x_, data[j,:])
-        ax2.set_title('{} similar heads and {} similar tails'.format(sim_head_track[j][0],sim_tail_track[j][0]))
-        ax1.set_ylabel('Rank')
-        ax2.set_ylabel('Distance (forward)')
-        ax3.set_ylabel('Distance (inverse)')
-        ax4.set_ylabel('Score')
-        plt.tight_layout() 
-        plt.savefig(os.path.join(save_path, 'debug{}.jpg'.format(j)))
-        plt.show()
+    #for j in range(sim_head_track.shape[0]):
+    fig = plt.figure(figsize=(12,8))
+    ax1 = fig.add_subplot(141) 
+    ax2 = fig.add_subplot(142) 
+    ax3 = fig.add_subplot(143) 
+    ax4 = fig.add_subplot(144)
+    for (data, ax) in [(rank_track, ax1), (df_track, ax2), (dinv_track, ax3), (score_track, ax4)]:
+        x_ = np.arange(data.shape[1])
+        m = np.mean(data, axis=0)
+        std = np.std(data, axis=0)
+        ax.errorbar(x_, m, std)  
+        #ax.plot(x_, data[j,:])
+    #ax2.set_title('{} similar heads and {} similar tails'.format(sim_head_track[j][0],sim_tail_track[j][0]))
+    #ax1.set_ylabel('Rank')
+    ax1.set_ylabel('Rank')
+    ax2.set_ylabel('Distance (forward)')
+    ax3.set_ylabel('Distance (inverse)')
+    ax4.set_ylabel('Score')
+    plt.tight_layout() 
+    plt.savefig(os.path.join(save_path, 'debug.jpg'))
+    #plt.savefig(os.path.join(save_path, 'debug{}.jpg'.format(j)))
+    plt.show()
         
     sys.exit()
 
