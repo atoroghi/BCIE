@@ -39,6 +39,7 @@ def beta_update(update_info, sn, crit_args, model_args, device, update_type, map
         # finding the new user belief mean
         # Using convext solver to find the W_MAP
         if map_finder == 'cvx':
+
             W_new_f = SDR_cvxopt(tau_prior_f, X_f, mu_prior_f, model_args.emb_dim, etta_sn)
             W_new_inv = SDR_cvxopt(tau_prior_inv, X_inv, mu_prior_inv, model_args.emb_dim, etta_sn)
             W_new_f = torch.tensor(W_new_f).float().to(device)
@@ -128,29 +129,45 @@ def beta_update_indirect(update_info, sn, crit_args, model_args, device, update_
         (item_mean_f, item_mean_inv) = (update_info.z_mean, update_info.z_mean)
         (item_prec_f, item_prec_inv) = (update_info.z_prec, update_info.z_prec)
 
+        # in general, the updater is written in the matrix form
+        if len(X_f.shape) == 1:
+            X_f = torch.unsqueeze(X_f , dim = 0)
+            X_inv = torch.unsqueeze(X_inv , dim = 0)
+
         etta_sn = etta[sn]
-        if update_type == 'cvx':
+        if map_finder == 'cvx':
             z_map_f = SDR_cvxopt(item_prec_f, X_f, item_mean_f, model_args.emb_dim, etta_sn)
             z_map_inv = SDR_cvxopt(item_prec_inv, X_inv, item_mean_inv, model_args.emb_dim, etta_sn)
-        elif update_type == 'gd':
-            z_map_f = GDOPT(item_prec_f, X_f, item_mean_f, model_args.emb_dim, etta_sn, alpha)
-            z_map_inv = GDOPT(item_prec_inv, X_inv, item_mean_inv, model_args.emb_dim, etta_sn, alpha)
+            z_map_f = torch.tensor(z_map_f).float().to(device)
+            z_map_inv = torch.tensor(z_map_inv).float().to(device)
+
+        elif map_finder == 'gd':
+            z_map_f = GDOPT(item_prec_f, X_f, item_mean_f, etta_sn, alpha)
+            z_map_inv = GDOPT(item_prec_inv, X_inv, item_mean_inv, etta_sn, alpha)
         X_new_f = update_info.likes_emb_f  * z_map_f
         X_new_inv = update_info.likes_emb_inv * z_map_inv
-        if update_type == 'cvx':
-            W_new_f = SDR_cvxopt(tau_prior_f, X_new_f, mu_prior_f, model_args.emb_dim, etta_sn, alpha)
-            W_new_inv = SDR_cvxopt(tau_prior_inv, X_new_inv, mu_prior_inv, model_args.emb_dim, etta_sn, alpha)
-        elif update_type == 'gd':
+
+        if len(X_new_f .shape) == 1:
+            X_new_f = torch.unsqueeze(X_new_f , dim = 0)
+            X_new_inv = torch.unsqueeze(X_new_inv , dim = 0)
+
+        if map_finder == 'cvx':
+            W_new_f = SDR_cvxopt(tau_prior_f, X_new_f, mu_prior_f, model_args.emb_dim, etta_sn)
+            W_new_inv = SDR_cvxopt(tau_prior_inv, X_new_inv, mu_prior_inv, model_args.emb_dim, etta_sn)
+            W_new_f = torch.tensor(W_new_f).float().to(device)
+            W_new_inv = torch.tensor(W_new_inv).float().to(device)
+        elif map_finder == 'gd':
             W_new_f = GDOPT(tau_prior_f, X_new_f, mu_prior_f, etta_sn, alpha)
             W_new_inv = GDOPT(tau_prior_inv, X_new_inv, mu_prior_inv, etta_sn,alpha)
 
-        _, H_map_f = log_likelihood(X_new_f, W_new_f, etta)
-        _, H_map_inv = log_likelihood(X_new_inv, W_new_inv, etta)
-        za_f = tau_prior_f + etta * H_map_f
-        za_inv = tau_prior_inv + etta * H_map_inv
-        H_out_f = np.maximum(za_f, za_f.T)
-        H_out_inv = np.maximum(za_inv, za_inv.T)
+        _, H_map_f = log_likelihood(X_new_f, W_new_f, etta_sn)
+        _, H_map_inv = log_likelihood(X_new_inv, W_new_inv, etta_sn)
+        za_f = tau_prior_f + etta_sn * H_map_f
+        za_inv = tau_prior_inv + etta_sn * H_map_inv
+        H_out_f = torch.maximum(za_f,za_f.T)
+        H_out_inv = torch.maximum(za_inv,za_inv.T)
         update_info.store(user_emb=(W_new_f, W_new_inv), user_prec=(H_out_f, H_out_inv))
+
 
 def SDR_cvxopt(landa, X_all , previous_w, emb_dim, etta):
     w = cp.Variable(emb_dim)
@@ -158,8 +175,8 @@ def SDR_cvxopt(landa, X_all , previous_w, emb_dim, etta):
     landa = landa.cpu()
     X_all = X_all.cpu()
     #constraints = [cp.norm(w) <= 100*np.sqrt(128)]
-    objective_function = cp.quad_form(w-previous_w, landa)
-    
+    objective_function = 0.5 * cp.quad_form(w-previous_w, landa)
+
     for i in range(len(X_all)):
         var= (X_all[i] @ w)
         objective_function += etta * cp.logistic(-1 * var)
@@ -167,6 +184,7 @@ def SDR_cvxopt(landa, X_all , previous_w, emb_dim, etta):
     #prob2 = cp.Problem(cp.Minimize(objective_function),constraints)
     prob2 = cp.Problem(cp.Minimize(objective_function))
     prob2.solve()
+    #print(prob2.value)
     return w.value
 
 def log_likelihood(X, W, etta):
@@ -199,10 +217,13 @@ def GDOPT(tau_prior, X, W,  etta, alpha):
     while torch.linalg.norm(W_last - W) > 0.01:
         W_last = W
         g_likelihood, _ = log_likelihood(X, W, etta)
-        g_prior = tau_prior @ W
+        g_prior = tau_prior @ (W - W_last)
+        #g_prior = tau_prior @ (W)
         g = g_prior + etta * g_likelihood
         W = W_last - alpha * g
-
+        
+    value = 0.5 * (W-W_last).t() @ tau_prior @ (W-W_last) - etta * torch.log(torch.sigmoid(X@ W))
+    #print(value)
     return W
 
 
