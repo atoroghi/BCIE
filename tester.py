@@ -15,7 +15,6 @@ def get_array(model, dataloader, args, device, rec):
             dataloader.kg[:,0], dataloader.kg[:,2]))).tolist()
     
     # get output array
-
     out = make_array(model, items, args.emb_dim)
     return out
 
@@ -32,32 +31,7 @@ def make_array(model, items, emb_dim):
 
     return items_h, items_t, id2index, index2id
 
-# normalize
-def norm(x):
-    (a, b) = x
-    a = torch.squeeze(a)
-    a = torch.unsqueeze(a / torch.linalg.norm(a), axis=0) 
-
-    b = torch.squeeze(b)
-    b = torch.unsqueeze(b / torch.linalg.norm(b), axis=0) 
-
-    return (a, b)
-
-def list_norm(x):
-    (a, b) = x
-    norm = torch.linalg.norm(a, axis=1)
-    a = (a.T / norm).T
-
-    norm = torch.linalg.norm(b, axis=1)
-    b = (b.T / norm).T
-    return (a, b)
-
-# get scores
 def get_scores(test_emb, rel_emb, item_emb, learning_rel):
-    #test_emb = norm(test_emb)
-    #rel_emb = norm(rel_emb)
-    #item_emb = list_norm(item_emb)
-
     # get score, based on if test item is head or tail
     if learning_rel == 'freeze':
         for_prod = torch.sum(test_emb[0] * item_emb[1], axis=1)
@@ -68,9 +42,8 @@ def get_scores(test_emb, rel_emb, item_emb, learning_rel):
 
         scores = torch.clip((for_prod + inv_prod) / 2, -40, 40)
 
-
     ranked = torch.argsort(scores, descending=True)
-    return ranked
+    return (scores, ranked)
 
 # get ground truth
 class GetGT:
@@ -108,18 +81,6 @@ class GetGT:
                 all_gt = train_gt + test_gt
                 train = train_gt
             return test_gt, all_gt, train
-
-        #else:
-            #print('get GT for kg not implimented')
-            #sys.exit()
-            #if head:
-                #key = (test_item, rel)
-                #test_gt = self.maps[0][key]
-                #train_gt = self.maps[1][key]
-            #else:
-                #key = (rel, test_item)
-                #test_gt = self.maps[2][key]
-                #train_gt = self.maps[3][key]
 
 # get final rank to show performance
 def get_rank(ranked, test_gt, all_gt, id2index):
