@@ -31,7 +31,7 @@ def get_args_critique():
     parser.add_argument('-etta_2', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-etta_3', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-etta_4', default=1.0, type=float, help='Precision for Laplace Approximation')
-    parser.add_argument('-alpha', default=0.1, type=float, help='Learning rate for GD in Laplace Approximation')
+    parser.add_argument('-alpha', default=0.05, type=float, help='Learning rate for GD in Laplace Approximation')
     parser.add_argument('-multi_k', default=10, type=int, help='number of samples for multi type update')
     parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
     parser.add_argument('-num_users', default=50, type=int, help='number of users')
