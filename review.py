@@ -28,17 +28,22 @@ if __name__ == '__main__':
     args = get_args_review()
     directory = os.getcwd()
     for subdirs, dirs, files in os.walk(directory):
+        
 
         for file in files:
-            filename = os.fsdecode(file)
-            if filename.endswith(".py"):
-                fetch_line(directory, filename, args.REV)
-        for dir in dirs:
-            new_dir = os.path.join(directory, dir)
-            for file in os.listdir(new_dir):
+            if os.path.isfile(os.path.join(directory, file)):
                 filename = os.fsdecode(file)
                 if filename.endswith(".py"):
-                    fetch_line(new_dir, filename, args.REV)
+                    fetch_line(directory, filename, args.REV)
+        for dir in dirs:
+            if os.path.isdir(os.path.join(directory, dir)):
+                new_dir = os.path.join(directory, dir)
+
+                for file in os.listdir(new_dir):
+
+                    filename = os.fsdecode(file)
+                    if filename.endswith(".py"):
+                        fetch_line(new_dir, filename, args.REV)
         
 
     
