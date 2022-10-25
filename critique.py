@@ -33,7 +33,7 @@ def get_args_critique():
     parser.add_argument('-etta_4', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-alpha', default=0.1, type=float, help='Learning rate for GD in Laplace Approximation')
     parser.add_argument('-multi_k', default=10, type=int, help='number of samples for multi type update')
-    parser.add_argument('-session_length', default=10, type=int, help='number of critiquing sessions')
+    parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
     parser.add_argument('-num_users', default=50, type=int, help='number of users')
 
     # TODO: put in asserts
@@ -44,11 +44,11 @@ def get_args_critique():
     parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
     
     # likelihood
-    parser.add_argument('-update_type', default='gauss', type=str, help='laplace or gauss')
+    parser.add_argument('-update_type', default='laplace', type=str, help='laplace or gauss')
     parser.add_argument('-critique_mode', default='random', type=str, help='random or pop or diff')
 
     #laplace updating only
-    parser.add_argument('map_finder', default='cvx', type= str, help='cvx or gd')
+    parser.add_argument('-map_finder', default='gd', type= str, help='cvx or gd')
 
     args = parser.parse_args()
     return args
@@ -334,7 +334,7 @@ def critiquing(crit_args, mode):
     r_track = []
     for i, user in enumerate(all_users):
         #if i > crit_args.num_users: break
-        if i >50: break
+        if i >1: break
         # print('user / sec: {:.3f}'.format(i / (time.time() - t0) ))
 
         # get ids of top k recs, and all gt from user
@@ -348,7 +348,7 @@ def critiquing(crit_args, mode):
 
         # iterature through all gt for single user
         for j, gt in enumerate(val_or_test_gt):
-            #if j == 2: break
+            if j == 2: break
             # get all triplets w gt
             gt_facts = fact_stack(item_facts_head[gt], item_facts_tail[gt])
 

@@ -35,19 +35,22 @@ def beta_update(update_info, sn, crit_args, model_args, device, update_type, map
             X_f = torch.unsqueeze(X_f , dim = 0)
             X_inv = torch.unsqueeze(X_inv , dim = 0)
 
+
         # finding the new user belief mean
         # Using convext solver to find the W_MAP
-        if update_type == 'cvx':
+        if map_finder == 'cvx':
             W_new_f = SDR_cvxopt(tau_prior_f, X_f, mu_prior_f, model_args.emb_dim, etta_sn)
             W_new_inv = SDR_cvxopt(tau_prior_inv, X_inv, mu_prior_inv, model_args.emb_dim, etta_sn)
-        elif update_type == 'gd':
-            W_new_f = GDOPT(tau_prior_f, X_f, mu_prior_f, model_args.emb_dim, etta_sn, alpha)
-            W_new_inv = GDOPT(tau_prior_inv, X_inv, mu_prior_inv, model_args.emb_dim, etta_sn, alpha)
+            W_new_f = torch.tensor(W_new_f).float().to(device)
+            W_new_inv = torch.tensor(W_new_inv).float().to(device)
+        elif map_finder == 'gd':
+            W_new_f = GDOPT(tau_prior_f, X_f, mu_prior_f, etta_sn, alpha)
+            W_new_inv = GDOPT(tau_prior_inv, X_inv, mu_prior_inv, etta_sn, alpha)
 
         # finding the new user belief precision 
             # first, calculate Hessian of the log likelihood
-        W_new_f = torch.tensor(W_new_f).float().to(device)
-        W_new_inv = torch.tensor(W_new_inv).float().to(device)
+        
+        
         _, H_map_f = log_likelihood(X_f, W_new_f, etta_sn)
         _, H_map_inv = log_likelihood(X_inv, W_new_inv, etta_sn)
 
@@ -138,8 +141,8 @@ def beta_update_indirect(update_info, sn, crit_args, model_args, device, update_
             W_new_f = SDR_cvxopt(tau_prior_f, X_new_f, mu_prior_f, model_args.emb_dim, etta_sn, alpha)
             W_new_inv = SDR_cvxopt(tau_prior_inv, X_new_inv, mu_prior_inv, model_args.emb_dim, etta_sn, alpha)
         elif update_type == 'gd':
-            W_new_f = GDOPT(tau_prior_f, X_new_f, mu_prior_f, model_args.emb_dim, etta_sn, alpha)
-            W_new_inv = GDOPT(tau_prior_inv, X_new_inv, mu_prior_inv, model_args.emb_dim, etta_sn,alpha)
+            W_new_f = GDOPT(tau_prior_f, X_new_f, mu_prior_f, etta_sn, alpha)
+            W_new_inv = GDOPT(tau_prior_inv, X_new_inv, mu_prior_inv, etta_sn,alpha)
 
         _, H_map_f = log_likelihood(X_new_f, W_new_f, etta)
         _, H_map_inv = log_likelihood(X_new_inv, W_new_inv, etta)
@@ -169,13 +172,17 @@ def SDR_cvxopt(landa, X_all , previous_w, emb_dim, etta):
 def log_likelihood(X, W, etta):
     N = (X.shape)[0]
     
+    #logits = torch.mv(X, w)
     logits = X@ W
 
     probs = torch.clip(torch.sigmoid(logits * etta), 1e-20, 1-1e-20)
 
     #probs = np.clip(expit(logits * etta), 1e-20, 1-1e-20)
-    g = torch.mv(X.t(), (probs - 1))
-    H = X.T @ torch.diag(((probs*(1 - probs)))) @ X
+
+    #g = torch.mv(X.t(), (probs - 1))
+
+    g = X.t() @ (probs - 1)
+    H = X.t() @ torch.diag(((probs*(1 - probs)))) @ X
 
     #H = np.matmul(np.matmul(np.transpose(X),np.diag((probs*(1 - probs)))), X)
     return g,H
@@ -184,15 +191,19 @@ def log_likelihood(X, W, etta):
 # performing gradient descent for laplace approximation    
 
 def GDOPT(tau_prior, X, W,  etta, alpha):
-    #TODO: THis should be an argument
-    max_iters = 1000
+    #TODO: This should be an argument
+    max_iters = 5000
 
-    #TODO: where does etta appear in math?
-    for i in range(max_iters):
+    W_last = W - 0.5
+    #for i in range(max_iters):
+    while torch.linalg.norm(W_last - W) > 0.01:
+        W_last = W
         g_likelihood, _ = log_likelihood(X, W, etta)
-        g_prior = W * tau_prior
-        g = g_prior + g_likelihood
-        W = W - alpha * g
+        g_prior = tau_prior @ W
+        g = g_prior + etta * g_likelihood
+        W = W_last - alpha * g
+
+    return W
 
 
 

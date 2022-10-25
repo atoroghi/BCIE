@@ -9,7 +9,7 @@ from critique import get_args_critique
 def get_metatrain_args():
     parser = argparse.ArgumentParser()
     # other hyper-params
-    parser.add_argument('-tune_name', default='dev', type=str, help="tuner process name")
+    parser.add_argument('-tune_name', default='tilttype', type=str, help="tuner process name")
     parser.add_argument('-model_type', default='simple', type=str, help="model type (svd, Simple, etc)")
     parser.add_argument('-reg_type', default='gauss', type=str, help="tilt or gauss")
     parser.add_argument('-loss_type', default='gauss', type=str, help="softplus or gauss")
@@ -30,9 +30,10 @@ def get_metacrit_args():
     # other hyper-params
     parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
     parser.add_argument('-critique_target', default='single', type=str, help='single or multi')
-    parser.add_argument('-tune_name', default='gausstypereg', type=str, help="tuner process name")
+    parser.add_argument('-tune_name', default='tilttype', type=str, help="tuner process name")
     parser.add_argument('-update_type', default='gauss', type=str, help='laplace or gaussian')
     parser.add_argument('-critique_mode', default='random', type=str, help='random or pop or diff')
+    parser.add_argument('-map_finder', default='cvx', type= str, help='cvx or gd')
 
     args = parser.parse_args()
     return args
