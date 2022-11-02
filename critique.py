@@ -32,7 +32,7 @@ def get_args_critique():
     parser.add_argument('-alpha', default=0.05, type=float, help='Learning rate for GD in Laplace Approximation')
     parser.add_argument('-multi_k', default=10, type=int, help='number of samples for multi type update')
     parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
-    parser.add_argument('-num_users', default=10, type=int, help='number of users')
+    parser.add_argument('-num_users', default=1, type=int, help='number of users')
 
     # TODO: put in asserts
     # single vs mult
@@ -122,7 +122,7 @@ def critiquing(crit_args, mode):
     for i, user in enumerate(all_users):
         if i > crit_args.num_users: break
         print('user: ', i)
-        # print('user / sec: {:.3f}'.format(i / (time.time() - t0) ))
+        # print('user / : {:.3f}'.format(i / (time.time() - t0) ))
 
         # get ids of top k recs, and all gt from user
         user_emb = get_emb(user, model, device)

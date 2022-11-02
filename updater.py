@@ -173,17 +173,15 @@ def SDR_cvxopt(landa, X_all , previous_w, emb_dim, etta):
     previous_w = previous_w.cpu()
     landa = landa.cpu()
     X_all = X_all.cpu()
-    #constraints = [cp.norm(w) <= 100*np.sqrt(128)]
     objective_function = 0.5 * cp.quad_form(w-previous_w, landa)
 
     for i in range(len(X_all)):
         var= (X_all[i] @ w)
         objective_function += etta * cp.logistic(-1 * var)
 
-    #prob2 = cp.Problem(cp.Minimize(objective_function),constraints)
     prob2 = cp.Problem(cp.Minimize(objective_function))
     prob2.solve()
-    #print(prob2.value)
+
     return w.value
 
 def log_likelihood(X, W, etta):
@@ -208,22 +206,30 @@ def log_likelihood(X, W, etta):
 # performing gradient descent for laplace approximation    
 
 def GDOPT(tau_prior, X, W,  etta, alpha):
-    #TODO: This should be an argument
-    max_iters = 5000
 
-    W_last = W - 0.5
-    #for i in range(max_iters):
-    while torch.linalg.norm(W_last - W) > 0.01:
-        W_last = W
-        g_likelihood, _ = log_likelihood(X, W, etta)
-        g_prior = tau_prior @ (W - W_last)
-        #g_prior = tau_prior @ (W)
-        g = g_prior + etta * g_likelihood
-        W = W_last - alpha * g
-        
-    value = 0.5 * (W-W_last).t() @ tau_prior @ (W-W_last) - etta * torch.log(torch.sigmoid(X@ W))
-    #print(value)
-    return W
+    W_last = 1*W 
+    W_updated = torch.zeros_like(W)
+    
+    prev_obj = 10
+    curr_obj = 0
+
+    # while the objective function is still changing, perform gradient descent
+    while abs(prev_obj - curr_obj) > 0.00001:
+        #previous objective set to current objective
+        prev_obj = 1 * curr_obj
+
+        # Get negative of gradients of the likelihood and prior
+        neg_g_likelihood , _ = log_likelihood(X, W, etta)
+        neg_g_prior = tau_prior @ (W_updated - W_last)
+
+        # Calculate the posterior gradient
+        neg_g = neg_g_prior + etta * neg_g_likelihood
+
+        # Gradient descent and recalculation of the objective value
+        W_updated  = W_updated - alpha * neg_g
+        curr_obj = 0.5 * (W_updated -W_last).t() @ tau_prior @ (W_updated -W_last) - etta * torch.log(torch.sigmoid(X@ W_updated ))
+
+    return W_updated
 
 
 
