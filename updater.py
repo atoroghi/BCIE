@@ -35,7 +35,6 @@ def beta_update(update_info, sn, crit_args, model_args, device, update_type, map
             X_f = torch.unsqueeze(X_f , dim = 0)
             X_inv = torch.unsqueeze(X_inv , dim = 0)
 
-
         # finding the new user belief mean
         # Using convext solver to find the W_MAP
         if map_finder == 'cvx':

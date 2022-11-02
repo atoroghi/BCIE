@@ -40,7 +40,7 @@ def get_args_critique():
     parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
     
     # likelihood
-    parser.add_argument('-update_type', default='laplace', type=str, help='laplace or gauss')
+    parser.add_argument('-update_type', default='gauss', type=str, help='laplace or gauss')
     parser.add_argument('-critique_mode', default='random', type=str, help='random or pop or diff')
     parser.add_argument('-map_finder', default='gd', type= str, help='cvx or gd')
 
@@ -139,7 +139,7 @@ def critiquing(crit_args, mode):
             rank = get_rank(ranked, [gt], all_gt, id2index) 
             
             # save info
-            info_track.store(0, rank=rank, score=scores[gt_ind])
+            info_track.store(0, rank=rank+1, score=scores[gt_ind])
 
             # a few sessions for each user 
             for sn in range(crit_args.session_length):
@@ -176,14 +176,8 @@ def critiquing(crit_args, mode):
                 (scores, ranked) = get_scores(new_user_emb, rel_emb[0], item_emb, model_args.learning_rel)
                 post_rank = get_rank(ranked, [gt], all_gt, id2index)
 
-                print('testing')
-                print(item_emb[0].shape, gt_ind)
-                print(scores[gt_ind])
-                print(calc_score(new_user_emb, d))
-                print()
-
                 # save info
-                info_track.store(sn+1, rank=post_rank, score=scores[gt_ind], dist=(new_user_emb, d))
+                info_track.store(sn+1, rank=post_rank+1, score=scores[gt_ind], dist=(new_user_emb, d))
     #sys.exit()
        
     # save results
