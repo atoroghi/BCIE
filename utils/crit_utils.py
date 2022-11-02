@@ -69,7 +69,6 @@ class InfoTrack:
 
         ax1.set_yscale('log')
 
-        #ax1.plot(np.mean(ranks, axis=0)) 
         #ax2.plot(np.mean(get_diff(ranks), axis=0)) 
         #ax3.plot(np.mean(dists, axis=0)) 
         #ax4.plot(np.mean(scores, axis=0)) 
