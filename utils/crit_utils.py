@@ -179,7 +179,7 @@ def get_d(model, crit, rel_emb, obj2items, get_emb, crit_args, model_args, devic
     return (d_f, d_inv)
 
 # make fake item close to gt for testing
-def fake_d(gt, get_emb, rel_emb, model, device, sigma=1):
+def fake_d(gt, rel_emb, model, device, sigma=1):
     while True:
         gt_emb = get_emb(gt, model, device)
         fake_0 = gt_emb[0] + sigma * torch.linalg.norm(gt_emb[0]) * torch.randn(gt_emb[0].shape[0]).to(device)
@@ -195,23 +195,6 @@ def get_diff(x):
     for i in range(x.shape[0] - 1):
         out[i] = x[i+1] - x[i]
     return out.T
-
-# get item that is most similar
-def sim_selector(gt, item_emb, id2index, index2id, device):
-    # get embeddings
-    gt_head = item_emb[0][id2index[gt]]
-    gt_tail = item_emb[1][id2index[gt]]
-
-    # dot product and add
-    forw = torch.sum(gt_head * item_emb[0], axis=1)
-    back = torch.sum(gt_tail * item_emb[1], axis=1)
-    both = forw + back
-
-    # get top item that isn't gt
-    spot = torch.topk(both, k=2)[1]
-    pick = [index2id[spot[0].cpu().item()], index2id[spot[1].cpu().item()]]
-    if gt in pick: pick.remove(gt)
-    return (pick[0], 0)
 
 ###########################################################3
 # useful debug functions
@@ -247,6 +230,29 @@ def count_similars(gt_emb, all_embs, likes_emb, sim_metric):
             if sim_euc(likes_emb * gt_emb, likes_emb * other_emb) > 0.9:
                 counter +=1
     return counter
+
+# gets similarity of the most similar item embedding
+def most_similar(all_embs, likes_emb, sim_metric):
+    most_similars = []
+    for candidate_emb in all_embs:
+        if sim_metric == "euc":
+            euc_sims = torch.sum(candidate_emb * all_embs, dim = 1)
+            max_sim = torch.max(euc_sims)
+            most_similars.append(max_sim.item())
+
+        elif sim_metric == "cos":
+
+            normalized_candidate = candidate_emb / torch.linalg.norm(candidate_emb)
+            all_embs_norm = torch.linalg.norm(all_embs, axis=1)
+            normalized_all_embs = (all_embs.T / all_embs_norm).T
+            cos_sims = torch.sum(normalized_candidate * normalized_all_embs, dim = 1)
+            max_sim = torch.topk(cos_sims, k=2)[0][1]
+            most_similars.append(max_sim.item())
+
+    return np.mean(most_similars) , np.std(most_similars)
+
+
+
 
 #  assumes a tuple of tensors and normalizes each row of tensor
 def list_norm(x):
