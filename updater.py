@@ -26,6 +26,7 @@ def beta_update(update_info, sn, crit_args, model_args, device, update_type, map
 
     elif update_type == "laplace":
         (X_f, X_inv), prec, n = update_info.get_sampleinfo()
+        prec = 0.25
         (mu_prior_f, mu_prior_inv), (tau_prior_f, tau_prior_inv) = update_info.get_priorinfo()
 
         etta_sn = etta[sn]
@@ -38,7 +39,6 @@ def beta_update(update_info, sn, crit_args, model_args, device, update_type, map
         # finding the new user belief mean
         # Using convext solver to find the W_MAP
         if map_finder == 'cvx':
-
             W_new_f = SDR_cvxopt(tau_prior_f, X_f, mu_prior_f, model_args.emb_dim, etta_sn)
             W_new_inv = SDR_cvxopt(tau_prior_inv, X_inv, mu_prior_inv, model_args.emb_dim, etta_sn)
             W_new_f = torch.tensor(W_new_f).float().to(device)

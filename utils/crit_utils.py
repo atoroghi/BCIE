@@ -47,6 +47,7 @@ class InfoTrack:
         print(dists.shape, ranks.shape, scores.shape)
         
         save_path = os.path.join('results', test_name)
+        print(save_path)
         os.makedirs(save_path, exist_ok=True)
 
         # TODO: is this a good metric?
@@ -61,28 +62,24 @@ class InfoTrack:
         np.save(os.path.join(save_path, 'dist_track.npy'), dists)
 
         # plotting
-        fig = plt.figure(figsize=(8,8))
-        ax1 = fig.add_subplot(221)
-        ax2 = fig.add_subplot(222)
-        ax3 = fig.add_subplot(223)
-        ax4 = fig.add_subplot(224)
+        fig = plt.figure(figsize=(12,4))
+        ax1 = fig.add_subplot(131)
+        ax2 = fig.add_subplot(132)
+        ax3 = fig.add_subplot(133)
 
         ax1.set_yscale('log')
-
         #ax2.plot(np.mean(get_diff(ranks), axis=0)) 
         #ax3.plot(np.mean(dists, axis=0)) 
         #ax4.plot(np.mean(scores, axis=0)) 
 
         ax1.plot(ranks.T) 
         ax2.plot(get_diff(ranks).T) 
-        ax3.plot(dists.T) 
-        ax4.plot(scores.T) 
+        ax3.plot(scores.T) 
 
 
         ax1.set_title('Rank')
         ax2.set_title('$\Delta$ Rank')
-        ax3.set_title('Distances')
-        ax4.set_title('Scores')
+        ax3.set_title('Scores')
 
         plt.savefig(os.path.join(save_path, 'info.png'))
         sys.exit()
@@ -182,7 +179,7 @@ def get_d(model, crit, rel_emb, obj2items, get_emb, crit_args, model_args, devic
     return (d_f, d_inv)
 
 # make fake item close to gt for testing
-def fake_d(gt, rel_emb, model, device, sigma=1):
+def fake_d(gt, get_emb, rel_emb, model, device, sigma=1):
     while True:
         gt_emb = get_emb(gt, model, device)
         fake_0 = gt_emb[0] + sigma * torch.linalg.norm(gt_emb[0]) * torch.randn(gt_emb[0].shape[0]).to(device)
@@ -198,6 +195,23 @@ def get_diff(x):
     for i in range(x.shape[0] - 1):
         out[i] = x[i+1] - x[i]
     return out.T
+
+# get item that is most similar
+def sim_selector(gt, item_emb, id2index, index2id, device):
+    # get embeddings
+    gt_head = item_emb[0][id2index[gt]]
+    gt_tail = item_emb[1][id2index[gt]]
+
+    # dot product and add
+    forw = torch.sum(gt_head * item_emb[0], axis=1)
+    back = torch.sum(gt_tail * item_emb[1], axis=1)
+    both = forw + back
+
+    # get top item that isn't gt
+    spot = torch.topk(both, k=2)[1]
+    pick = [index2id[spot[0].cpu().item()], index2id[spot[1].cpu().item()]]
+    if gt in pick: pick.remove(gt)
+    return (pick[0], 0)
 
 ###########################################################3
 # useful debug functions

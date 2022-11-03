@@ -11,19 +11,22 @@ from tester import get_array, get_emb, get_scores, get_rank, GetGT
 from recommender import crit_selector, test_crit
 from utils.plots import RankTrack, rank_plot
 from utils.updateinfo import UpdateInfo
-from utils.crit_utils import InfoTrack, fact_stack, rec_fact_stack, get_d, fake_d, get_dics
+from utils.crit_utils import InfoTrack, fact_stack, rec_fact_stack, get_d, fake_d, get_dics, sim_selector
 
 def get_args_critique():
     # TODO: load all hp's from load_name
     parser = argparse.ArgumentParser()
+    #parser.add_argument('-test_name', default='tilttype/crit/fold_0/train_0', type=str, help='name of folder where results are saved')
+    #parser.add_argument('-load_name', default='results/tilttype/train/fold_0/train_40', type=str, help='name of folder where model is')
     parser.add_argument('-test_name', default='gausstypereg/crit/fold_0/train_0', type=str, help='name of folder where results are saved')
     parser.add_argument('-load_name', default='results/gausstypereg/train/fold_0/train_59', type=str, help='name of folder where model is')
     parser.add_argument('-fold', default=0, type=int, help='fold number')
 
     # TODO: list for etta?
-    parser.add_argument('-user_prec', default=1e5, type=float, help='prior cov')
+    parser.add_argument('-user_prec', default=0.25, type=float, help='prior cov')
     parser.add_argument('-default_prec', default=1e-2, type=float, help='likelihood precision')
     parser.add_argument('-z_prec', default=1e-2, type=float, help='item distribution precision indirect case')
+
     parser.add_argument('-etta_0', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-etta_1', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-etta_2', default=1.0, type=float, help='Precision for Laplace Approximation')
@@ -32,7 +35,7 @@ def get_args_critique():
     parser.add_argument('-alpha', default=0.05, type=float, help='Learning rate for GD in Laplace Approximation')
     parser.add_argument('-multi_k', default=10, type=int, help='number of samples for multi type update')
     parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
-    parser.add_argument('-num_users', default=1, type=int, help='number of users')
+    parser.add_argument('-num_users', default=10, type=int, help='number of users')
 
     # TODO: put in asserts
     # single vs mult
@@ -40,9 +43,9 @@ def get_args_critique():
     parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
     
     # likelihood
-    parser.add_argument('-update_type', default='gauss', type=str, help='laplace or gauss')
-    parser.add_argument('-critique_mode', default='random', type=str, help='random or pop or diff')
-    parser.add_argument('-map_finder', default='gd', type= str, help='cvx or gd')
+    parser.add_argument('-update_type', default='laplace', type=str, help='laplace or gauss')
+    parser.add_argument('-crit_mode', default='sim', type=str, help='random or pop or diff')
+    parser.add_argument('-map_finder', default='cvx', type= str, help='cvx or gd')
 
     args = parser.parse_args()
     return args
@@ -71,6 +74,7 @@ def critiquing(crit_args, mode):
     # TODO: save these in yaml file
     model_args.learning_rel = 'learn'
     model_args.type_checking = 'yes'
+    print('dim: ', model_args.emb_dim)
 
     save_dict = {}
     for k, v in vars(crit_args).items():
@@ -151,17 +155,19 @@ def critiquing(crit_args, mode):
                 rec_facts = rec_fact_stack(rec_ids, item_facts_head, item_facts_tail)
                 if gt_facts.shape[0] <= 0: continue
 
-                # TESTING: get item most similar to gt in emb space
                 real = True
                 if real:
-                    #crit, r = crit_selector(gt, model, item_emb, index2id, device)
-                    crit = (gt, 0)
+                    # get most item with most similar embedding
+                    crit = sim_selector(gt, item_emb, id2index, index2id, device)
+
+                    #crit = crit_selector(gt_facts, rec_facts, crit_args.crit_mode, pop_counts)
+                    #crit = (gt, 0)
 
                     # get d for p(user | d) bayesian update
                     d = get_d(model, crit, rel_emb, obj2items, get_emb, crit_args, model_args, device)
                     update_info.store(d=d, crit_rel_emb=rel_emb[crit[1]])
                 else: 
-                    d, r = fake_d(gt, rel_emb[0], model, device, sigma=1.5)
+                    d, r = fake_d(gt, get_emb, rel_emb[0], model, device, sigma=1.5)
                     update_info.store(d=d, crit_rel_emb=rel_emb[0])
                 #r_track.append(r)
 

@@ -51,11 +51,10 @@ def crit_selector(gt_facts, rec_facts, critique_mode, pop_counts):
     inds = np.random.permutation(inds) # TODO: this is extra silly
 
     # select random triplet
-    if critique_mode == "random":
-        return return_crit(gt_facts[np.random.choice(inds)])
+    if critique_mode == 'random': return return_crit(gt_facts[np.random.choice(inds)])
 
     # select tripet that is most popular
-    if critique_mode == "pop":
+    if critique_mode == 'pop':
         best_ind = inds[0]
         most_pop = pop_counts[get_node(gt_facts[0])]
 
@@ -64,7 +63,7 @@ def crit_selector(gt_facts, rec_facts, critique_mode, pop_counts):
         return return_crit(gt_facts[best_ind])
     
     # select tripet that is least popular
-    if critique_mode == "antipop":
+    if critique_mode == 'antipop':
         best_ind = inds[0]
         most_pop = pop_counts[get_node(gt_facts[0])]
 
@@ -73,5 +72,5 @@ def crit_selector(gt_facts, rec_facts, critique_mode, pop_counts):
         return return_crit(gt_facts[best_ind])
 
     # get triplet that has least similarity
-    if critique_mode == "diff":
-        return return_crit(gt_facts[np.argmin(inds)])
+    if critique_mode == 'diff': return return_crit(gt_facts[np.argmin(inds)])
+    

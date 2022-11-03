@@ -26,8 +26,8 @@ class UpdateInfo:
         self.user_emb_inv = user_emb[1]
 
         # p(u)
-        prec = 1 * torch.eye(model_args.emb_dim).to(device)
-        #prec = crit_args.user_prec * torch.eye(model_args.emb_dim).to(device)
+        #prec = 1 * torch.eye(model_args.emb_dim).to(device)
+        prec = crit_args.user_prec * torch.eye(model_args.emb_dim).to(device)
         self.user_prec_f = torch.unsqueeze(prec, axis=0)
         self.user_prec_inv = torch.unsqueeze(prec, axis=0)
         
@@ -37,7 +37,6 @@ class UpdateInfo:
 
         self.z_mean = torch.zeros(model_args.emb_dim).to(device)
         self.z_prec = crit_args.z_prec * torch.eye(model_args.emb_dim).to(device)
-        self.z_prec = 0.05 * torch.eye(model_args.emb_dim).to(device)
 
     # get last element (these are being stored and saved for tracking)
     def get_sampleinfo(self):
