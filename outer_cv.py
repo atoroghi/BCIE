@@ -24,7 +24,6 @@ def test_fold(tune_name, best_run, best_epoch, cv_type):
     args = get_args()
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-
     # load model
     if cv_type == 'train':
         path = os.path.join('results', tune_name, 'train', 'fold_{}'.format(i), 'train_{}'.format(best_run))

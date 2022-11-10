@@ -10,8 +10,6 @@ def get_args():
 def natural_key(string_):
     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
 
-
-
 if __name__ == '__main__':
     args = get_args()
     tune_name = args.tune_name

@@ -31,7 +31,7 @@ def get_model_args():
     parser.add_argument('-lam', default=100, type=int, help="lam for WRMF")
     
     # other hyper-params
-    parser.add_argument('-model_type', default='simple', type=str, help="model type (svd, Simple, etc)")
+    parser.add_argument('-model_type', default='svd', type=str, help="model type (svd, Simple, etc)")
     parser.add_argument('-reg_type', default='gauss', type=str, help="tilt or gauss")
     parser.add_argument('-loss_type', default='softplus', type=str, help="softplus or gauss")
     parser.add_argument('-reduce_type', default='sum', type=str, help="sum or mean")
@@ -65,12 +65,15 @@ def save_hyperparams(path, args):
             yaml.dump(dct, f, sort_keys=False,
                       default_flow_style=False)
 
-def main(args):
+def model_arg_asserts(args) :
     assert args.sample_type in ['combo', 'split_reg', 'split_rev']
     assert args.reg_type in ['gauss', 'tilt']
     assert args.loss_type in ['softplus', 'gauss', 'hinge', 'PSL']
     assert args.optim_type in ['adagrad', 'adam']
     assert args.init_type in ['uniform', 'normal']
+
+def main(args):
+    model_arg_asserts(args)
 
     if args.init_scale == 1: 
         print('manual init scale')

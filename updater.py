@@ -26,10 +26,10 @@ def beta_update(update_info, sn, crit_args, model_args, device, update_type, map
 
     elif update_type == "laplace":
         (X_f, X_inv), prec, n = update_info.get_sampleinfo()
-        prec = 0.25
         (mu_prior_f, mu_prior_inv), (tau_prior_f, tau_prior_inv) = update_info.get_priorinfo()
 
         etta_sn = etta[sn]
+        etta_sn = 100
 
         # in general, the updater is written in the matrix form
         if len(X_f.shape) == 1:

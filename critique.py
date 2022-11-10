@@ -14,12 +14,10 @@ from utils.updateinfo import UpdateInfo
 from utils.crit_utils import InfoTrack, fact_stack, rec_fact_stack, get_d, fake_d, get_dics, sim_selector
 
 def get_args_critique():
-    # TODO: load all hp's from load_name
     parser = argparse.ArgumentParser()
-    #parser.add_argument('-test_name', default='tilttype/crit/fold_0/train_0', type=str, help='name of folder where results are saved')
-    #parser.add_argument('-load_name', default='results/tilttype/train/fold_0/train_40', type=str, help='name of folder where model is')
-    parser.add_argument('-test_name', default='gausstypereg/crit/fold_0/train_0', type=str, help='name of folder where results are saved')
-    parser.add_argument('-load_name', default='results/gausstypereg/train/fold_0/train_59', type=str, help='name of folder where model is')
+
+    parser.add_argument('-test_name', default='tilt_small/crit/fold_0/train_0', type=str, help='name of folder where results are saved')
+    parser.add_argument('-load_name', default='results/tilt_small/train/fold_0/train_21', type=str, help='name of folder where model is')
     parser.add_argument('-fold', default=0, type=int, help='fold number')
 
     # TODO: list for etta?
@@ -37,18 +35,19 @@ def get_args_critique():
     parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
     parser.add_argument('-num_users', default=10, type=int, help='number of users')
 
-    # TODO: put in asserts
     # single vs mult
     parser.add_argument('-critique_target', default='single', type=str, help='single or multi')
     parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
     
     # likelihood
-    parser.add_argument('-update_type', default='laplace', type=str, help='laplace or gauss')
+    parser.add_argument('-update_type', default='gauss', type=str, help='laplace or gauss')
     parser.add_argument('-crit_mode', default='sim', type=str, help='random or pop or diff')
     parser.add_argument('-map_finder', default='cvx', type= str, help='cvx or gd')
 
     args = parser.parse_args()
     return args
+
+def crit_arg_asserts(args): pass
 
 def calc_score(user, d):
     s_for = torch.sum(user[0] * d[0])
@@ -158,10 +157,10 @@ def critiquing(crit_args, mode):
                 real = True
                 if real:
                     # get most item with most similar embedding
-                    crit = sim_selector(gt, item_emb, id2index, index2id, device)
+                    #crit = sim_selector(gt, item_emb, id2index, index2id, device)
+                    crit = (gt, 0)
 
                     #crit = crit_selector(gt_facts, rec_facts, crit_args.crit_mode, pop_counts)
-                    #crit = (gt, 0)
 
                     # get d for p(user | d) bayesian update
                     d = get_d(model, crit, rel_emb, obj2items, get_emb, crit_args, model_args, device)
