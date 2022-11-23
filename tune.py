@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 #from varname import nameof
 from gp import normal2param, train_sample_gp
-from tune_utils import Params, Launch
+from tune_utils import Params, ScriptCall
 from outer_cv import best_model 
 
 # sorts files aplpha-numerically
@@ -38,24 +38,30 @@ def tuner(meta_args, args, tune_name, fold, epochs, batch, n):
     dim = len(model_params.param_dict) + len(crit_params.param_dict)
 
     # main script for launching subprocesses
-    launch = Launch(args, params, tune_name, fold)
+    script_call = ScriptCall(args, params, tune_name, fold, path)
 
     # load training data (if something failed)
     if os.path.isfile(os.path.join(path, 'x_train.pt')):
         begin = False
+
         x_train = torch.load(os.path.join(path, 'x_train.pt'))
         y_train = torch.load(os.path.join(path, 'y_train.pt'))
         print(x_train.shape)
         print(y_train.shape)
     else:
         begin = True
+        
+        
 
     # main loop
     for e in range(epochs):
+        print("Beginning {}th epoch".format(e))
         # train models and update points
         if begin:
+            train_path = os.path.join(path,'train')
+            os.makedirs(train_path , exist_ok=True)
             begin = False
-            x_out, score = launch.train(torch.rand(batch, dim))
+            x_out, score = script_call.train(torch.rand(batch, dim))
             y_train = score
             x_train = x_out
         
@@ -65,7 +71,7 @@ def tuner(meta_args, args, tune_name, fold, epochs, batch, n):
             x_sample = train_sample_gp(x_test, x_train, y_train, batch, dim, e) 
             x_sample[:2] = torch.rand(2, dim)
 
-            x_out, score = launch.train(x_sample)
+            x_out, score = script_call.train(x_sample)
             x_train = torch.vstack((x_train, x_out))
             y_train = torch.cat((y_train, score))
 

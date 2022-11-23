@@ -229,7 +229,7 @@ class DoubleSampleType:
             for rel , freq in zip(rel_unqs, rel_freqs):
                 rel_inds = np.where((rels == rel))
                 heads_chosen = np.random.choice(self.valid_heads[rel], size=(freq))
-                tails_chosen = np.random.choice(self.valid_tails[rel], size=(neg_ratio * freq))
+                tails_chosen = np.random.choice(self.valid_tails[rel], size=(freq))
                 head_samples[rel_inds] = heads_chosen
                 tail_samples[rel_inds] = tails_chosen
         else:

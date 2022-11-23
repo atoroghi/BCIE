@@ -61,13 +61,17 @@ class Params:
 
     # take params from gp to real values
     def convert(self, i, po, p, args):
+
         for j, (arg_name, spec) in enumerate(self.param_dict.items()):
+
             # get proper arg corresponding to param_dict values
+
             for a in vars(args):
                 if a == arg_name:
-                    # back out arg from key
+            #            # back out arg from key
                     out, po[i,j] = normal2param(p[i,j], spec)
                     setattr(args, a, out)
+
         return args, po
 
     # save to yaml file 
@@ -84,49 +88,70 @@ class Params:
 
 # main class to launch code that gp is trying to opimize
 class ScriptCall:
-    def __init__(self, args, params, tune_name, fold_num):
+    def __init__(self, args, params, tune_name, fold_num, path):
+        # TODO: unpack params into model and crit
         self.args = args
         self.tune_name = tune_name
         self.fold_num = fold_num
         self.params = params
+        self.path = path
+
+
+    def run_process(self,p, py_file, args):
+        subs = []
+
+        for i in range(p.shape[0]):
+
+            proc = ['python3', py_file]
+            for k, v in vars(args).items():
+                proc.append('-{}'.format(k))
+                proc.append('{}'.format(v))
+            sub = subprocess.Popen(proc)
+            subs.append(sub)
+
+        for proc in subs:
+            proc.wait() 
+
 
     # run training process
     def train(self, p):
         p = p.numpy()
         po = np.empty_like(p)
 
-        subs = []
+
         for i in range(p.shape[0]): 
-            # convert gp [0, 1] to proper parameter vals
-            # po is gp values corresponding to discretization
-            self.args, po = self.param.convert(i, po, p, self.args)
+        ##    # convert gp [0, 1] to proper parameter vals
+        #    # po is gp values corresponding to discretization
+        #    # params[0] has cv_type == crit and param[1] has cv_type ==1 so we need to do this twice
+            folders = sorted(os.listdir(os.path.join(self.path, 'train')), key=natural_key)
 
-            folders = sorted(os.listdir(path), key=natural_key)
             folders = [f for f in folders if 'train' in f]
+        #    
+        #    # self.args[0] is crit_args and self.args[1] is model_args
+            self.args[0].test_name = os.path.join(self.tune_name, 'fold_{}'.format(self.fold_num), 'crit', 'train_{}'.format(len(folders) + i)) 
+            self.args[0].load_name = os.path.join('results', self.tune_name, 'fold_{}'.format(self.fold_num), 'train', 'train_{}'.format(len(folders) + i)) 
+            self.args[1].test_name = os.path.join(self.tune_name, 'fold_{}'.format(self.fold_num), 'train', 'train_{}'.format(len(folders) + i))
+#
+            self.crit_args, po = self.params[0].convert(i, po, p, self.args[0])
+            self.model_args, po = self.params[1].convert(i, po, p, self.args[1])
+#
 
-            # make string to pass arguments
-            if self.cv_type == 'crit':
-                proc_input = ['python3', 'critique.py']
-                self.args.test_name = os.path.join(self.tune_name, 'crit', 'fold_{}'.format(self.fold_num), 'train_{}'.format(len(folders) + i)) 
-            else:
-                proc_input = ['python3', 'launch.py']
-                self.args.test_name = os.path.join(self.tune_name, 'train', 'fold_{}'.format(self.fold_num), 'train_{}'.format(len(folders) + i)) 
-            for k, v in vars(self.args).items():
-                proc_input.append('-{}'.format(k))
-                proc_input.append('{}'.format(v))
-
-            sub = subprocess.Popen(proc_input)
-            subs.append(sub)
-        
-        for proc in subs:
-            proc.wait()
+        ##for proc in subs_crit:
+        ##    proc.wait()
+        self.run_process(p, 'launch.py', self.model_args)
+        self.run_process(p, 'critique.py', self.crit_args)
         #print('stopping')
         #sys.exit()
-
-        # get recall at k
+        ##
+        ##sys.exit()
+#
+        ## get recall at k
         best_hits = torch.empty(p.shape[0])
         for i in range(p.shape[0]):
-            load_path = os.path.join(path, 'train_{}'.format(len(folders) + i), 'stop_metric.npy')
+            print("len_folders",len(folders))
+            #load_path = os.path.join(path, 'train_{}'.format(len(folders) + i), 'stop_metric.npy')
+            #load_path = os.path.join(self.path, 'crit', 'fold_{}'.format(self.args[0].fold), 'train_{}'.format(len(folders) + i), 'stop_metric.npy')
+            load_path = os.path.join(self.path, 'crit', 'train_{}'.format(len(folders) + i), 'stop_metric.npy')
             hits = np.load(load_path)
             best_hits[i] = np.max(hits)
 

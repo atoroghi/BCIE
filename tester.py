@@ -141,13 +141,13 @@ def get_emb(test_item, model, device):
 
     return test_emb
 
-def test(model, dataloader, epoch, args, mode):
+def test(model, dataloader, epoch, args, mode,device):
     assert mode in ['test', 'val']
     # get arrays with all items for link prediction
     # special array for < user, likes, ? >
-    
+
     #kg_h, kg_t, kg_id2index, _ = get_array(model, dataloader, args, rec=False)
-    rec_h, rec_t, rec_id2index, _ = get_array(model, dataloader, args, rec=True)
+    rec_h, rec_t, rec_id2index, _ = get_array(model, dataloader, args,device, rec=True)
     kg_id2index = {}
     id2index = (rec_id2index, kg_id2index)
 
@@ -183,8 +183,8 @@ def test(model, dataloader, epoch, args, mode):
 
             # for rec testing
             if i == 0:
-                test_emb = get_emb(test_item, model)
-                ranked = get_scores(test_emb, rel_emb[0], item_emb, dataloader, args.learning_rel)
+                test_emb = get_emb(test_item, model, device)
+                _, ranked = get_scores(test_emb, rel_emb[0], item_emb, args.learning_rel)
                 test_gt, all_gt, train_gt = get_gt.get(test_item.cpu().item())
                 # for calculating R-precision
                 
@@ -199,14 +199,14 @@ def test(model, dataloader, epoch, args, mode):
                 rel = test_item[1]
                 
                 # test_item as head
-                test_emb = get_emb(test_item[0], model)
+                test_emb = get_emb(test_item[0], model, device)
                 ranked = get_scores(test_emb, rel_emb[rel], item_emb, dataloader)
                 test_gt, all_gt = get_gt.get(test_item[0], rel, head=True)
                 ranks = get_rank(ranked, test_gt, all_gt, id2index[i])
                 rank_track.update(ranks, rel)
 
                 # test_item as tail
-                test_emb = get_emb(test_item[2], model)
+                test_emb = get_emb(test_item[2], model, device)
                 ranked = get_scores(test_emb, rel_emb[rel], item_emb, dataloader)
                 ranks = get_rank(ranked, test_gt, all_gt, id2index[i])
                 rank_track.update(ranks, rel)

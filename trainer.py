@@ -88,7 +88,7 @@ def train(dataloader, args, device='cuda'):
 
             # save and test
             if epoch % args.save_each == 0:
-                hits10 = test(model, dataloader, epoch, args, 'val')
+                hits10 = test(model, dataloader, epoch, args, 'val',device)
 
                 # loss saving 
                 loss_save(rec_score_track, kg_score_track, reg_track, str(args.test_name))

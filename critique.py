@@ -33,7 +33,7 @@ def get_args_critique():
     parser.add_argument('-alpha', default=0.05, type=float, help='Learning rate for GD in Laplace Approximation')
     parser.add_argument('-multi_k', default=10, type=int, help='number of samples for multi type update')
     parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
-    parser.add_argument('-num_users', default=10, type=int, help='number of users')
+    parser.add_argument('-num_users', default=1000, type=int, help='number of users')
 
     # single vs mult
     parser.add_argument('-critique_target', default='single', type=str, help='single or multi')
@@ -41,7 +41,7 @@ def get_args_critique():
     
     # likelihood
     parser.add_argument('-update_type', default='gauss', type=str, help='laplace or gauss')
-    parser.add_argument('-crit_mode', default='sim', type=str, help='random or pop or diff')
+    parser.add_argument('-crit_mode', default='random', type=str, help='random or pop or diff')
     parser.add_argument('-map_finder', default='cvx', type= str, help='cvx or gd')
 
     args = parser.parse_args()
@@ -73,7 +73,7 @@ def critiquing(crit_args, mode):
     # TODO: save these in yaml file
     model_args.learning_rel = 'learn'
     model_args.type_checking = 'yes'
-    print('dim: ', model_args.emb_dim)
+    #print('dim: ', model_args.emb_dim)
 
     save_dict = {}
     for k, v in vars(crit_args).items():
@@ -120,12 +120,12 @@ def critiquing(crit_args, mode):
     print('normalizing embedding vectors')
     sim_tail_track = None
     t0 = time.time()
-    rec_k = 4 # TODO: this must be an hp
+    rec_k = 10 # TODO: (number of recommended items to user)this must be an hp
     #r_track = []
     for i, user in enumerate(all_users):
         if i > crit_args.num_users: break
-        print('user: ', i)
-        # print('user / : {:.3f}'.format(i / (time.time() - t0) ))
+        #print('user: ', i)
+        ## print('user / : {:.3f}'.format(i / (time.time() - t0) ))
 
         # get ids of top k recs, and all gt from user
         user_emb = get_emb(user, model, device)
@@ -158,9 +158,10 @@ def critiquing(crit_args, mode):
                 if real:
                     # get most item with most similar embedding
                     #crit = sim_selector(gt, item_emb, id2index, index2id, device)
-                    crit = (gt, 0)
-
-                    #crit = crit_selector(gt_facts, rec_facts, crit_args.crit_mode, pop_counts)
+                    #crit = (gt, 0)
+                    
+                    # actual critique selection for real experiments
+                    crit = crit_selector(gt_facts, rec_facts, crit_args.crit_mode, pop_counts)
 
                     # get d for p(user | d) bayesian update
                     d = get_d(model, crit, rel_emb, obj2items, get_emb, crit_args, model_args, device)
