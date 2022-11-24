@@ -51,6 +51,7 @@ def get_model_args():
     parser.add_argument('-dataset', default='ML_FB', type=str, help="dataset name")
     parser.add_argument('-stop_width', default=4, type=int, help="number of SAVES where test is worse for early stopping")
     parser.add_argument('-fold', default=0, type=int, help="fold to use data from")
+    parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
 
     args = parser.parse_args()
     return args

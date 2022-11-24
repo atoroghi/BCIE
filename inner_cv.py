@@ -22,6 +22,7 @@ def get_metamodel_args():
     parser.add_argument('-kg', default='kg', type=str, help="kg or no_kg")
     parser.add_argument('-type_checking', default='check', type=str, help="check or no")
     parser.add_argument('-fold', default=0, type=int, help="fold for running inner cv on")
+    parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
  
     args = parser.parse_args()
     return args
