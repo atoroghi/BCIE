@@ -64,7 +64,7 @@ def tuner(meta_args, args, tune_name, fold, epochs, batch, n):
             x_out, score = script_call.train(torch.rand(batch, dim))
             y_train = score
             x_train = x_out
-        
+
         else:
             # run gaussian process
             x_test = torch.rand((n, dim))

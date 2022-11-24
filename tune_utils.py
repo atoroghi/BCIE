@@ -1,4 +1,4 @@
-import os, re, sys, yaml, torch, subprocess
+import os, re, sys, yaml, torch, subprocess, copy
 import numpy as np
 from gp import normal2param
 
@@ -62,12 +62,11 @@ class Params:
     # take params from gp to real values
     def convert(self, i, po, p, args):
 
+        
         for j, (arg_name, spec) in enumerate(self.param_dict.items()):
-
-            # get proper arg corresponding to param_dict values
-
             for a in vars(args):
-                if a == arg_name:
+#            # get proper arg corresponding to param_dict values
+               if a == arg_name:
             #            # back out arg from key
                     out, po[i,j] = normal2param(p[i,j], spec)
                     setattr(args, a, out)
@@ -97,15 +96,25 @@ class ScriptCall:
         self.path = path
 
 
-    def run_process(self,p, py_file, args):
+    def run_process(self,p, py_file, args_list, crit_test_names, crit_load_names, model_test_names):
         subs = []
 
         for i in range(p.shape[0]):
+            args = args_list[i]
+            args[0].test_name = crit_test_names[i]
+            args[0].load_name = crit_load_names[i]
+            args[1].test_name = model_test_names[i]
+
+            if py_file == 'launch.py':
+                used_args = args[1]
+            elif py_file == 'critique.py':
+                used_args = args[0]
 
             proc = ['python3', py_file]
-            for k, v in vars(args).items():
+            for k, v in vars(used_args).items():
                 proc.append('-{}'.format(k))
                 proc.append('{}'.format(v))
+
             sub = subprocess.Popen(proc)
             subs.append(sub)
 
@@ -117,7 +126,11 @@ class ScriptCall:
     def train(self, p):
         p = p.numpy()
         po = np.empty_like(p)
+        crit_test_names = []
+        crit_load_names = []
+        model_test_names = []
 
+        args_list = []
 
         for i in range(p.shape[0]): 
         ##    # convert gp [0, 1] to proper parameter vals
@@ -128,18 +141,28 @@ class ScriptCall:
             folders = [f for f in folders if 'train' in f]
         #    
         #    # self.args[0] is crit_args and self.args[1] is model_args
-            self.args[0].test_name = os.path.join(self.tune_name, 'fold_{}'.format(self.fold_num), 'crit', 'train_{}'.format(len(folders) + i)) 
-            self.args[0].load_name = os.path.join('results', self.tune_name, 'fold_{}'.format(self.fold_num), 'train', 'train_{}'.format(len(folders) + i)) 
-            self.args[1].test_name = os.path.join(self.tune_name, 'fold_{}'.format(self.fold_num), 'train', 'train_{}'.format(len(folders) + i))
-#
-            self.crit_args, po = self.params[0].convert(i, po, p, self.args[0])
-            self.model_args, po = self.params[1].convert(i, po, p, self.args[1])
-#
+            #self.args[0].test_name = os.path.join(self.tune_name, 'fold_{}'.format(self.fold_num), 'crit', 'train_{}'.format(len(folders) + i)) 
+            #self.args[0].load_name = os.path.join('results', self.tune_name, 'fold_{}'.format(self.fold_num), 'train', 'train_{}'.format(len(folders) + i)) 
+            #self.args[1].test_name = os.path.join(self.tune_name, 'fold_{}'.format(self.fold_num), 'train', 'train_{}'.format(len(folders) + i))
+            crit_test_name = os.path.join(self.tune_name, 'fold_{}'.format(self.fold_num), 'crit', 'train_{}'.format(len(folders) + i))
+            crit_load_name = os.path.join('results', self.tune_name, 'fold_{}'.format(self.fold_num), 'train', 'train_{}'.format(len(folders) + i)) 
+            model_test_name = os.path.join(self.tune_name, 'fold_{}'.format(self.fold_num), 'train', 'train_{}'.format(len(folders) + i))
 
-        ##for proc in subs_crit:
-        ##    proc.wait()
-        self.run_process(p, 'launch.py', self.model_args)
-        self.run_process(p, 'critique.py', self.crit_args)
+            crit_test_names.append(crit_test_name)
+            crit_load_names.append(crit_load_name)
+            model_test_names.append(model_test_name)
+
+            crit_args, po = self.params[0].convert(i, po, p, self.args[0])
+            crit_args_copy = copy.deepcopy(crit_args)
+
+            model_args, po = self.params[1].convert(i, po, p, self.args[1])
+            model_args_copy = copy.deepcopy(model_args)
+            args_list.append((crit_args_copy, model_args_copy))
+  
+     
+        self.run_process(p, 'launch.py', args_list, crit_test_names, crit_load_names, model_test_names)
+
+        self.run_process(p, 'critique.py', args_list, crit_test_names, crit_load_names, model_test_names)
         #print('stopping')
         #sys.exit()
         ##
@@ -148,7 +171,7 @@ class ScriptCall:
         ## get recall at k
         best_hits = torch.empty(p.shape[0])
         for i in range(p.shape[0]):
-            print("len_folders",len(folders))
+
             #load_path = os.path.join(path, 'train_{}'.format(len(folders) + i), 'stop_metric.npy')
             #load_path = os.path.join(self.path, 'crit', 'fold_{}'.format(self.args[0].fold), 'train_{}'.format(len(folders) + i), 'stop_metric.npy')
             load_path = os.path.join(self.path, 'crit', 'train_{}'.format(len(folders) + i), 'stop_metric.npy')
