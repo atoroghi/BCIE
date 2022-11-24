@@ -17,6 +17,7 @@ def get_args_critique():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-test_name', default='tilt_small/crit/fold_0/train_0', type=str, help='name of folder where results are saved')
+    parser.add_argument('-tune_name', default='dev', type=str, help="tuner process name")
     parser.add_argument('-load_name', default='results/tilt_small/train/fold_0/train_21', type=str, help='name of folder where model is')
     parser.add_argument('-fold', default=0, type=int, help='fold number')
 
