@@ -40,7 +40,7 @@ def test_fold(tune_name, best_run, best_epoch, cv_type):
         elif args.model_type == 'wrmf':
             wrmf(dataloader, args, 'test', device)
     if cv_type == 'crit':
-        path = os.path.join('results', tune_name, cv_type, 'fold_{}'.format(i), 'train_{}'.format(best_run))
+        path = os.path.join('results', tune_name, 'fold_{}'.format(i),cv_type, 'train_{}'.format(best_run))
         with open(os.path.join(path, 'crit hps.yml'), 'r') as f:
             yml = yaml.safe_load(f)
             for key in yml.keys():
@@ -52,6 +52,7 @@ def test_fold(tune_name, best_run, best_epoch, cv_type):
                         setattr(args, key, float(yml[key]))
                     except:
                         setattr(args, key, yml[key])
+        print("results are being saved in:",args.test_name)
 
         critiquing(args, 'test')
 
@@ -80,7 +81,7 @@ def best_model(tune_name, cv_type, fold):
 # TODO: clean this up, it's bad
 if __name__ == '__main__':
     tune_name = 'gausstypereg'
-    folds = 5
+    folds = 4
     opt = 'test'
     cv_type = 'crit' # train or crit
 
@@ -89,7 +90,7 @@ if __name__ == '__main__':
         if opt == 'test':
             (best_score, best_run, best_epoch) = best_model(tune_name,cv_type, i)
             print('best score: {}, best folder: {}, best epoch: {}'.format(best_score, best_run, best_epoch))
-            #test_fold(tune_name, best_run, best_epoch, cv_type)
+            test_fold(tune_name, best_run, best_epoch, cv_type)
     
 
         elif opt == 'hp':
