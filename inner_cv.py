@@ -4,8 +4,6 @@ from tune import tuner
 from launch import get_model_args, model_arg_asserts
 from critique import get_args_critique, crit_arg_asserts
 
-
-
 # non-tunable hyperparameters for the training procedure
 def get_metamodel_args():
     parser = argparse.ArgumentParser()
@@ -42,8 +40,6 @@ def get_metacrit_args():
     args = parser.parse_args()
     return args
 
-
-
 # update args to fill args with contents of meta args
 def update_args(meta_args, args):
     for ma in vars(meta_args):
@@ -53,8 +49,6 @@ def update_args(meta_args, args):
 
 if __name__ == '__main__':
     # hp tuning parameters
-
-
     folds = 5
     epochs = 15
     batch = 4

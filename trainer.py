@@ -1,6 +1,6 @@
 import os, time, sys
 from SimplE import SimplE
-from utils import loss_save, perrel_save
+from utils import loss_save
 from WRMF_torch import wrmf
 import numpy as np
 from tqdm import tqdm
@@ -25,10 +25,6 @@ def train(dataloader, args, device='cuda'):
         ranks = model.test_model(matrix_U, matrix_V)
         hits10 = np.sum(ranks<11)/ranks.shape[0]
 
-        # save ranks for tester
-        #rank_track = RankTrack()
-        #rank_track.update(ranks, 0)
-        #rank_save(rank_track, str(args.test_name), 0)
     else:
         model = SimplE(dataloader, args, device)
 
@@ -50,6 +46,7 @@ def train(dataloader, args, device='cuda'):
 
             dataloader.shuffle()
             for i in range(dataloader.n_batches):
+                if i > 1000: break
                 # ~ 3 million triplets
                 #if i * dataloader.batch_size >= 500000: break
 
@@ -88,7 +85,7 @@ def train(dataloader, args, device='cuda'):
 
             # save and test
             if epoch % args.save_each == 0:
-                hits10 = test(model, dataloader, epoch, args, 'val',device)
+                test(model, dataloader, epoch, args, 'val', device)
 
                 # loss saving 
                 loss_save(rec_score_track, kg_score_track, reg_track, str(args.test_name))
@@ -97,15 +94,14 @@ def train(dataloader, args, device='cuda'):
                 stop_metric = np.load(os.path.join('results', str(args.test_name), 'stop_metric.npy'))
                 best = np.argmax(stop_metric)
 
-                # if most recent epoch is best, save model
-                if stop_metric.shape[0] - (best + 1) == 0:
-                    print('saving model')
-                    save_path = os.path.join(path, 'models/best_model.pt')
-                    torch.save(model, save_path)
-
                 if stop_metric.shape[0] - (best + 1) >= args.stop_width or epoch == args.epochs:
                     break 
 
+                # if most recent epoch is best, save model
+                if stop_metric.shape[0] - (best + 1) == 0:
+                    save_path = os.path.join(path, 'models/best_model.pt')
+                    print('best score: {:.7f}'.format(np.max(stop_metric)))
+                    torch.save(model, save_path)
+
         # when finished, save metric over epoch plot
         #temporal_plot(args.test_name, k=10)
-    return hits10

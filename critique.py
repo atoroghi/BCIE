@@ -74,7 +74,6 @@ def critiquing(crit_args, mode):
     # TODO: save these in yaml file
     model_args.learning_rel = 'learn'
     model_args.type_checking = 'yes'
-    #print('dim: ', model_args.emb_dim)
 
     save_dict = {}
     for k, v in vars(crit_args).items():
@@ -117,16 +116,11 @@ def critiquing(crit_args, mode):
 
     # main test loop (each user)
 ##############################################################
-    print('hard coding prior mag(s), n = 1: this must be fixed!')
-    print('normalizing embedding vectors')
-    sim_tail_track = None
     t0 = time.time()
-    rec_k = 10 # TODO: (number of recommended items to user)this must be an hp
-    #r_track = []
+    rec_k = 10 # TODO: (number of recommended items to user) this must be an hp
     for i, user in enumerate(all_users):
         if i > crit_args.num_users: break
-        #print('user: ', i)
-        ## print('user / : {:.3f}'.format(i / (time.time() - t0) ))
+        if i > 10: break
 
         # get ids of top k recs, and all gt from user
         user_emb = get_emb(user, model, device)
@@ -158,11 +152,11 @@ def critiquing(crit_args, mode):
                 real = True
                 if real:
                     # get most item with most similar embedding
-                    #crit = sim_selector(gt, item_emb, id2index, index2id, device)
+                    crit = sim_selector(gt, item_emb, id2index, index2id, device)
                     #crit = (gt, 0)
                     
                     # actual critique selection for real experiments
-                    crit = crit_selector(gt_facts, rec_facts, crit_args.crit_mode, pop_counts)
+                    #crit = crit_selector(gt_facts, rec_facts, crit_args.crit_mode, pop_counts)
 
                     # get d for p(user | d) bayesian update
                     d = get_d(model, crit, rel_emb, obj2items, get_emb, crit_args, model_args, device)
@@ -170,7 +164,6 @@ def critiquing(crit_args, mode):
                 else: 
                     d, r = fake_d(gt, get_emb, rel_emb[0], model, device, sigma=1.5)
                     update_info.store(d=d, crit_rel_emb=rel_emb[0])
-                #r_track.append(r)
 
                 # perform update
                 if crit_args.evidence_type == 'direct':
@@ -185,8 +178,7 @@ def critiquing(crit_args, mode):
 
                 # save info
                 info_track.store(sn+1, rank=post_rank+1, score=scores[gt_ind], dist=(new_user_emb, d))
-    #sys.exit()
-       
+
     # save results
     info_track.save(crit_args.test_name)
 

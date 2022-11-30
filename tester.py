@@ -141,7 +141,7 @@ def get_emb(test_item, model, device):
 
     return test_emb
 
-def test(model, dataloader, epoch, args, mode,device):
+def test(model, dataloader, epoch, args, mode, device):
     assert mode in ['test', 'val']
     # get arrays with all items for link prediction
     # special array for < user, likes, ? >
@@ -179,6 +179,7 @@ def test(model, dataloader, epoch, args, mode,device):
         item_emb = (rec_h, rec_t) #if i == 0 else (kg_h, kg_t)
 
         for j, test_item in enumerate(test_items):
+            if j > 100: break
             #if j%100 == 0: print('{:.5f} {:.5f}'.format(j/test_items.shape[0], (time.time()-t0) / 60))
 
             # for rec testing
@@ -186,8 +187,8 @@ def test(model, dataloader, epoch, args, mode,device):
                 test_emb = get_emb(test_item, model, device)
                 _, ranked = get_scores(test_emb, rel_emb[0], item_emb, args.learning_rel)
                 test_gt, all_gt, train_gt = get_gt.get(test_item.cpu().item())
-                # for calculating R-precision
-                
+
+                # for calculating r-precision
                 if test_gt == None: continue
                 ranks = get_rank(ranked, test_gt, all_gt, id2index[i])
                 rprec = get_Rprec(ranked, test_gt, train_gt, id2index[i])
@@ -214,10 +215,6 @@ def test(model, dataloader, epoch, args, mode,device):
     # different save options if train or testing        
     if mode == 'val': 
         rank_plot(rank_track, args.test_name, epoch)
-        #rank_at_k = save_metrics(rank_track, args.test_name, epoch, mode)
-        #return rank_at_k
-        mrr = save_metrics(rank_track, args.test_name, epoch, mode)
-        return mrr
-
+        save_metrics(rank_track, args.test_name, epoch, mode)
     else:
         save_metrics(rank_track, args.test_name, epoch, mode)

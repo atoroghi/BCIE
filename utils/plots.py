@@ -1,4 +1,4 @@
-import os, sys, pickle, re
+import os, sys, pickle, re, torch
 import seaborn as sns
 import matplotlib.pyplot as plt 
 import numpy as np
@@ -11,7 +11,7 @@ class RankTrack:
     def __init__(self):
         self.info = {'rank':{}, 'rprec':{}}
     
-    def update(self, rank, rprec, rel, k=10):
+    def update(self, rank, rprec, rel):
         if rel not in self.info['rank']:
             self.info['rank'].update({rel : rank})
         else:
@@ -74,10 +74,9 @@ def temporal_plot(test_name, k):
     plt.savefig(os.path.join(path, 'hits_epoch.jpg'))
     plt.close()
 
+# TODO: this is a bad function
 # save metric info
-
-# save metric info
-def save_metrics(rank_track, test_name, epoch, mode):
+def save_metrics(rank_track, test_name, epoch, mode, k=10):
     # for train loop
     if mode == 'val':
         save_path = os.path.join('results', test_name, 'epoch_{}'.format(epoch)) 
@@ -89,23 +88,19 @@ def save_metrics(rank_track, test_name, epoch, mode):
 
         # get hit at k for rec
         rank = rank_track.info['rank'][0] # likes relation
+        mrr = np.sum(1 / (rank + 1)) / rank.shape[0]
+        #rank_at_k = np.where(rank < k)[0].shape[0] / rank.shape[0]
 
-        rank_at_k = np.where(rank < 10)[0].shape[0] / rank.shape[0]
+        # load previous rank_tracking
         stop_metric_path = os.path.join('results', test_name, 'stop_metric.npy')  
-
         if epoch != 0:
             scores = np.load(stop_metric_path, allow_pickle=True)
-            saved_scores = np.append(scores, rank_at_k)
+            saved_scores = np.append(scores, mrr)
         else:
-            saved_scores = np.array([rank_at_k])
-
-        rprec = rank_track.info['rprec'][0] # likes relation
-        avg_rprec = np.sum(rprec)/rprec.shape[0] # average r precision over all users
-        print(avg_rprec)
-
-        print(np.max(saved_scores))
+            saved_scores = np.array([mrr])
         np.save(stop_metric_path, saved_scores)
-        return rank_at_k
+        #rprec = rank_track.info['rprec'][0] # likes relation
+        #avg_rprec = np.sum(rprec) / rprec.shape[0] # average r precision over all users
 
     # for test loop
     else:
@@ -180,60 +175,3 @@ def loss_save(rec, kg, reg, test_name):
     np.save(os.path.join('results', test_name, 'rec_loss.npy'), np.array(rec), allow_pickle=True)
     np.save(os.path.join('results', test_name, 'kg_loss.npy'), np.array(kg), allow_pickle=True)
     np.save(os.path.join('results', test_name, 'reg_loss.npy'), np.array(reg), allow_pickle=True)
-
-# TOOD: delete this after all plots confirmed working
-def perrel_save(hit1s,hit3s,hit10s,mrs,mrrs,test_name):
-    epoch_list=np.arange(1,1+len(hit1s[0]))
-    plt.style.use('seaborn')
-    fig = plt.figure(figsize=(24,12))
-    fig1 = fig.add_subplot(231)
-    fig2 = fig.add_subplot(232)
-    fig3 = fig.add_subplot(233)
-    fig4 = fig.add_subplot(234)
-    fig5 = fig.add_subplot(236)
-    for rel in hit1s.keys():
-        if rel!=0:
-            fig1.errorbar(epoch_list, hit1s[rel], fmt='--o',color='b', label='kg rels')
-            fig2.errorbar(epoch_list, hit3s[rel], fmt='--o',color='b', label='kg rels')
-            fig3.errorbar(epoch_list, hit10s[rel], fmt='--o',color='b', label='kg rels')
-            fig4.errorbar(epoch_list, mrs[rel], fmt='--o',color='b', label='kg rels')
-            fig5.errorbar(epoch_list, mrrs[rel], fmt='--o',color='b', label='kg rels')
-        else:
-            fig1.errorbar(epoch_list, hit1s[rel], fmt='--o',color='r', label='likes')
-            fig2.errorbar(epoch_list, hit3s[rel], fmt='--o',color='r', label='likes')
-            fig3.errorbar(epoch_list, hit10s[rel], fmt='--o',color='r', label='likes')
-            fig4.errorbar(epoch_list, mrs[rel], fmt='--o',color='r', label='likes')
-            fig5.errorbar(epoch_list, mrrs[rel], fmt='--o',color='r', label='likes')
-    fig1.set_title('Hits @ 1 for all Relations per Epoch')
-    fig1.set_xlabel('Epoch')
-    fig1.set_ylabel('Hits')
-    _, labels1 = fig1.get_legend_handles_labels()
-    labels_1=set(labels1)
-    fig1.legend(labels_1)
-    fig2.set_title('Hits @ 3 for all Relations per Epoch')
-    fig2.set_xlabel('Epoch')
-    fig2.set_ylabel('Hits')
-    _, labels2 = fig2.get_legend_handles_labels()
-    labels_2=set(labels2)
-    fig2.legend(labels_2)
-    fig3.set_title('Hits @ 10 for all Relations per Epoch')
-    fig3.set_xlabel('Epoch')
-    fig3.set_ylabel('Hits')
-    _, labels3 = fig3.get_legend_handles_labels()
-    labels_3=set(labels3)
-    fig3.legend(labels_3)
-    fig4.set_title('MR for all Relations per Epoch')
-    fig4.set_xlabel('Epoch')
-    fig4.set_ylabel('Hits')
-    _, labels4 = fig4.get_legend_handles_labels()
-    labels_4=set(labels4)
-    fig4.legend(labels_4)
-    fig5.set_title('MRR for all Relations per Epoch')
-    fig5.set_xlabel('Epoch')
-    fig5.set_ylabel('Hits')
-    _, labels5 = fig5.get_legend_handles_labels()
-    labels_5=set(labels5)
-    fig5.legend(labels_5)
-    plt.tight_layout()
-    plt.savefig(os.path.join('results', test_name, 'Perreltests.jpg'))
-    plt.clf()

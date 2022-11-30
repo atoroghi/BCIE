@@ -44,10 +44,8 @@ class InfoTrack:
         dists = np.array(self.dists)
         ranks = np.array(self.ranks)
         scores = np.array(self.scores)
-        print(dists.shape, ranks.shape, scores.shape)
         
         save_path = os.path.join('results', test_name)
-        print(save_path)
         os.makedirs(save_path, exist_ok=True)
 
         # TODO: is this a good metric?
@@ -68,14 +66,11 @@ class InfoTrack:
         ax3 = fig.add_subplot(133)
 
         ax1.set_yscale('log')
-        #ax2.plot(np.mean(get_diff(ranks), axis=0)) 
-        #ax3.plot(np.mean(dists, axis=0)) 
-        #ax4.plot(np.mean(scores, axis=0)) 
 
-        ax1.plot(ranks.T) 
-        ax2.plot(get_diff(ranks).T) 
-        ax3.plot(scores.T) 
-
+        n = 100
+        ax1.plot(ranks.T[:n]) 
+        ax2.plot(get_diff(ranks).T[:n]) 
+        ax3.plot(scores.T[:n]) 
 
         ax1.set_title('Rank')
         ax2.set_title('$\Delta$ Rank')

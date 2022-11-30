@@ -46,7 +46,7 @@ def get_model_args():
     #parser.add_argument('-type_checking',default='no', type=str, help="doing type checking or not")
 
     # optimization, saving and data
-    parser.add_argument('-epochs', default=30, type=int, help="number of epochs")
+    parser.add_argument('-epochs', default=1, type=int, help="number of epochs")
     parser.add_argument('-save_each', default=1, type=int, help="validate every k epochs")
     parser.add_argument('-dataset', default='ML_FB', type=str, help="dataset name")
     parser.add_argument('-stop_width', default=4, type=int, help="number of SAVES where test is worse for early stopping")
@@ -94,14 +94,11 @@ def main(args):
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     
     # print important hyperparameters
-    #print('fold {}, device: {}'. format(args.fold, device))
-
+    print('lr {:.7f}, init scale: {:.7f}, batch size: {}'. format(args.lr, args.init_scale, args.batch_size))
     dataloader = DataLoader(args)
     
     # this trains and tests
-    #print('training')
-    hits10 = train(dataloader, args, device)
-    #print(hits10)
+    score = train(dataloader, args, device)
 
 if __name__ == '__main__':
     args = get_model_args()
