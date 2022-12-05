@@ -46,7 +46,6 @@ def train(dataloader, args, device='cuda'):
 
             dataloader.shuffle()
             for i in range(dataloader.n_batches):
-                if i > 1000: break
                 # ~ 3 million triplets
                 #if i * dataloader.batch_size >= 500000: break
 

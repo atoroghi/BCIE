@@ -59,14 +59,15 @@ class Params:
                     #'neg_ratio' : ([15, 30], int, None),
                 }
 
+    # TODO: this offset is bad and a quick patch
     # take params from gp to real values
-    def convert(self, i, po, p, args):
+    def convert(self, i, po, p, args, offset=0):
         for j, (arg_name, spec) in enumerate(self.param_dict.items()):
             for a in vars(args):
                 # get proper arg corresponding to param_dict values
-               if a == arg_name:
+                if a == arg_name:
                     # back out arg from key
-                    out, po[i,j] = normal2param(p[i,j], spec)
+                    out, po[i,j+offset] = normal2param(p[i,j], spec)
                     setattr(args, a, out)
         return args, po
 
@@ -139,8 +140,10 @@ class ScriptCall:
             model_test_names.append(model_test_name)
 
             # discretize params before feeding back to gp 
+            offset = len(self.params[0].param_dict)
             crit_args, po = self.params[0].convert(i, po, p, self.args[0])
-            model_args, po = self.params[1].convert(i, po, p, self.args[1])
+            model_args, po = self.params[1].convert(i, po, p, self.args[1], offset)
+
             crit_args_copy = copy.deepcopy(crit_args)
             model_args_copy = copy.deepcopy(model_args)
 
@@ -160,5 +163,5 @@ class ScriptCall:
             best_mrr[i] = np.max(mrr)
 
         po = torch.from_numpy(po)
-        print(p, po)
+        print(best_mrr)
         return po, best_mrr 

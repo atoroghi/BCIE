@@ -120,7 +120,6 @@ def critiquing(crit_args, mode):
     rec_k = 10 # TODO: (number of recommended items to user) this must be an hp
     for i, user in enumerate(all_users):
         if i > crit_args.num_users: break
-        if i > 10: break
 
         # get ids of top k recs, and all gt from user
         user_emb = get_emb(user, model, device)
@@ -152,8 +151,8 @@ def critiquing(crit_args, mode):
                 real = True
                 if real:
                     # get most item with most similar embedding
-                    crit = sim_selector(gt, item_emb, id2index, index2id, device)
-                    #crit = (gt, 0)
+                    #crit = sim_selector(gt, item_emb, id2index, index2id, device)
+                    crit = (gt, 0)
                     
                     # actual critique selection for real experiments
                     #crit = crit_selector(gt_facts, rec_facts, crit_args.crit_mode, pop_counts)

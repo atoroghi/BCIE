@@ -28,7 +28,6 @@ if __name__ == '__main__':
     args = get_args_review()
     directory = os.getcwd()
     for subdirs, dirs, files in os.walk(directory):
-        
 
         for file in files:
             if os.path.isfile(os.path.join(directory, file)):

@@ -50,11 +50,10 @@ class InfoTrack:
 
         # TODO: is this a good metric?
         # reduce track, save single number in stop_metric.npy
-        improv = ranks[:, -1] - ranks[:, 0]
+        mrr_last = np.mean(1 / (ranks[:, -1] + 1))
         
         # take this and plot it, look at it etc...
-        y = np.mean(improv)
-        np.save(os.path.join(save_path, 'stop_metric.npy'), y)
+        np.save(os.path.join(save_path, 'stop_metric.npy'), mrr_last)
         np.save(os.path.join(save_path, 'rank_track.npy'), ranks)
         np.save(os.path.join(save_path, 'score_track.npy'), scores)
         np.save(os.path.join(save_path, 'dist_track.npy'), dists)
@@ -67,10 +66,10 @@ class InfoTrack:
 
         ax1.set_yscale('log')
 
-        n = 100
-        ax1.plot(ranks.T[:n]) 
-        ax2.plot(get_diff(ranks).T[:n]) 
-        ax3.plot(scores.T[:n]) 
+        n = 20
+        ax1.plot(ranks.T[:,:n]) 
+        ax2.plot(get_diff(ranks).T[:,:n]) 
+        ax3.plot(scores.T[:,:n]) 
 
         ax1.set_title('Rank')
         ax2.set_title('$\Delta$ Rank')

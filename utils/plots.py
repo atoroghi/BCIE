@@ -88,7 +88,7 @@ def save_metrics(rank_track, test_name, epoch, mode, k=10):
 
         # get hit at k for rec
         rank = rank_track.info['rank'][0] # likes relation
-        mrr = np.sum(1 / (rank + 1)) / rank.shape[0]
+        mrr = np.mean(1 / (rank + 1))
         #rank_at_k = np.where(rank < k)[0].shape[0] / rank.shape[0]
 
         # load previous rank_tracking

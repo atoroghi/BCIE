@@ -49,9 +49,9 @@ def update_args(meta_args, args):
 
 if __name__ == '__main__':
     # hp tuning parameters
-    folds = 5
-    epochs = 15
-    batch = 4
+    folds = 1
+    epochs = 20
+    batch = 3
     n = 10000
 
     # TODO: rename these to be better
@@ -78,11 +78,8 @@ if __name__ == '__main__':
     args = (crit_args, model_args)
 
     # iterate through each fold
-    #for fold in range(folds):
-    #    tuner(meta_args, args, tune_name, fold, epochs, batch, n) # main tune loop
-    fold = model_args.fold
-    
-    tuner(meta_args, args, tune_name, fold, epochs, batch, n) # main tune loop
+    for fold in range(folds):
+        tuner(meta_args, args, tune_name, fold, epochs, batch, n) # main tune loop
 
 ############
 # code to make new dataset split
