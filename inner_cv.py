@@ -8,7 +8,9 @@ from critique import get_args_critique, crit_arg_asserts
 def get_metamodel_args():
     parser = argparse.ArgumentParser()
     # other hyper-params
+    parser.add_argument('-tune_type', default='two_stage', type=str, help="two_stage or joint")
     parser.add_argument('-tune_name', default='dev', type=str, help="tuner process name")
+    parser.add_argument('-upper_tune_name', default='tuned', type=str, help="upper folder that includes tune process files")
     parser.add_argument('-model_type', default='simple', type=str, help="model type (svd, Simple, etc)")
     parser.add_argument('-reg_type', default='tilt', type=str, help="tilt or gauss")
     parser.add_argument('-loss_type', default='gauss', type=str, help="softplus or gauss")
@@ -29,7 +31,9 @@ def get_metamodel_args():
 def get_metacrit_args():
     parser = argparse.ArgumentParser()
     # other hyper-params
+    parser.add_argument('-tune_type', default='two_stage', type=str, help="two_stage or joint")
     parser.add_argument('-tune_name', default='dev', type=str, help="tuner process name")
+    parser.add_argument('-upper_tune_name', default='tuned', type=str, help="upper folder that includes tune process files")
     parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
     parser.add_argument('-critique_target', default='single', type=str, help='single or multi')
     parser.add_argument('-update_type', default='gauss', type=str, help='laplace or gaussian')
@@ -50,8 +54,8 @@ def update_args(meta_args, args):
 if __name__ == '__main__':
     # hp tuning parameters
     folds = 1
-    epochs = 20
-    batch = 3
+    epochs = 2
+    batch = 2
     n = 10000
 
     # TODO: rename these to be better
@@ -60,26 +64,39 @@ if __name__ == '__main__':
     crit_args = get_args_critique()
     model_args = get_model_args()
 
+    # outer loop for running with all small and large embedding files (only when tune_type == 'two_stage)
+    if meta_crit_args.tune_type == 'two_stage':
+        models_folder = os.path.join('results', meta_crit_args.upper_tune_name)
+        tune_names = os.listdir(models_folder)
+    elif meta_crit_args.tune_type == 'joint':
+        tune_names = [meta_crit_args.tune_name]
+
+    for tune_name in tune_names:
+
     # run checks
-    assert meta_crit_args.tune_name == meta_model_args.tune_name
-    tune_name = meta_model_args.tune_name
-    model_arg_asserts(model_args)
-    crit_arg_asserts(crit_args)
+        meta_crit_args.tune_name = tune_name
+        meta_model_args.tune_name = tune_name
+        
+        # previous version of code:
+        #assert meta_crit_args.tune_name == meta_model_args.tune_name
+        #tune_name = meta_model_args.tune_name
+        model_arg_asserts(model_args)
+        crit_arg_asserts(crit_args)
 
-    # make gp dir
-    os.makedirs('gp/{}'.format(meta_model_args.tune_name), exist_ok=True)
+        # make gp dir
+        os.makedirs('gp/{}/{}'.format(meta_model_args.upper_tune_name, meta_model_args.tune_name), exist_ok=True)
 
-    # update args with non-tunable params
-    update_args(meta_crit_args, crit_args)
-    update_args(meta_model_args, model_args)
+        # update args with non-tunable params
+        update_args(meta_crit_args, crit_args)
+        update_args(meta_model_args, model_args)
 
-    # package before sending
-    meta_args = (meta_crit_args, meta_model_args)
-    args = (crit_args, model_args)
+        # package before sending
+        meta_args = (meta_crit_args, meta_model_args)
+        args = (crit_args, model_args)
 
-    # iterate through each fold
-    for fold in range(folds):
-        tuner(meta_args, args, tune_name, fold, epochs, batch, n) # main tune loop
+        # iterate through each fold
+        for fold in range(folds):
+            tuner(meta_args, args, tune_name, fold, epochs, batch, n) # main tune loop
 
 ############
 # code to make new dataset split

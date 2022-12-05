@@ -17,7 +17,7 @@ def tuner(meta_args, args, tune_name, fold, epochs, batch, n):
     (crit_args, model_args) = args
 
     # set folder structure
-    path = os.path.join('results', tune_name)
+    path = os.path.join('results', meta_crit_args.upper_tune_name,tune_name)
     os.makedirs(path, exist_ok=True)
     path = os.path.join(path, 'fold_{}'.format(fold)) 
     os.makedirs(path, exist_ok=True)
@@ -26,11 +26,12 @@ def tuner(meta_args, args, tune_name, fold, epochs, batch, n):
     model_params = Params('train', model_args, meta_model_args)
     crit_params = Params('crit', crit_args, meta_crit_args)
     params = (crit_params, model_params)
-    
-    model_params.save()
+    dim = len(crit_params.param_dict)
+    if meta_crit_args.tune_type == 'joint':
+        model_params.save()
+        dim = len(model_params.param_dict) + len(crit_params.param_dict)
     crit_params.save()
-    dim = len(model_params.param_dict) + len(crit_params.param_dict)
-
+    
     # main script for launching subprocesses
     script_call = ScriptCall(args, params, tune_name, fold, path)
 
@@ -48,7 +49,9 @@ def tuner(meta_args, args, tune_name, fold, epochs, batch, n):
         # train models and update points
         if begin:
             train_path = os.path.join(path,'train')
+            crit_path = os.path.join(path,'crit')
             os.makedirs(train_path , exist_ok=True)
+            os.makedirs(crit_path , exist_ok=True)
             begin = False
             x_out, score = script_call.train(torch.rand(batch, dim))
             y_train = score

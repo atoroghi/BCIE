@@ -15,9 +15,11 @@ from utils.crit_utils import InfoTrack, fact_stack, rec_fact_stack, get_d, fake_
 
 def get_args_critique():
     parser = argparse.ArgumentParser()
+    parser.add_argument('-tune_type', default='two_stage', type=str, help="two_stage or joint")
 
     parser.add_argument('-test_name', default='tilt_small/crit/fold_0/train_0', type=str, help='name of folder where results are saved')
     parser.add_argument('-tune_name', default='dev', type=str, help="tuner process name")
+    parser.add_argument('-upper_tune_name', default='tuned', type=str, help="upper folder that includes tune process files")
     parser.add_argument('-load_name', default='results/tilt_small/train/fold_0/train_21', type=str, help='name of folder where model is')
     parser.add_argument('-fold', default=0, type=int, help='fold number')
 
@@ -83,6 +85,8 @@ def critiquing(crit_args, mode):
 
     # load model
     model_path = os.path.join(crit_args.load_name, 'models/best_model.pt')
+    print(model_path)
+    sys.exit()
     model = torch.load(model_path).to(device)
 
     # load dataset + dictionaries

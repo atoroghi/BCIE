@@ -57,8 +57,8 @@ def test_fold(tune_name, best_run, best_epoch, cv_type):
         critiquing(args, 'test')
 
 # get best model in nested cv
-def best_model(tune_name, cv_type, fold):
-    path = 'results/{}/{}/fold_{}'.format(tune_name, cv_type, fold)
+def best_model(path):
+    
     folders = os.listdir(path)
     folders = [f for f in folders if 'train' in f]
     folders = sorted(folders, key=natural_key)
@@ -76,19 +76,20 @@ def best_model(tune_name, cv_type, fold):
     best_run = np.argmax(perf)
     best_score = np.max(perf)
     best_epoch = arg_perf[np.argmax(perf)]
-    return (best_score, best_run, best_epoch)
+    return (best_score, best_run, best_epoch, folders[best_run])
     
 # TODO: clean this up, it's bad
 if __name__ == '__main__':
-    tune_name = 'gausstypereg'
-    folds = 4
+    tune_name = 'tilttype'
+    folds = 5
     opt = 'test'
-    cv_type = 'crit' # train or crit
+    cv_type = 'train' # train or crit
 
     # search through all folders
     for i in range(folds):
         if opt == 'test':
-            (best_score, best_run, best_epoch) = best_model(tune_name,cv_type, i)
+            path = 'results/{}/{}/fold_{}'.format(tune_name, cv_type, i)
+            (best_score, best_run, best_epoch, _) = best_model(path,cv_type, i)
             print('best score: {}, best folder: {}, best epoch: {}'.format(best_score, best_run, best_epoch))
             test_fold(tune_name, best_run, best_epoch, cv_type)
     
