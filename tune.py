@@ -12,19 +12,16 @@ def natural_key(string_):
     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
 
 # main entry point from inner_cv
-def tuner(meta_args, args, tune_name, fold, epochs, batch, n, tune_type):
-    (meta_crit_args, meta_model_args) = meta_args
+def tuner(args, tune_name, fold, epochs, batch, n, tune_type):
     (crit_args, model_args) = args
 
     # set folder structure
-    path = os.path.join('results', tune_name)
-    os.makedirs(path, exist_ok=True)
-    path = os.path.join(path, 'fold_{}'.format(fold)) 
+    path = tune_name
     os.makedirs(path, exist_ok=True)
 
     # get and save params required for running main scripts
-    model_params = Params('train', model_args, meta_model_args)
-    crit_params = Params('crit', crit_args, meta_crit_args)
+    model_params = Params('train', model_args, tune_name)
+    crit_params = Params('crit', crit_args, tune_name)
 
     params = (crit_params, model_params)
     if tune_type == 'joint':
@@ -35,7 +32,7 @@ def tuner(meta_args, args, tune_name, fold, epochs, batch, n, tune_type):
     crit_params.save()
     
     # main script for launching subprocesses
-    script_call = ScriptCall(args, params, tune_name, fold, path)
+    script_call = ScriptCall(args, params, tune_name, fold, path, tune_type)
 
     # load training data (if something failed)
     if os.path.isfile(os.path.join(path, 'x_train.pt')):
@@ -49,10 +46,10 @@ def tuner(meta_args, args, tune_name, fold, epochs, batch, n, tune_type):
         print("epoch: {}".format(e))
         # train models and update points
         if begin:
-            train_path = os.path.join(path,'train')
-            crit_path = os.path.join(path,'crit')
-            os.makedirs(train_path , exist_ok=True)
-            os.makedirs(crit_path , exist_ok=True)
+            #train_path = os.path.join(path, 'train')
+            #crit_path = os.path.join(path, 'crit', )
+            #os.makedirs(train_path , exist_ok=True)
+            #os.makedirs(crit_path , exist_ok=True)
             begin = False
             x_out, score = script_call.train(torch.rand(batch, dim))
             y_train = score
@@ -75,9 +72,3 @@ def tuner(meta_args, args, tune_name, fold, epochs, batch, n, tune_type):
 if __name__  == '__main__':
     print('not implimented')
     sys.exit()
-
-# NOTE: old code for loading best model
-# if critique, set model to load
-#if cv_type == 'crit':
-#    (best_score, best_run, best_epoch) = best_model(meta_args.tune_name, 'train', fold)
-#    args.load_name = os.path.join('results', meta_args.tune_name, 'train', 'fold_{}'.format(fold), 'train_{}'.format(best_run))

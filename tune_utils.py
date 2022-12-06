@@ -9,8 +9,8 @@ def natural_key(string_):
 
 # converts parameters in [0, 1] to actual ranges
 class Params:
-    def __init__(self, cv_type, args, meta_args):
-        self.tune_name = meta_args.tune_name
+    def __init__(self, cv_type, args, tune_name):
+        self.tune_name = tune_name
         self.cv_type = cv_type
 
         # TODO: don't tune hp's that we don't use
@@ -33,11 +33,11 @@ class Params:
 
             # TODO: better asserts to automatically set hps
             if 'z_prec' in self.param_dict:
-                assert meta_args.evidence_type == 'indirect'
+                assert args.evidence_type == 'indirect'
             if 'etta_0' in self.param_dict:
-                assert meta_args.update_type == 'laplace'
+                assert args.update_type == 'laplace'
             if 'multi_k' in self.param_dict:
-                assert meta_args.critique_target == 'multi'
+                assert args.critique_target == 'multi'
 
         elif cv_type == 'train':
             if args.model_type == 'svd':
@@ -79,21 +79,20 @@ class Params:
         for k, v in self.param_dict.items():
             save_dict.update({k : str(v)})
 
-        save_path = os.path.join('results', self.tune_name)
-        with open(os.path.join(save_path, '{}_hp_ranges.yml'.format(self.cv_type)), 'w') as f:
+        with open(os.path.join(self.tune_name, '{}_hp_ranges.yml'.format(self.cv_type)), 'w') as f:
                 yaml.dump(save_dict, f, sort_keys=False,
                         default_flow_style=False)
 
 # main class to launch code that gp is trying to opimize
 class ScriptCall:
-    def __init__(self, args, params, tune_name, fold_num, path):
+    def __init__(self, args, params, tune_name, fold_num, path, tune_type):
         # TODO: unpack params into model and crit
         self.args = args
         self.tune_name = tune_name
         self.fold_num = fold_num
         self.params = params
-        self.path = path
-        self.tune_type = args[0].tune_type
+        self.path = os.path.join(path, '..')
+        self.tune_type = tune_type
 
     def run_process(self,p, py_file, args_list, crit_test_names, crit_load_names, model_test_names):
         subs = []
@@ -133,18 +132,18 @@ class ScriptCall:
             # po is gp values corresponding to discretization
             
             # folder names for loading and saving
-            if self.args[0].tune_type == 'joint':
+            if self.tune_type == 'joint':
                 folders = sorted(os.listdir(os.path.join(self.path, 'train')), key=natural_key)
                 folders = [f for f in folders if 'train' in f]
                 crit_load_name = os.path.join('results', self.tune_name, 'fold_{}'.format(self.fold_num), 'train', 'train_{}'.format(len(folders) + i)) 
 
             # here we only load the best model of the fold and make crit result folders
-            elif self.args[0].tune_type == 'two_stage':
-                folders = sorted(os.listdir(os.path.join(self.path, 'crit')), key=natural_key)
+            elif self.tune_type == 'two_stage':
+                folders = sorted(os.listdir(self.tune_name), key=natural_key)
                 folders = [f for f in folders if 'train' in f]
                 (best_score, best_run, best_epoch, best_folder) = best_model(train_path)
                 crit_load_name = os.path.join(train_path, best_folder)
-            crit_test_name = os.path.join(self.path, 'crit', 'train_{}'.format(len(folders) + i))
+            crit_test_name = os.path.join(self.tune_name, 'train_{}'.format(len(folders) + i))
             model_test_name = os.path.join(self.path, 'train', 'train_{}'.format(len(folders) + i))
 
             # save to list
@@ -156,7 +155,7 @@ class ScriptCall:
             offset = len(self.params[0].param_dict)
             crit_args, po = self.params[0].convert(i, po, p, self.args[0])
             model_args = []
-            if self.args[0].tune_type == 'joint':
+            if self.tune_type == 'joint':
                 model_args, po = self.params[1].convert(i, po, p, self.args[1], offset)
 
             crit_args_copy = copy.deepcopy(crit_args)
@@ -166,20 +165,20 @@ class ScriptCall:
 
   
         # run script for all hyperparams in the batch   
-        if self.args[0].tune_type == 'joint':
+        if self.tune_type == 'joint':
             print('training')
             self.run_process(p, 'launch.py', args_list, crit_test_names, crit_load_names, model_test_names)
             print('critique')
             self.run_process(p, 'critique.py', args_list, crit_test_names, crit_load_names, model_test_names)
             
-        elif self.args[0].tune_type == 'two_stage':
+        elif self.tune_type == 'two_stage':
             print('critique')
             self.run_process(p, 'critique.py', args_list, crit_test_names, crit_load_names, model_test_names)
 
         ## get recall at k
         best_mrr = torch.empty(p.shape[0])
         for i in range(p.shape[0]):
-            load_path = os.path.join(self.path, 'crit', 'train_{}'.format(len(folders) + i), 'stop_metric.npy')
+            load_path = os.path.join(self.tune_name, 'train_{}'.format(len(folders) + i), 'stop_metric.npy')
             mrr = np.load(load_path)
             best_mrr[i] = np.max(mrr)
 

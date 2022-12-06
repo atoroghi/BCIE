@@ -15,7 +15,6 @@ from utils.crit_utils import InfoTrack, fact_stack, rec_fact_stack, get_d, fake_
 
 def get_args_critique():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-tune_type', default='two_stage', type=str, help="two_stage or joint")
     parser.add_argument('-load_name', default='results/tuned/tilt_small/fold_0/train/train_21', type=str, help='name of folder where model is')
     parser.add_argument('-test_name', default=None, type=str, help='name of folder where model is')
 
@@ -28,6 +27,7 @@ def get_args_critique():
     parser.add_argument('-multi_k', default=10, type=int, help='number of samples for multi type update')
     parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
     parser.add_argument('-num_users', default=1000, type=int, help='number of users')
+    parser.add_argument('-sim_k', default=0, type=int, help='number closest movies for direct single testing')
 
     # single vs mult
     parser.add_argument('-critique_target', default='single', type=str, help='single or multi')
@@ -35,7 +35,7 @@ def get_args_critique():
     
     # likelihood
     parser.add_argument('-update_type', default='gauss', type=str, help='laplace or gauss')
-    parser.add_argument('-crit_mode', default='random', type=str, help='random or pop or diff')
+    parser.add_argument('-crit_mode', default='diff', type=str, help='random or pop or diff')
     parser.add_argument('-map_finder', default='cvx', type= str, help='cvx or gd')
     parser.add_argument('-cluster_check', default=False, type=bool, help='run fast version of code')
 
@@ -149,21 +149,18 @@ def critiquing(crit_args, mode):
                 rec_facts = rec_fact_stack(rec_ids, item_facts_head, item_facts_tail)
                 if gt_facts.shape[0] <= 0: continue
 
-                real = True
-                if real:
+                #crit = (gt, 0)
+                if crit_args.sim_k > 0:
                     # get most item with most similar embedding
                     crit = sim_selector(gt, item_emb, id2index, index2id, device, k=5)
-                    #crit = (gt, 0)
-                    
+                else:
                     # actual critique selection for real experiments
-                    #crit = crit_selector(gt_facts, rec_facts, crit_args.crit_mode, pop_counts)
+                    crit = crit_selector(gt_facts, rec_facts, crit_args.crit_mode, pop_counts)
 
-                    # get d for p(user | d) bayesian update
-                    d = get_d(model, crit, rel_emb, obj2items, get_emb, crit_args, model_args, device)
-                    update_info.store(d=d, crit_rel_emb=rel_emb[crit[1]])
-                else: 
-                    d, r = fake_d(gt, get_emb, rel_emb[0], model, device, sigma=1.5)
-                    update_info.store(d=d, crit_rel_emb=rel_emb[0])
+                # get d for p(user | d) bayesian update
+                #d, r = fake_d(gt, get_emb, rel_emb[0], model, device, sigma=1.5)
+                d = get_d(model, crit, rel_emb, obj2items, get_emb, crit_args, model_args, device)
+                update_info.store(d=d, crit_rel_emb=rel_emb[crit[1]])
 
                 # perform update
                 if crit_args.evidence_type == 'direct':
