@@ -45,7 +45,8 @@ class InfoTrack:
         ranks = np.array(self.ranks)
         scores = np.array(self.scores)
         
-        save_path = os.path.join('results', test_name)
+        #save_path = os.path.join('results', test_name)
+        save_path = test_name
         os.makedirs(save_path, exist_ok=True)
 
         # TODO: is this a good metric?

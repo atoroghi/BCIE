@@ -10,7 +10,7 @@ import sys
 # TODO: this is wrong, update tn
 def beta_update(update_info, sn, crit_args, model_args, device, update_type, map_finder, etta, alpha):
     if update_type == "gauss":
-        print(n, "this should be one for direct single")
+        #print(n, "this should be one for direct single")
         (f, inv), prec, n = update_info.get_sampleinfo()
         (f0, inv0), (prec_f0, prec_inv0) = update_info.get_priorinfo()
 

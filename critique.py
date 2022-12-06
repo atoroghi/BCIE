@@ -65,7 +65,8 @@ def critiquing(crit_args, mode):
     alpha = crit_args.alpha
 
     # load model and get parameter from file
-    save_path = os.path.join('results', crit_args.test_name)
+    #save_path = os.path.join('results', crit_args.test_name)
+    save_path = crit_args.test_name
     os.makedirs(save_path, exist_ok=True)
 
     with open(os.path.join(crit_args.load_name, 'info.yml'), 'r') as f:
@@ -85,8 +86,6 @@ def critiquing(crit_args, mode):
 
     # load model
     model_path = os.path.join(crit_args.load_name, 'models/best_model.pt')
-    print(model_path)
-    sys.exit()
     model = torch.load(model_path).to(device)
 
     # load dataset + dictionaries
