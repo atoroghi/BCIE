@@ -8,9 +8,7 @@ from critique import get_args_critique, crit_arg_asserts
 def get_metamodel_args():
     parser = argparse.ArgumentParser()
     # other hyper-params
-    parser.add_argument('-tune_type', default='two_stage', type=str, help="two_stage or joint")
-    parser.add_argument('-tune_name', default='dev', type=str, help="tuner process name")
-    parser.add_argument('-upper_tune_name', default='tuned', type=str, help="upper folder that includes tune process files")
+    parser.add_argument('-tune_name', default=None, type=str, help="tuner process name")
     parser.add_argument('-model_type', default='simple', type=str, help="model type (svd, Simple, etc)")
     parser.add_argument('-reg_type', default='tilt', type=str, help="tilt or gauss")
     parser.add_argument('-loss_type', default='gauss', type=str, help="softplus or gauss")
@@ -23,6 +21,7 @@ def get_metamodel_args():
     parser.add_argument('-type_checking', default='check', type=str, help="check or no")
     parser.add_argument('-fold', default=0, type=int, help="fold for running inner cv on")
     parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
+    parser.add_argument('-cluster_check', default=False, type=bool, help='run fast version of code')
  
     args = parser.parse_args()
     return args
@@ -31,15 +30,15 @@ def get_metamodel_args():
 def get_metacrit_args():
     parser = argparse.ArgumentParser()
     # other hyper-params
-    parser.add_argument('-tune_type', default='two_stage', type=str, help="two_stage or joint")
-    parser.add_argument('-tune_name', default='dev', type=str, help="tuner process name")
-    parser.add_argument('-upper_tune_name', default='tuned', type=str, help="upper folder that includes tune process files")
+    parser.add_argument('-tune_name', default=None, type=str, help="tuner process name")
     parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
     parser.add_argument('-critique_target', default='single', type=str, help='single or multi')
     parser.add_argument('-update_type', default='gauss', type=str, help='laplace or gaussian')
     parser.add_argument('-critique_mode', default='random', type=str, help='random or pop or diff')
     parser.add_argument('-map_finder', default='cvx', type= str, help='cvx or gd')
     parser.add_argument('-fold', default=0, type=int, help="fold for running inner cv on")
+    parser.add_argument('-num_users', default=1000, type=int, help='number of users')
+    parser.add_argument('-cluster_check', default=False, type=bool, help='run fast version of code')
 
     args = parser.parse_args()
     return args
@@ -52,39 +51,47 @@ def update_args(meta_args, args):
                 setattr(args, la, getattr(meta_args, ma))
 
 if __name__ == '__main__':
-    # hp tuning parameters
-    folds = 1
-    epochs = 2
-    batch = 2
-    n = 10000
+    # for quick testing
+    cluster_check = True # TODO: do cluster check for training embeddings
+    cv_tune_name = 'tuned'
 
-    # TODO: rename these to be better
+    # hp tuning parameters
+    n = 10000
+    batch = 4
+    folds = 5 if not cluster_check else 1
+    epochs = 60 // 4 if not cluster_check else 2
+    tune_type = 'two_stage' # joint or two_stage
+
+    # get all args
     meta_crit_args = get_metacrit_args()
     meta_model_args = get_metamodel_args()
     crit_args = get_args_critique()
     model_args = get_model_args()
 
+    # set cluser_checks
+    meta_crit_args.cluster_check = cluster_check
+    meta_model_args.cluster_check = cluster_check
+
     # outer loop for running with all small and large embedding files (only when tune_type == 'two_stage)
-    if meta_crit_args.tune_type == 'two_stage':
-        models_folder = os.path.join('results', meta_crit_args.upper_tune_name)
+    if tune_type == 'two_stage':
+        models_folder = os.path.join('results', cv_tune_name)
         tune_names = os.listdir(models_folder)
     elif meta_crit_args.tune_type == 'joint':
         tune_names = [meta_crit_args.tune_name]
 
-    for tune_name in tune_names:
-
-    # run checks
+    # run each folder
+    for i, tune_name in enumerate(tune_names):
+        if cluster_check and i > 0: break
         meta_crit_args.tune_name = tune_name
         meta_model_args.tune_name = tune_name
         
-        # previous version of code:
-        #assert meta_crit_args.tune_name == meta_model_args.tune_name
-        #tune_name = meta_model_args.tune_name
+        # do asserts
         model_arg_asserts(model_args)
         crit_arg_asserts(crit_args)
 
+        # TODO: save this elsewehre
         # make gp dir
-        os.makedirs('gp/{}/{}'.format(meta_model_args.upper_tune_name, meta_model_args.tune_name), exist_ok=True)
+        #os.makedirs('gp/{}/{}'.format(cv_tune_name, meta_model_args.tune_name), exist_ok=True)
 
         # update args with non-tunable params
         update_args(meta_crit_args, crit_args)
@@ -96,7 +103,8 @@ if __name__ == '__main__':
 
         # iterate through each fold
         for fold in range(folds):
-            tuner(meta_args, args, tune_name, fold, epochs, batch, n) # main tune loop
+            p_tune_name = os.path.join(cv_tune_name, tune_name)
+            tuner(meta_args, args, p_tune_name, fold, epochs, batch, n, tune_type) # main tune loop
 
 ############
 # code to make new dataset split

@@ -33,16 +33,17 @@ def make_array(model, items, emb_dim):
 
 def get_scores(test_emb, rel_emb, item_emb, learning_rel):
     # get score, based on if test item is head or tail
-    if learning_rel == 'freeze':
-        for_prod = torch.sum(test_emb[0] * item_emb[1], axis=1)
-        scores = torch.clip(for_prod, -40, 40)
-    else:
-        for_prod = torch.sum(test_emb[0] * rel_emb[0] * item_emb[1], axis=1)
-        inv_prod = torch.sum(test_emb[1] * rel_emb[1] * item_emb[0], axis=1)
+    with torch.no_grad():
+        if learning_rel == 'freeze':
+            for_prod = torch.sum(test_emb[0] * item_emb[1], axis=1)
+            scores = torch.clip(for_prod, -40, 40)
+        else:
+            for_prod = torch.sum(test_emb[0] * rel_emb[0] * item_emb[1], axis=1)
+            inv_prod = torch.sum(test_emb[1] * rel_emb[1] * item_emb[0], axis=1)
 
-        scores = torch.clip((for_prod + inv_prod) / 2, -40, 40)
+            scores = torch.clip((for_prod + inv_prod) / 2, -40, 40)
 
-    ranked = torch.argsort(scores, descending=True)
+        ranked = torch.argsort(scores, descending=True)
     return (scores, ranked)
 
 # get ground truth

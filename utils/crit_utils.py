@@ -299,7 +299,7 @@ def unpack_dic(dic, ids):
         else: array = np.vstack((array, out))
     return array
 
-def sim_selector(gt, item_emb, id2index, index2id, device):
+def sim_selector(gt, item_emb, id2index, index2id, device, k=1):
     # get embeddings
     gt_head = item_emb[0][id2index[gt]]
     gt_tail = item_emb[1][id2index[gt]]
@@ -310,7 +310,8 @@ def sim_selector(gt, item_emb, id2index, index2id, device):
     both = forw + back
 
     # get top item that isn't gt
-    spot = torch.topk(both, k=2)[1]
-    pick = [index2id[spot[0].cpu().item()], index2id[spot[1].cpu().item()]]
+    spot = torch.topk(both, k=k+1)[1]
+    pick = [index2id[spot[i].cpu().item()] for i in range(k+1)]
     if gt in pick: pick.remove(gt)
-    return (pick[0], 0)
+    ind = np.random.randint(len(pick))
+    return (pick[ind], 0)

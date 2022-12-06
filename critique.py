@@ -16,23 +16,14 @@ from utils.crit_utils import InfoTrack, fact_stack, rec_fact_stack, get_d, fake_
 def get_args_critique():
     parser = argparse.ArgumentParser()
     parser.add_argument('-tune_type', default='two_stage', type=str, help="two_stage or joint")
+    parser.add_argument('-load_name', default='results/tuned/tilt_small/fold_0/train/train_21', type=str, help='name of folder where model is')
+    parser.add_argument('-test_name', default=None, type=str, help='name of folder where model is')
 
-    parser.add_argument('-test_name', default='tilt_small/crit/fold_0/train_0', type=str, help='name of folder where results are saved')
-    parser.add_argument('-tune_name', default='dev', type=str, help="tuner process name")
-    parser.add_argument('-upper_tune_name', default='tuned', type=str, help="upper folder that includes tune process files")
-    parser.add_argument('-load_name', default='results/tilt_small/train/fold_0/train_21', type=str, help='name of folder where model is')
-    parser.add_argument('-fold', default=0, type=int, help='fold number')
+    parser.add_argument('-user_prec', default=1.0, type=float, help='prior cov')
+    parser.add_argument('-default_prec', default=1.0, type=float, help='likelihood precision')
+    parser.add_argument('-z_prec', default=2.0, type=float, help='item distribution precision indirect case')
 
-    # TODO: list for etta?
-    parser.add_argument('-user_prec', default=0.25, type=float, help='prior cov')
-    parser.add_argument('-default_prec', default=1e-2, type=float, help='likelihood precision')
-    parser.add_argument('-z_prec', default=1e-2, type=float, help='item distribution precision indirect case')
-
-    parser.add_argument('-etta_0', default=1.0, type=float, help='Precision for Laplace Approximation')
-    parser.add_argument('-etta_1', default=1.0, type=float, help='Precision for Laplace Approximation')
-    parser.add_argument('-etta_2', default=1.0, type=float, help='Precision for Laplace Approximation')
-    parser.add_argument('-etta_3', default=1.0, type=float, help='Precision for Laplace Approximation')
-    parser.add_argument('-etta_4', default=1.0, type=float, help='Precision for Laplace Approximation')
+    parser.add_argument('-etta', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-alpha', default=0.05, type=float, help='Learning rate for GD in Laplace Approximation')
     parser.add_argument('-multi_k', default=10, type=int, help='number of samples for multi type update')
     parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
@@ -46,6 +37,7 @@ def get_args_critique():
     parser.add_argument('-update_type', default='gauss', type=str, help='laplace or gauss')
     parser.add_argument('-crit_mode', default='random', type=str, help='random or pop or diff')
     parser.add_argument('-map_finder', default='cvx', type= str, help='cvx or gd')
+    parser.add_argument('-cluster_check', default=False, type=bool, help='run fast version of code')
 
     args = parser.parse_args()
     return args
@@ -61,12 +53,16 @@ def calc_score(user, d):
 def critiquing(crit_args, mode):
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     model_args = Namespace()
-    etta = [crit_args.etta_0, crit_args.etta_1, crit_args.etta_2, crit_args.etta_3, crit_args.etta_4]
+    etta = 5 * [crit_args.etta]
     alpha = crit_args.alpha
 
+    # for cluster check
+    if crit_args.cluster_check: crit_args.num_users = 10
+
     # load model and get parameter from file
-    #save_path = os.path.join('results', crit_args.test_name)
-    save_path = crit_args.test_name
+    if crit_args.test_name is None:
+        crit_args.test_name = crit_args.load_name.replace('/train/', '/crit/')
+    save_path = os.path.join(crit_args.test_name)
     os.makedirs(save_path, exist_ok=True)
 
     with open(os.path.join(crit_args.load_name, 'info.yml'), 'r') as f:
@@ -74,6 +70,7 @@ def critiquing(crit_args, mode):
         for key in yml.keys():
             if key != "test_name":
                 setattr(model_args, key, yml[key])
+
     # TODO: save these in yaml file
     model_args.learning_rel = 'learn'
     model_args.type_checking = 'yes'
@@ -121,6 +118,7 @@ def critiquing(crit_args, mode):
 ##############################################################
     t0 = time.time()
     rec_k = 10 # TODO: (number of recommended items to user) this must be an hp
+    np.random.shuffle(all_users)
     for i, user in enumerate(all_users):
         if i > crit_args.num_users: break
 
@@ -154,8 +152,8 @@ def critiquing(crit_args, mode):
                 real = True
                 if real:
                     # get most item with most similar embedding
-                    #crit = sim_selector(gt, item_emb, id2index, index2id, device)
-                    crit = (gt, 0)
+                    crit = sim_selector(gt, item_emb, id2index, index2id, device, k=5)
+                    #crit = (gt, 0)
                     
                     # actual critique selection for real experiments
                     #crit = crit_selector(gt_facts, rec_facts, crit_args.crit_mode, pop_counts)

@@ -12,12 +12,12 @@ def natural_key(string_):
     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
 
 # main entry point from inner_cv
-def tuner(meta_args, args, tune_name, fold, epochs, batch, n):
+def tuner(meta_args, args, tune_name, fold, epochs, batch, n, tune_type):
     (meta_crit_args, meta_model_args) = meta_args
     (crit_args, model_args) = args
 
     # set folder structure
-    path = os.path.join('results', meta_crit_args.upper_tune_name,tune_name)
+    path = os.path.join('results', tune_name)
     os.makedirs(path, exist_ok=True)
     path = os.path.join(path, 'fold_{}'.format(fold)) 
     os.makedirs(path, exist_ok=True)
@@ -25,11 +25,13 @@ def tuner(meta_args, args, tune_name, fold, epochs, batch, n):
     # get and save params required for running main scripts
     model_params = Params('train', model_args, meta_model_args)
     crit_params = Params('crit', crit_args, meta_crit_args)
+
     params = (crit_params, model_params)
-    dim = len(crit_params.param_dict)
-    if meta_crit_args.tune_type == 'joint':
+    if tune_type == 'joint':
         model_params.save()
         dim = len(model_params.param_dict) + len(crit_params.param_dict)
+    elif tune_type == 'two_stage':
+        dim = len(crit_params.param_dict)
     crit_params.save()
     
     # main script for launching subprocesses
@@ -40,7 +42,6 @@ def tuner(meta_args, args, tune_name, fold, epochs, batch, n):
         begin = False
         x_train = torch.load(os.path.join(path, 'x_train.pt'))
         y_train = torch.load(os.path.join(path, 'y_train.pt'))
-        print(x_train.shape, y_train.shape)
     else: begin = True
 
     # main loop

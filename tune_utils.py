@@ -10,7 +10,6 @@ def natural_key(string_):
 # converts parameters in [0, 1] to actual ranges
 class Params:
     def __init__(self, cv_type, args, meta_args):
-        self.upper_tune_name = meta_args.upper_tune_name
         self.tune_name = meta_args.tune_name
         self.cv_type = cv_type
 
@@ -80,7 +79,7 @@ class Params:
         for k, v in self.param_dict.items():
             save_dict.update({k : str(v)})
 
-        save_path = os.path.join('results', self.upper_tune_name, self.tune_name)
+        save_path = os.path.join('results', self.tune_name)
         with open(os.path.join(save_path, '{}_hp_ranges.yml'.format(self.cv_type)), 'w') as f:
                 yaml.dump(save_dict, f, sort_keys=False,
                         default_flow_style=False)
@@ -90,7 +89,6 @@ class ScriptCall:
     def __init__(self, args, params, tune_name, fold_num, path):
         # TODO: unpack params into model and crit
         self.args = args
-        self.upper_tune_name = args[0].upper_tune_name
         self.tune_name = tune_name
         self.fold_num = fold_num
         self.params = params
@@ -134,7 +132,6 @@ class ScriptCall:
             # convert gp [0, 1] to proper parameter vals
             # po is gp values corresponding to discretization
             
-            
             # folder names for loading and saving
             if self.args[0].tune_type == 'joint':
                 folders = sorted(os.listdir(os.path.join(self.path, 'train')), key=natural_key)
@@ -170,7 +167,6 @@ class ScriptCall:
   
         # run script for all hyperparams in the batch   
         if self.args[0].tune_type == 'joint':
-  
             print('training')
             self.run_process(p, 'launch.py', args_list, crit_test_names, crit_load_names, model_test_names)
             print('critique')

@@ -24,7 +24,7 @@ Monday Experiments
 ================================================
 direct single - gaussian
 	- sim_selector movie k = [1, 5] - random
-	- sim_selector objects k = [1, 5]  random
+	- correct test - random, diff, pop
 
 indirect - gaussian
 	- local computer  
