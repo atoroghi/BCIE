@@ -59,8 +59,6 @@ def test_fold(path, tune_name, best_folder, best_epoch, cv_type):
                         setattr(args, key, float(yml[key]))
                     except:
                         setattr(args, key, yml[key])
-        print(args)
-        sys.exit()
         setattr(args, 'test_name', save_path)
         print("results are being saved in:", args.test_name)
         critiquing(args, 'test')
