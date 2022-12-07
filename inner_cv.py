@@ -4,6 +4,13 @@ from tune import tuner
 from launch import get_model_args, model_arg_asserts
 from critique import get_args_critique, crit_arg_asserts
 
+# args
+#  n, batch, fold, tune_type etc
+# crit_sim_k, crit_mode
+
+# 1) one big set of args
+# 2) 
+
 # TODO: passing in of name is terrible 
 if __name__ == '__main__':
     # for quick testing
