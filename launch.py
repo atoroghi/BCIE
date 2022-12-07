@@ -8,7 +8,6 @@ import numpy as np
 
 def get_model_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-tune_type', default='two_stage', type=str, help="two_stage or joint")
     parser.add_argument('-test_name', default='dev', type=str, help="folder for test results")
     parser.add_argument('-tune_name', default='dev_nest', type=str, help="tuner process name")
     parser.add_argument('-upper_tune_name', default='tuned', type=str, help="upper folder that includes tune process files")
@@ -53,8 +52,27 @@ def get_model_args():
     parser.add_argument('-dataset', default='ML_FB', type=str, help="dataset name")
     parser.add_argument('-stop_width', default=4, type=int, help="number of SAVES where test is worse for early stopping")
     parser.add_argument('-fold', default=0, type=int, help="fold to use data from")
+
+    #redundant because of critique
+    parser.add_argument('-multi_k', default=10, type=int, help='number of samples for multi type update')
+    parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
+    parser.add_argument('-num_users', default=1000, type=int, help='number of users')
+    parser.add_argument('-sim_k', default=0, type=int, help='number closest movies for direct single testing')
+    parser.add_argument('-critique_target', default='single', type=str, help='single or multi')
     parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
+    parser.add_argument('-update_type', default='gauss', type=str, help='laplace or gauss')
+    parser.add_argument('-crit_mode', default='diff', type=str, help='random or pop or diff')
+    parser.add_argument('-map_finder', default='cvx', type= str, help='cvx or gd')
+
+    # redundant args because of inner_cv
     parser.add_argument('-cluster_check', default=False, type=bool, help='run fast version of code')
+    parser.add_argument('-cv_tune_name', default='tuned', type=str, help='upper level folder name')
+    parser.add_argument('-samples', default=10000, type=int, help='no of samples in tuning')
+    parser.add_argument('-batch', default=4, type=int, help='no of simultaneous calls of script')
+    parser.add_argument('-folds', default=5, type=int, help='no of folds')
+    parser.add_argument('-epochs_all', default=120, type=int, help='no of total epochs')
+    parser.add_argument('-tune_type', default='two_stage', type=str, help='two_stage or joint')
+    parser.add_argument('-name', default='diff', type=str, help='name of current test')
 
     args = parser.parse_args()
     return args

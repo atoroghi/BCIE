@@ -30,7 +30,7 @@ def get_args_critique():
     parser.add_argument('-sim_k', default=0, type=int, help='number closest movies for direct single testing')
 
     # single vs mult
-    parser.add_argument('-critique_target', default='single', type=str, help='single or multi')
+    parser.add_argument('-critique_target', default='multi', type=str, help='single or multi')
     parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
     
     # likelihood
@@ -189,9 +189,3 @@ def critiquing(crit_args, mode):
 if __name__ == '__main__':
     crit_args = get_args_critique()
     critiquing(crit_args, 'val')
-
-# some function in tune_utils.py
-for a few batches using multiprocess:
-    #crit_args = load_from_json("this is default values")
-    #update them with info from inner_cv
-    #critiquing(crit_args, 'val')

@@ -4,30 +4,87 @@ from tune import tuner
 from launch import get_model_args, model_arg_asserts
 from critique import get_args_critique, crit_arg_asserts
 
+<<<<<<< HEAD
 # args
 #  n, batch, fold, tune_type etc
 # crit_sim_k, crit_mode
 
 # 1) one big set of args
 # 2) 
+=======
+def get_args_inner():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-cluster_check', default=False, type=bool, help='run fast version of code')
+    parser.add_argument('-cv_tune_name', default='tuned', type=str, help='upper level folder name')
+    parser.add_argument('-samples', default=10000, type=int, help='no of samples in tuning')
+    parser.add_argument('-batch', default=4, type=int, help='no of simultaneous calls of script')
+    parser.add_argument('-folds', default=5, type=int, help='no of folds')
+    parser.add_argument('-epochs_all', default=120, type=int, help='no of total epochs')
+    parser.add_argument('-tune_type', default='two_stage', type=str, help='two_stage or joint')
+    parser.add_argument('-name', default='diff', type=str, help='name of current test')
+
+    # critique args
+    parser.add_argument('-multi_k', default=10, type=int, help='number of samples for multi type update')
+    parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
+    parser.add_argument('-num_users', default=1000, type=int, help='number of users')
+    parser.add_argument('-sim_k', default=0, type=int, help='number closest movies for direct single testing')
+    # single vs mult
+    parser.add_argument('-critique_target', default='multi', type=str, help='single or multi')
+    parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
+    # likelihood
+    parser.add_argument('-update_type', default='gauss', type=str, help='laplace or gauss')
+    parser.add_argument('-crit_mode', default='diff', type=str, help='random or pop or diff')
+    parser.add_argument('-map_finder', default='cvx', type= str, help='cvx or gd')
+
+    # model args
+    parser.add_argument('-model_type', default='simple', type=str, help="model type (svd, Simple, etc)")
+    parser.add_argument('-reg_type', default='tilt', type=str, help="tilt or gauss")
+    parser.add_argument('-loss_type', default='gauss', type=str, help="softplus or gauss")
+    parser.add_argument('-reduce_type', default='sum', type=str, help="sum or mean")
+    parser.add_argument('-optim_type', default='adagrad', type=str, help="adagrad or adam")
+    parser.add_argument('-sample_type', default='split_reg', type=str, help="combo, split_reg, split_rev")
+    parser.add_argument('-init_type', default='uniform', type=str, help="uniform or normal")
+    parser.add_argument('-learning_rel', default='learn', type=str, help="learn or freeze")
+    parser.add_argument('-type_checking', default='check', type=str, help="check or no")
+    parser.add_argument('-kg', default='kg', type=str, help="kg or no_kg")
+    # optimization, saving and data
+    parser.add_argument('-epochs', default=30, type=int, help="number of epochs")
+    parser.add_argument('-save_each', default=1, type=int, help="validate every k epochs")
+    parser.add_argument('-dataset', default='ML_FB', type=str, help="dataset name")
+    parser.add_argument('-stop_width', default=4, type=int, help="number of SAVES where test is worse for early stopping")
+    parser.add_argument('-fold', default=0, type=int, help="fold to use data from")
+
+    args = parser.parse_args()
+    return args
+
+>>>>>>> 963d4e8cb853a8d2f05c4df4c7e65a69db9155aa
 
 # TODO: passing in of name is terrible 
 if __name__ == '__main__':
     # for quick testing
-    cluster_check = False 
-    cv_tune_name = 'tuned'
+    #cluster_check = False 
+    #cv_tune_name = 'tuned'
 
     # hp tuning parameters
-    n = 10000
-    batch = 4
-    folds = 5 if not cluster_check else 1
-    epochs = 120 // batch if not cluster_check else 2
-    tune_type = 'two_stage' # joint or two_stage
-    name = 'diff'
+    #n = 10000
+    #batch = 4
+    #folds = 5 if not cluster_check else 1
+    #epochs = 120 // batch if not cluster_check else 2
+    #tune_type = 'two_stage' # joint or two_stage
+    #name = 'diff'
+
+    inner_args = get_args_inner()
+    cluster_check = inner_args.cluster_check
+    cv_tune_name = inner_args.cv_tune_name
+    n = inner_args.samples
+    batch = inner_args.batch
+    folds = inner_args.folds if not cluster_check else 1
+    epochs = inner_args.epochs_all // inner_args.batch if not inner_args.cluster_check else 2
+    tune_type = inner_args.tune_type
+    name = inner_args.name
 
     # get all args
-    #meta_crit_args = get_metacrit_args()
-    #meta_model_args = get_metamodel_args()
+    
     crit_args = get_args_critique()
     model_args = get_model_args()
 
