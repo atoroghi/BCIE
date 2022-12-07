@@ -37,7 +37,16 @@ def get_args_critique():
     parser.add_argument('-update_type', default='gauss', type=str, help='laplace or gauss')
     parser.add_argument('-crit_mode', default='diff', type=str, help='random or pop or diff')
     parser.add_argument('-map_finder', default='cvx', type= str, help='cvx or gd')
+
+    # redundant args because of inner_cv
     parser.add_argument('-cluster_check', default=False, type=bool, help='run fast version of code')
+    parser.add_argument('-cv_tune_name', default='tuned', type=str, help='upper level folder name')
+    parser.add_argument('-samples', default=10000, type=int, help='no of samples in tuning')
+    parser.add_argument('-batch', default=4, type=int, help='no of simultaneous calls of script')
+    parser.add_argument('-folds', default=5, type=int, help='no of folds')
+    parser.add_argument('-epochs_all', default=120, type=int, help='no of total epochs')
+    parser.add_argument('-tune_type', default='two_stage', type=str, help='two_stage or joint')
+    parser.add_argument('-name', default='diff', type=str, help='name of current test')
 
     args = parser.parse_args()
     return args

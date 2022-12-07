@@ -15,12 +15,16 @@ def natural_key(string_):
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-test_name', default='gauss')
+    parser.add_argument('-cv_tune_name', default='tuned', type = str)
+    parser.add_argument('-opt', default='test', type = str, help = 'test or hp')
+    parser.add_argument('-folds', default=5, type=int, help='no of folds')
+    parser.add_argument('-cv_type', default='crit', type = str, help = 'train or crit')
+    parser.add_argument('-name', default='diff', type = str, help = 'name of the test')
     parser.add_argument('-type_checking', default='no')
     parser.add_argument('-learnin_rel', default='learn')
     return parser.parse_args() 
 
-def test_fold(tune_name, best_run, best_epoch, cv_type):
+def test_fold(path, tune_name, best_folder, best_epoch, cv_type):
     args = get_args()
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -40,7 +44,10 @@ def test_fold(tune_name, best_run, best_epoch, cv_type):
         elif args.model_type == 'wrmf':
             wrmf(dataloader, args, 'test', device)
     if cv_type == 'crit':
-        path = os.path.join('results', tune_name, 'fold_{}'.format(i),cv_type, 'train_{}'.format(best_run))
+        save_path = os.path.join(path, 'test_results')
+        os.makedirs(save_path, exist_ok = True)
+        path = os.path.join(path, best_folder)
+
         with open(os.path.join(path, 'crit hps.yml'), 'r') as f:
             yml = yaml.safe_load(f)
             for key in yml.keys():
@@ -52,8 +59,10 @@ def test_fold(tune_name, best_run, best_epoch, cv_type):
                         setattr(args, key, float(yml[key]))
                     except:
                         setattr(args, key, yml[key])
-        print("results are being saved in:",args.test_name)
-
+        print(args)
+        sys.exit()
+        setattr(args, 'test_name', save_path)
+        print("results are being saved in:", args.test_name)
         critiquing(args, 'test')
 
 # get best model in nested cv
@@ -76,36 +85,41 @@ def best_model(path):
     best_run = np.argmax(perf)
     best_score = np.max(perf)
     best_epoch = arg_perf[np.argmax(perf)]
+    # best_folder is not necessarily best_run
     return (best_score, best_run, best_epoch, folders[best_run])
     
 # TODO: clean this up, it's bad
 if __name__ == '__main__':
-    tune_name = 'tilttype'
-    folds = 5
-    opt = 'test'
-    cv_type = 'train' # train or crit
+    args = get_args()
+    cv_tune_name = args.cv_tune_name
+    folds = args.folds
+    opt = args.opt
+    cv_type = args.cv_type # train or crit
 
     # search through all folders
-    for i in range(folds):
-        if opt == 'test':
-            path = 'results/{}/{}/fold_{}'.format(tune_name, cv_type, i)
-            (best_score, best_run, best_epoch, _) = best_model(path,cv_type, i)
-            print('best score: {}, best folder: {}, best epoch: {}'.format(best_score, best_run, best_epoch))
-            test_fold(tune_name, best_run, best_epoch, cv_type)
+    models_folder = os.path.join('results', cv_tune_name)
+    tune_names = os.listdir(models_folder)
+    for tune_name in tune_names:
+        for i in range(folds):
+            if opt == 'test':
+                path = os.path.join(models_folder, tune_name, 'fold_{}'.format(i), args.name)
+                (best_score, best_run, best_epoch, best_folder) = best_model(path)
+                print('best score: {}, best run: {}, best epoch: {}, best folder: {}'.format(best_score, best_run, best_epoch, best_folder))
+                test_fold(path, tune_name, best_folder, best_epoch, cv_type)
     
 
-        elif opt == 'hp':
-            load_path = os.path.join('gp', tune_name, 'fold_{}'.format(i))
-            hp_ = torch.load(os.path.join(load_path, 'x_train.pt')).numpy()
-            y_ = torch.load(os.path.join(load_path, 'y_train.pt')).numpy()
+            elif opt == 'hp':
+                load_path = os.path.join('gp', tune_name, 'fold_{}'.format(i))
+                hp_ = torch.load(os.path.join(load_path, 'x_train.pt')).numpy()
+                y_ = torch.load(os.path.join(load_path, 'y_train.pt')).numpy()
 
-            if i == 0:
-                hp = hp_
-                y = y_
-            else:
-                hp = np.concatenate((hp, hp_))
-                y = np.concatenate((y, y_))
-            print(hp.shape, y.shape)
+                if i == 0:
+                    hp = hp_
+                    y = y_
+                else:
+                    hp = np.concatenate((hp, hp_))
+                    y = np.concatenate((y, y_))
+                print(hp.shape, y.shape)
     sys.exit()
 
     if opt == 'hp':
