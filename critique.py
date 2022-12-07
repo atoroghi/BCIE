@@ -37,7 +37,16 @@ def get_args_critique():
     parser.add_argument('-update_type', default='gauss', type=str, help='laplace or gauss')
     parser.add_argument('-crit_mode', default='diff', type=str, help='random or pop or diff')
     parser.add_argument('-map_finder', default='cvx', type= str, help='cvx or gd')
-    parser.add_argument('-cluster_check', default='false', type=str, help='run fast version of code')
+
+    # redundant args because of inner_cv
+    parser.add_argument('-cluster_check', default=False, type=str, help='run fast version of code')
+    parser.add_argument('-cv_tune_name', default='tuned', type=str, help='upper level folder name')
+    parser.add_argument('-samples', default=10000, type=int, help='no of samples in tuning')
+    parser.add_argument('-batch', default=4, type=int, help='no of simultaneous calls of script')
+    parser.add_argument('-folds', default=5, type=int, help='no of folds')
+    parser.add_argument('-epochs_all', default=120, type=int, help='no of total epochs')
+    parser.add_argument('-tune_type', default='two_stage', type=str, help='two_stage or joint')
+    parser.add_argument('-name', default='diff', type=str, help='name of current test')
 
     args = parser.parse_args()
     return args
@@ -49,11 +58,6 @@ def calc_score(user, d):
     s_back = torch.sum(user[1] * d[1])
     return 0.5*(s_for + s_back)
 
-def str2bool(string):
-    if string in ['true', 'True']: return True
-    elif string in ['false', 'False']: return False
-    else: ValueError
-
 # main loop
 def critiquing(crit_args, mode):
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -62,7 +66,6 @@ def critiquing(crit_args, mode):
     alpha = crit_args.alpha
 
     # for cluster check
-    crit_args.cluster_check = str2bool(crit_args.cluster_check)
     if crit_args.cluster_check: crit_args.num_users = 10
 
     # load model and get parameter from file
@@ -80,7 +83,8 @@ def critiquing(crit_args, mode):
     # TODO: save these in yaml file
     model_args.learning_rel = 'learn'
     model_args.type_checking = 'yes'
-
+    print(crit_args.cluster_check)
+    sys.exit()
     save_dict = {}
     for k, v in vars(crit_args).items():
         save_dict.update({k : str(v)})
@@ -185,7 +189,6 @@ def critiquing(crit_args, mode):
     # save results
     info_track.save(crit_args.test_name)
 
-# for single use
 if __name__ == '__main__':
     crit_args = get_args_critique()
     critiquing(crit_args, 'val')

@@ -4,17 +4,16 @@ from tune import tuner
 from launch import get_model_args, model_arg_asserts
 from critique import get_args_critique, crit_arg_asserts
 
-<<<<<<< HEAD
 # args
 #  n, batch, fold, tune_type etc
 # crit_sim_k, crit_mode
 
 # 1) one big set of args
 # 2) 
-=======
+
 def get_args_inner():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-cluster_check', default=False, type=bool, help='run fast version of code')
+    parser.add_argument('-cluster_check', default=False, type=str, help='run fast version of code')
     parser.add_argument('-cv_tune_name', default='tuned', type=str, help='upper level folder name')
     parser.add_argument('-samples', default=10000, type=int, help='no of samples in tuning')
     parser.add_argument('-batch', default=4, type=int, help='no of simultaneous calls of script')
@@ -57,7 +56,6 @@ def get_args_inner():
     args = parser.parse_args()
     return args
 
->>>>>>> 963d4e8cb853a8d2f05c4df4c7e65a69db9155aa
 
 # TODO: passing in of name is terrible 
 if __name__ == '__main__':
