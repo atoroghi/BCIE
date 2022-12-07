@@ -39,7 +39,7 @@ def get_args_critique():
     parser.add_argument('-map_finder', default='cvx', type= str, help='cvx or gd')
 
     # redundant args because of inner_cv
-    parser.add_argument('-cluster_check', default=False, type=str, help='run fast version of code')
+    parser.add_argument('-cluster_check', default='False', type=str, help='run fast version of code')
     parser.add_argument('-cv_tune_name', default='tuned', type=str, help='upper level folder name')
     parser.add_argument('-samples', default=10000, type=int, help='no of samples in tuning')
     parser.add_argument('-batch', default=4, type=int, help='no of simultaneous calls of script')
@@ -66,7 +66,9 @@ def critiquing(crit_args, mode):
     alpha = crit_args.alpha
 
     # for cluster check
-    if crit_args.cluster_check: crit_args.num_users = 10
+    #if crit_args.cluster_check: crit_args.num_users = 10
+    if crit_args.cluster_check == 'True':
+        crit_args.num_users = 10
 
     # load model and get parameter from file
     if crit_args.test_name is None:

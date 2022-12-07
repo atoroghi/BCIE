@@ -13,7 +13,7 @@ from critique import get_args_critique, crit_arg_asserts
 
 def get_args_inner():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-cluster_check', default=False, type=str, help='run fast version of code')
+    parser.add_argument('-cluster_check', default='False', type=str, help='run fast version of code')
     parser.add_argument('-cv_tune_name', default='tuned', type=str, help='upper level folder name')
     parser.add_argument('-samples', default=10000, type=int, help='no of samples in tuning')
     parser.add_argument('-batch', default=4, type=int, help='no of simultaneous calls of script')
@@ -76,8 +76,16 @@ if __name__ == '__main__':
     cv_tune_name = inner_args.cv_tune_name
     n = inner_args.samples
     batch = inner_args.batch
-    folds = inner_args.folds if not cluster_check else 1
-    epochs = inner_args.epochs_all // inner_args.batch if not inner_args.cluster_check else 2
+    #folds = inner_args.folds if not cluster_check else 1
+    if cluster_check == 'False':
+        folds = inner_args.folds
+        epochs = inner_args.epochs_all // inner_args.batch
+    
+    else:
+        folds = 1
+        epochs = 2
+    #folds = inner_args.folds if not cluster_check else 1
+    #epochs = inner_args.epochs_all // inner_args.batch if not inner_args.cluster_check else 2
     tune_type = inner_args.tune_type
     name = inner_args.name
 
@@ -99,7 +107,9 @@ if __name__ == '__main__':
 
     # run each folder
     for i, tune_name in enumerate(tune_names):
-        if cluster_check and i > 0: break
+        #if cluster_check and i > 0: break
+        if cluster_check == 'True':
+            if i>0: break
         
         # do asserts
         model_arg_asserts(model_args)
