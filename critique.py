@@ -30,7 +30,7 @@ def get_args_critique():
     parser.add_argument('-sim_k', default=0, type=int, help='number closest movies for direct single testing')
 
     # single vs mult
-    parser.add_argument('-critique_target', default='single', type=str, help='single or multi')
+    parser.add_argument('-critique_target', default='multi', type=str, help='single or multi')
     parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
     
     # likelihood
