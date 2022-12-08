@@ -18,7 +18,7 @@ def get_args_inner():
     parser.add_argument('-samples', default=10000, type=int, help='no of samples in tuning')
     parser.add_argument('-batch', default=4, type=int, help='no of simultaneous calls of script')
     parser.add_argument('-folds', default=5, type=int, help='no of folds')
-    parser.add_argument('-epochs_all', default=120, type=int, help='no of total epochs')
+    parser.add_argument('-epochs_all', default=60, type=int, help='no of total epochs')
     parser.add_argument('-tune_type', default='two_stage', type=str, help='two_stage or joint')
     parser.add_argument('-name', default='diff', type=str, help='name of current test')
 

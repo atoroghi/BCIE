@@ -85,8 +85,7 @@ def critiquing(crit_args, mode):
     # TODO: save these in yaml file
     model_args.learning_rel = 'learn'
     model_args.type_checking = 'yes'
-    print(crit_args.cluster_check)
-    sys.exit()
+
     save_dict = {}
     for k, v in vars(crit_args).items():
         save_dict.update({k : str(v)})
