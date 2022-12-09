@@ -52,13 +52,14 @@ def test_fold(path, tune_name, best_folder, best_epoch, cv_type):
             yml = yaml.safe_load(f)
             for key in yml.keys():
                 #TODO: fix this, while saving the yml file the numerical values shouldn't be strings
-                if key == 'session_length':
+                if key in ['session_length', 'multi_k', 'num_users', 'sim_k', 'batch', 'samples']:
                     setattr(args, key, int(yml[key]))
                 else:
                     try:
                         setattr(args, key, float(yml[key]))
                     except:
                         setattr(args, key, yml[key])
+
         setattr(args, 'test_name', save_path)
         print("results are being saved in:", args.test_name)
         critiquing(args, 'test')
@@ -99,11 +100,13 @@ if __name__ == '__main__':
     tune_names = os.listdir(models_folder)
     for tune_name in tune_names:
         for i in range(folds):
+            print(i)
             if opt == 'test':
                 path = os.path.join(models_folder, tune_name, 'fold_{}'.format(i), args.name)
-                (best_score, best_run, best_epoch, best_folder) = best_model(path)
-                print('best score: {}, best run: {}, best epoch: {}, best folder: {}'.format(best_score, best_run, best_epoch, best_folder))
-                test_fold(path, tune_name, best_folder, best_epoch, cv_type)
+                if args.name in os.listdir(path):
+                    (best_score, best_run, best_epoch, best_folder) = best_model(path)
+                    print('best score: {}, best run: {}, best epoch: {}, best folder: {}'.format(best_score, best_run, best_epoch, best_folder))
+                    test_fold(path, tune_name, best_folder, best_epoch, cv_type)
     
 
             elif opt == 'hp':

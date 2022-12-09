@@ -108,8 +108,8 @@ if __name__ == '__main__':
     # run each folder
     for i, tune_name in enumerate(tune_names):
         #if cluster_check and i > 0: break
-        if cluster_check == 'True':
-            if i>0: break
+        #if cluster_check == 'True':
+        #    if i>0: break
         inner_args = get_args_inner()
         crit_args = get_args_critique()
         crit_args.crit_mode = inner_args.crit_mode

@@ -168,6 +168,7 @@ def critiquing(crit_args, mode):
                     # actual critique selection for real experiments
                     crit = crit_selector(gt_facts, rec_facts, crit_args.crit_mode, pop_counts)
 
+
                 # get d for p(user | d) bayesian update
                 #d, r = fake_d(gt, get_emb, rel_emb[0], model, device, sigma=1.5)
                 d = get_d(model, crit, rel_emb, obj2items, get_emb, crit_args, model_args, device)

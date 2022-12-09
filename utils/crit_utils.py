@@ -1,6 +1,7 @@
 import os, sys, torch, pickle
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 # for tracking and saving important debug info
 class InfoTrack:
@@ -60,6 +61,7 @@ class InfoTrack:
         np.save(os.path.join(save_path, 'dist_track.npy'), dists)
 
         # plotting
+        sns.set_theme()
         fig = plt.figure(figsize=(12,4))
         ax1 = fig.add_subplot(131)
         ax2 = fig.add_subplot(132)
@@ -77,7 +79,19 @@ class InfoTrack:
         ax3.set_title('Scores')
 
         plt.savefig(os.path.join(save_path, 'info.png'))
-        sys.exit()
+        #sys.exit()
+
+        fig = plt.figure(figsize=(12,8), dpi=300)
+        ax4 = fig.add_subplot(111)
+        ax4.set_yscale('log')
+        ranks_mean = np.mean(ranks, axis=0)
+        yerr_ranks = 1.96 / np.sqrt(ranks.shape[0]) * np.std(ranks, axis=0)
+        ax4.errorbar(np.arange(ranks.shape[1]), ranks_mean, yerr = yerr_ranks, uplims=True, lolims=True, fmt='-o', linestyle='--')
+        ax4.set_xlabel('Step', fontsize=16)
+        ax4.set_ylabel('Average Rank', fontsize=16)
+        plt.savefig(os.path.join(save_path, 'AvgRank.png'))
+
+        
 
 # stack facts to be [-1, rel, node] or [head, rel, -1]
 def fact_stack(head, tail):
