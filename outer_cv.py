@@ -98,29 +98,35 @@ if __name__ == '__main__':
     # search through all folders
     models_folder = os.path.join('results', cv_tune_name)
     tune_names = os.listdir(models_folder)
-    for tune_name in tune_names:
-        for i in range(folds):
-            print(i)
-            if opt == 'test':
-                path = os.path.join(models_folder, tune_name, 'fold_{}'.format(i), args.name)
-                if args.name in os.listdir(path):
-                    (best_score, best_run, best_epoch, best_folder) = best_model(path)
-                    print('best score: {}, best run: {}, best epoch: {}, best folder: {}'.format(best_score, best_run, best_epoch, best_folder))
-                    test_fold(path, tune_name, best_folder, best_epoch, cv_type)
+    #names = ['pop', 'random', 'sim_1', 'sim_5']
+    names = ['sim_1', 'sim_5']
+    for name in names:
+        for tune_name in tune_names:
+            for i in range(folds):
+                print(i)
+                if opt == 'test':
+                    #path = os.path.join(models_folder, tune_name, 'fold_{}'.format(i), args.name)
+                    path_higher = os.path.join(models_folder, tune_name, 'fold_{}'.format(i))
+                    
+                    if name in os.listdir(path_higher):
+                        path = os.path.join(models_folder, tune_name, 'fold_{}'.format(i), name)
+                        (best_score, best_run, best_epoch, best_folder) = best_model(path)
+                        print('best score: {}, best run: {}, best epoch: {}, best folder: {}'.format(best_score, best_run, best_epoch, best_folder))
+                        test_fold(path, tune_name, best_folder, best_epoch, cv_type)
     
 
-            elif opt == 'hp':
-                load_path = os.path.join('gp', tune_name, 'fold_{}'.format(i))
-                hp_ = torch.load(os.path.join(load_path, 'x_train.pt')).numpy()
-                y_ = torch.load(os.path.join(load_path, 'y_train.pt')).numpy()
+                elif opt == 'hp':
+                    load_path = os.path.join('gp', tune_name, 'fold_{}'.format(i))
+                    hp_ = torch.load(os.path.join(load_path, 'x_train.pt')).numpy()
+                    y_ = torch.load(os.path.join(load_path, 'y_train.pt')).numpy()
 
-                if i == 0:
-                    hp = hp_
-                    y = y_
-                else:
-                    hp = np.concatenate((hp, hp_))
-                    y = np.concatenate((y, y_))
-                print(hp.shape, y.shape)
+                    if i == 0:
+                        hp = hp_
+                        y = y_
+                    else:
+                        hp = np.concatenate((hp, hp_))
+                        y = np.concatenate((y, y_))
+                    print(hp.shape, y.shape)
     sys.exit()
 
     if opt == 'hp':
