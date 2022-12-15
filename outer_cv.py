@@ -73,6 +73,7 @@ def best_model(path):
 
     # get performance for each model in a fold
     perf, arg_perf = [], []
+
     for f in folders:
         try:
             scores = np.load(os.path.join(path, f, 'stop_metric.npy'), allow_pickle=True)
@@ -80,7 +81,7 @@ def best_model(path):
             arg_perf.append(np.argmax(scores))
         except:
             print('skipped: ', f)
-    
+
     best_run = np.argmax(perf)
     best_score = np.max(perf)
     best_epoch = arg_perf[np.argmax(perf)]
@@ -99,9 +100,10 @@ if __name__ == '__main__':
     models_folder = os.path.join('results', cv_tune_name)
     tune_names = os.listdir(models_folder)
     #names = ['pop', 'random', 'sim_1', 'sim_5']
-    names = ['sim_1', 'sim_5']
+    names = ['diff_new2_indirect']
     for name in names:
         for tune_name in tune_names:
+            print(tune_name)
             for i in range(folds):
                 print(i)
                 if opt == 'test':

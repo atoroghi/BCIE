@@ -129,16 +129,23 @@ def critiquing(crit_args, mode):
 ##############################################################
     t0 = time.time()
     rec_k = 10 # TODO: (number of recommended items to user) this must be an hp
-    np.random.shuffle(all_users)
+    #np.random.shuffle(all_users)
     for i, user in enumerate(all_users):
+        #print(user)
+
         if i > crit_args.num_users: break
 
         # get ids of top k recs, and all gt from user
         user_emb = get_emb(user, model, device)
         val_or_test_gt, all_gt, train_gt = get_gt.get(user)
+        
 
         # iterature through all gt for single user
         for j, gt in enumerate(val_or_test_gt):
+            #if j >1 : 
+                #sys.exit()
+            #print("gt:", gt)
+
             # get all triplets w gt
             gt_ind = id2index[gt]
             gt_facts = fact_stack(item_facts_head[gt], item_facts_tail[gt])
@@ -146,7 +153,8 @@ def critiquing(crit_args, mode):
             # get initial rank
             (scores, ranked) = get_scores(user_emb, rel_emb[0], item_emb, model_args.learning_rel)
             rank = get_rank(ranked, [gt], all_gt, id2index) 
-            
+            #print("initial rank:", rank)
+
             # save info
             info_track.store(0, rank=rank+1, score=scores[gt_ind])
 
@@ -156,9 +164,16 @@ def critiquing(crit_args, mode):
                 if sn == 0: update_info = UpdateInfo(user_emb, etta, crit_args, model_args, device, likes_emb=likes_rel)
 
                 # stack facts, either [-1, rel, tail] or [head, rel, -1]
-                rec_ids = [index2id[int(x)] for x in ranked[:rec_k]]
+                rec_candidates = ranked[:(rec_k + len(train_gt))]
+
+                rec_candidate_ids = [index2id[int(x)] for x in rec_candidates]
+                rec_ids = [x for x in rec_candidate_ids if x not in train_gt][:rec_k]
+                #print("recommended items are:")
+                #print(rec_ids)
+                # we should make sure not to recommend items in train set!
+                #rec_ids = [index2id[int(x)] for x in ranked[:rec_k]]
                 rec_facts = rec_fact_stack(rec_ids, item_facts_head, item_facts_tail)
-                if gt_facts.shape[0] <= 0: continue
+                if gt_facts.shape[0] <= 1: continue
 
                 #crit = (gt, 0)
                 if crit_args.sim_k > 0:
@@ -166,8 +181,20 @@ def critiquing(crit_args, mode):
                     crit = sim_selector(gt, item_emb, id2index, index2id, device, k=5)
                 else:
                     # actual critique selection for real experiments
-                    crit = crit_selector(gt_facts, rec_facts, crit_args.crit_mode, pop_counts)
-
+                    try:
+                        crit, crit_triple = crit_selector(gt_facts, rec_facts, crit_args.crit_mode, pop_counts)
+                    except:
+                        #print("failure was heppening here")
+                        #print("gt_facts")
+                        #print(gt_facts)
+                        #print("rec_facts")
+                        #print(rec_facts)
+                        continue
+                (crit_node, crit_rel) = crit
+                #print("selected critique:")
+                #print(crit)
+               #removing the selected critique from gt_facts
+                gt_facts = np.delete(gt_facts, np.where(np.all(gt_facts == crit_triple, axis=1))[0][0], axis=0)
 
                 # get d for p(user | d) bayesian update
                 #d, r = fake_d(gt, get_emb, rel_emb[0], model, device, sigma=1.5)
@@ -184,9 +211,15 @@ def critiquing(crit_args, mode):
                 new_user_emb, _ = update_info.get_priorinfo()
                 (scores, ranked) = get_scores(new_user_emb, rel_emb[0], item_emb, model_args.learning_rel)
                 post_rank = get_rank(ranked, [gt], all_gt, id2index)
-
+                #print("rank after update")
+                #print(post_rank)
                 # save info
                 info_track.store(sn+1, rank=post_rank+1, score=scores[gt_ind], dist=(new_user_emb, d))
+            #rec_candidates = ranked[:(rec_k + len(train_gt))]
+            #rec_candidate_ids = [index2id[int(x)] for x in rec_candidates]
+            #rec_ids = [x for x in rec_candidate_ids if x not in train_gt][:rec_k]
+            #print("recommended items are:")
+            #print(rec_ids)
 
     # save results
     info_track.save(crit_args.test_name)
@@ -194,3 +227,4 @@ def critiquing(crit_args, mode):
 if __name__ == '__main__':
     crit_args = get_args_critique()
     critiquing(crit_args, 'val')
+    #critiquing(crit_args, 'test')

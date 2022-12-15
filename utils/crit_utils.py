@@ -52,7 +52,8 @@ class InfoTrack:
 
         # TODO: is this a good metric?
         # reduce track, save single number in stop_metric.npy
-        mrr_last = np.mean(1 / (ranks[:, -1] + 1))
+        #mrr_last = np.mean(1 / (ranks[:, -1] + 1))
+        mrr_last = (np.mean(ranks[:,0]) - np.mean(ranks[:,-1]))
         
         # take this and plot it, look at it etc...
         np.save(os.path.join(save_path, 'stop_metric.npy'), mrr_last)
@@ -86,10 +87,20 @@ class InfoTrack:
         ax4.set_yscale('log')
         ranks_mean = np.mean(ranks, axis=0)
         yerr_ranks = 1.96 / np.sqrt(ranks.shape[0]) * np.std(ranks, axis=0)
-        ax4.errorbar(np.arange(ranks.shape[1]), ranks_mean, yerr = yerr_ranks, uplims=True, lolims=True, fmt='-o', linestyle='--')
+        ax4.errorbar(np.arange(ranks.shape[1]), ranks_mean, yerr = yerr_ranks, linestyle='--', fmt = '-o')
         ax4.set_xlabel('Step', fontsize=16)
         ax4.set_ylabel('Average Rank', fontsize=16)
         plt.savefig(os.path.join(save_path, 'AvgRank.png'))
+        # same plot but instead of CIs, errorbars are STD
+
+        fig = plt.figure(figsize=(12,8), dpi=300)
+        ax5 = fig.add_subplot(111)
+        ax5.set_yscale('log')
+        ax5.errorbar(np.arange(ranks.shape[1]), ranks_mean, yerr = np.std(ranks, axis=0), linestyle='--', fmt = '-o')
+        ax5.set_xlabel('Step', fontsize=16)
+        ax5.set_ylabel('Average Rank', fontsize=16)
+        plt.savefig(os.path.join(save_path, 'AvgRank(STD).png'))
+
 
         
 
@@ -168,7 +179,9 @@ def get_d(model, crit, rel_emb, obj2items, get_emb, crit_args, model_args, devic
     # make stack of likes * items related to feedback node
     elif crit_args.critique_target == 'multi':
         liked_items = obj2items[crit_node]
-        liked_items = np.random.permutation(liked_items)
+        #print("mapped items:")
+        #print(liked_items)
+        #liked_items = np.random.permutation(liked_items)
 
         # get and stack things
         liked_embeddings_list_f = []
