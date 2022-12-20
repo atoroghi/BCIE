@@ -51,7 +51,9 @@ def crit_selector(gt_facts, rec_facts, critique_mode, pop_counts):
     #inds = np.random.permutation(inds) # TODO: this is extra silly
 
     # select random triplet
-    if critique_mode == 'random': return return_crit(gt_facts[np.random.choice(inds)])
+    if critique_mode == 'random': 
+        ind = np.random.choice(inds)
+        return return_crit(gt_facts[ind]), gt_facts[ind]
 
     # select tripet that is most popular
     if critique_mode == 'pop':

@@ -63,6 +63,7 @@ def get_model_args():
     parser.add_argument('-update_type', default='gauss', type=str, help='laplace or gauss')
     parser.add_argument('-crit_mode', default='diff', type=str, help='random or pop or diff')
     parser.add_argument('-map_finder', default='cvx', type= str, help='cvx or gd')
+    parser.add_argument('-objective', default='hits', type=str, help='hits or rank')
 
     # redundant args because of inner_cv
     parser.add_argument('-cluster_check', default='False', type=str, help='run fast version of code')

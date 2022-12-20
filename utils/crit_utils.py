@@ -5,8 +5,9 @@ import seaborn as sns
 
 # for tracking and saving important debug info
 class InfoTrack:
-    def __init__(self, sess_len):
+    def __init__(self, sess_len, objective):
         self.sess_len = sess_len
+        self.objective = objective
         self.dists = []
         self.ranks = []
         self.scores = []
@@ -54,9 +55,17 @@ class InfoTrack:
         # reduce track, save single number in stop_metric.npy
         #mrr_last = np.mean(1 / (ranks[:, -1] + 1))
         mrr_last = (np.mean(ranks[:,0]) - np.mean(ranks[:,-1]))
+        hr_last = (np.sum(ranks[:,-1]<12, axis = 0) - np.sum(ranks[:,0]<12, axis = 0)) / (ranks[:,-1].shape[0])
         
         # take this and plot it, look at it etc...
-        np.save(os.path.join(save_path, 'stop_metric.npy'), mrr_last)
+        if self.objective == 'hits':
+            print("last hit rate:")
+            print((np.sum(ranks[:,-1]<12, axis = 0)/ (ranks[:,-1].shape[0])))
+            np.save(os.path.join(save_path, 'stop_metric.npy'), hr_last)
+        elif self.objective == 'ranks':
+            print("last rank average:")
+            print(np.mean(ranks[:,-1]))
+            np.save(os.path.join(save_path, 'stop_metric.npy'), mrr_last)
         np.save(os.path.join(save_path, 'rank_track.npy'), ranks)
         np.save(os.path.join(save_path, 'score_track.npy'), scores)
         np.save(os.path.join(save_path, 'dist_track.npy'), dists)
@@ -87,19 +96,31 @@ class InfoTrack:
         ax4.set_yscale('log')
         ranks_mean = np.mean(ranks, axis=0)
         yerr_ranks = 1.96 / np.sqrt(ranks.shape[0]) * np.std(ranks, axis=0)
-        ax4.errorbar(np.arange(ranks.shape[1]), ranks_mean, yerr = yerr_ranks, linestyle='--', fmt = '-o')
+        ax4.errorbar(np.arange(ranks.shape[1]), ranks_mean, yerr = yerr_ranks, linestyle='--', fmt = 'o')
         ax4.set_xlabel('Step', fontsize=16)
         ax4.set_ylabel('Average Rank', fontsize=16)
         plt.savefig(os.path.join(save_path, 'AvgRank.png'))
-        # same plot but instead of CIs, errorbars are STD
 
+
+        # plotting hitrate@10
         fig = plt.figure(figsize=(12,8), dpi=300)
         ax5 = fig.add_subplot(111)
-        ax5.set_yscale('log')
-        ax5.errorbar(np.arange(ranks.shape[1]), ranks_mean, yerr = np.std(ranks, axis=0), linestyle='--', fmt = '-o')
+        #ax5.set_yscale('log')
+        hits_10 = np.sum(ranks<12 , axis =0) / (ranks[:,5].shape[0])
+        ax5.errorbar(np.arange(hits_10.shape[0]), hits_10, linestyle='--', fmt = 'o')
         ax5.set_xlabel('Step', fontsize=16)
-        ax5.set_ylabel('Average Rank', fontsize=16)
-        plt.savefig(os.path.join(save_path, 'AvgRank(STD).png'))
+        ax5.set_ylabel('Hit Rate @ 10', fontsize=16)
+        plt.savefig(os.path.join(save_path, 'HR10.png'))
+
+        # same plot but instead of CIs, errorbars are STD
+
+        #fig = plt.figure(figsize=(12,8), dpi=300)
+        #ax6 = fig.add_subplot(111)
+        #ax6.set_yscale('log')
+        #ax6.errorbar(np.arange(ranks.shape[1]), ranks_mean, yerr = np.std(ranks, axis=0), linestyle='--', fmt = '-o')
+        #ax6.set_xlabel('Step', fontsize=16)
+        #ax6.set_ylabel('Average Rank', fontsize=16)
+        #plt.savefig(os.path.join(save_path, 'AvgRank(STD).png'))
 
 
         

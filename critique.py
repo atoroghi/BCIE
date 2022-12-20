@@ -17,9 +17,10 @@ def get_args_critique():
     parser = argparse.ArgumentParser()
     parser.add_argument('-load_name', default='results/tuned/tilt_small/fold_0/train/train_21', type=str, help='name of folder where model is')
     parser.add_argument('-test_name', default=None, type=str, help='name of folder where model is')
+    parser.add_argument('-objective', default='hits', type=str, help='hits or rank')
 
-    parser.add_argument('-user_prec', default=1.0, type=float, help='prior cov')
-    parser.add_argument('-default_prec', default=1.0, type=float, help='likelihood precision')
+    parser.add_argument('-user_prec', default=0.005866521166302012, type=float, help='prior cov')
+    parser.add_argument('-default_prec', default=0.0013972716194504881, type=float, help='likelihood precision')
     parser.add_argument('-z_prec', default=2.0, type=float, help='item distribution precision indirect case')
 
     parser.add_argument('-etta', default=1.0, type=float, help='Precision for Laplace Approximation')
@@ -47,6 +48,7 @@ def get_args_critique():
     parser.add_argument('-epochs_all', default=120, type=int, help='no of total epochs')
     parser.add_argument('-tune_type', default='two_stage', type=str, help='two_stage or joint')
     parser.add_argument('-name', default='diff', type=str, help='name of current test')
+    
 
     args = parser.parse_args()
     return args
@@ -123,7 +125,7 @@ def critiquing(crit_args, mode):
     all_users = np.unique(torch.tensor(data[:, 0]).cpu().numpy(), return_counts=False)
 
     # for tracking all info (score, distance, rank)
-    info_track = InfoTrack(crit_args.session_length)
+    info_track = InfoTrack(crit_args.session_length, crit_args.objective)
 
     # main test loop (each user)
 ##############################################################
@@ -190,6 +192,7 @@ def critiquing(crit_args, mode):
                         #print("rec_facts")
                         #print(rec_facts)
                         continue
+
                 (crit_node, crit_rel) = crit
                 #print("selected critique:")
                 #print(crit)
@@ -226,5 +229,5 @@ def critiquing(crit_args, mode):
 
 if __name__ == '__main__':
     crit_args = get_args_critique()
-    critiquing(crit_args, 'val')
-    #critiquing(crit_args, 'test')
+    #critiquing(crit_args, 'val')
+    critiquing(crit_args, 'test')

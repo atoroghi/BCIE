@@ -20,6 +20,7 @@ def get_args():
     parser.add_argument('-folds', default=5, type=int, help='no of folds')
     parser.add_argument('-cv_type', default='crit', type = str, help = 'train or crit')
     parser.add_argument('-name', default='diff', type = str, help = 'name of the test')
+    parser.add_argument('-test_names', default='direct_multi_hits', type = str, help = 'name of the test folder')
     parser.add_argument('-type_checking', default='no')
     parser.add_argument('-learnin_rel', default='learn')
     return parser.parse_args() 
@@ -100,7 +101,8 @@ if __name__ == '__main__':
     models_folder = os.path.join('results', cv_tune_name)
     tune_names = os.listdir(models_folder)
     #names = ['pop', 'random', 'sim_1', 'sim_5']
-    names = ['diff_new2_indirect']
+    #names = ['direct_multi_hits']
+    names = args.test_names
     for name in names:
         for tune_name in tune_names:
             print(tune_name)
