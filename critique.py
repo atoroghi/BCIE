@@ -229,5 +229,5 @@ def critiquing(crit_args, mode):
 
 if __name__ == '__main__':
     crit_args = get_args_critique()
-    #critiquing(crit_args, 'val')
-    critiquing(crit_args, 'test')
+    critiquing(crit_args, 'val')
+    #critiquing(crit_args, 'test')
