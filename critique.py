@@ -19,9 +19,10 @@ def get_args_critique():
     parser.add_argument('-test_name', default=None, type=str, help='name of folder where model is')
     parser.add_argument('-objective', default='hits', type=str, help='hits or rank')
 
-    parser.add_argument('-user_prec', default=0.005866521166302012, type=float, help='prior cov')
-    parser.add_argument('-default_prec', default=0.0013972716194504881, type=float, help='likelihood precision')
+    parser.add_argument('-user_prec', default=42123.409928333158, type=float, help='prior cov')
+    parser.add_argument('-default_prec', default=11292.058464079433, type=float, help='likelihood precision')
     parser.add_argument('-z_prec', default=2.0, type=float, help='item distribution precision indirect case')
+    parser.add_argument('-z_mean', default=0.0, type=float, help='item distribution mean indirect case')
 
     parser.add_argument('-etta', default=1.0, type=float, help='Precision for Laplace Approximation')
     parser.add_argument('-alpha', default=0.05, type=float, help='Learning rate for GD in Laplace Approximation')
@@ -48,6 +49,7 @@ def get_args_critique():
     parser.add_argument('-epochs_all', default=120, type=int, help='no of total epochs')
     parser.add_argument('-tune_type', default='two_stage', type=str, help='two_stage or joint')
     parser.add_argument('-name', default='diff', type=str, help='name of current test')
+    parser.add_argument('-fold', default=0, type=int, help='fold')
     
 
     args = parser.parse_args()
@@ -133,6 +135,7 @@ def critiquing(crit_args, mode):
     rec_k = 10 # TODO: (number of recommended items to user) this must be an hp
     #np.random.shuffle(all_users)
     for i, user in enumerate(all_users):
+        #print("user")
         #print(user)
 
         if i > crit_args.num_users: break
@@ -204,6 +207,7 @@ def critiquing(crit_args, mode):
                 d = get_d(model, crit, rel_emb, obj2items, get_emb, crit_args, model_args, device)
                 update_info.store(d=d, crit_rel_emb=rel_emb[crit[1]])
 
+
                 # perform update
                 if crit_args.evidence_type == 'direct':
                     beta_update(update_info, sn, crit_args, model_args, device, crit_args.update_type, crit_args.map_finder, etta, alpha)
@@ -212,8 +216,10 @@ def critiquing(crit_args, mode):
 
                 # track rank in training
                 new_user_emb, _ = update_info.get_priorinfo()
+                #print(new_user_emb[0])
                 (scores, ranked) = get_scores(new_user_emb, rel_emb[0], item_emb, model_args.learning_rel)
                 post_rank = get_rank(ranked, [gt], all_gt, id2index)
+
                 #print("rank after update")
                 #print(post_rank)
                 # save info

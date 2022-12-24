@@ -97,8 +97,8 @@ def beta_update_indirect(update_info, sn, crit_args, model_args, device, update_
         J_z_inv = item_prec_inv + n * prec_evidence
 
         # p(u|z)
-        temp_f = (user_prec_f @ user_mean_f + n * J_z_f @ mu_z_f)
-        user_mean_updated_f= torch.inverse(user_prec_f + n * J_z_f) @ temp_f 
+        temp_f_2 = (user_prec_f @ user_mean_f + n * J_z_f @ mu_z_f)
+        user_mean_updated_f= torch.inverse(user_prec_f + n * J_z_f) @ temp_f_2 
         temp_inv = (user_prec_inv @ user_mean_inv + n * J_z_inv @ mu_z_inv)
         user_mean_updated_inv = torch.inverse(user_prec_inv + n * J_z_inv) @ temp_inv
         user_prec_updated_f = user_prec_f + n * J_z_f

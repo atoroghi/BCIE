@@ -51,7 +51,7 @@ def get_model_args():
     parser.add_argument('-save_each', default=1, type=int, help="validate every k epochs")
     parser.add_argument('-dataset', default='ML_FB', type=str, help="dataset name")
     parser.add_argument('-stop_width', default=4, type=int, help="number of SAVES where test is worse for early stopping")
-    parser.add_argument('-fold', default=0, type=int, help="fold to use data from")
+    #parser.add_argument('-fold', default=0, type=int, help="fold to use data from")
 
     #redundant because of critique
     parser.add_argument('-multi_k', default=10, type=int, help='number of samples for multi type update')
@@ -74,6 +74,7 @@ def get_model_args():
     parser.add_argument('-epochs_all', default=120, type=int, help='no of total epochs')
     parser.add_argument('-tune_type', default='two_stage', type=str, help='two_stage or joint')
     parser.add_argument('-name', default='diff', type=str, help='name of current test')
+    parser.add_argument('-fold', default=0, type=int, help='fold')
 
     args = parser.parse_args()
     return args

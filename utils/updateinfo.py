@@ -33,7 +33,8 @@ class UpdateInfo:
         # p(d | u)
         self.likelihood_prec = crit_args.default_prec * torch.eye(model_args.emb_dim).to(device)
 
-        self.z_mean = torch.zeros(model_args.emb_dim).to(device)
+        #self.z_mean = torch.zeros(model_args.emb_dim).to(device)
+        self.z_mean = crit_args.z_mean * torch.ones(model_args.emb_dim).to(device)
         self.z_prec = crit_args.z_prec * torch.eye(model_args.emb_dim).to(device)
 
     # get last element (these are being stored and saved for tracking)

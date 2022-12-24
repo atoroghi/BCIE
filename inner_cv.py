@@ -18,6 +18,7 @@ def get_args_inner():
     parser.add_argument('-samples', default=10000, type=int, help='no of samples in tuning')
     parser.add_argument('-batch', default=4, type=int, help='no of simultaneous calls of script')
     parser.add_argument('-folds', default=5, type=int, help='no of folds')
+    parser.add_argument('-fold', default=0, type=int, help='fold')
     parser.add_argument('-epochs_all', default=60, type=int, help='no of total epochs')
     parser.add_argument('-tune_type', default='two_stage', type=str, help='two_stage or joint')
     parser.add_argument('-name', default='diff', type=str, help='name of current test')
@@ -52,7 +53,7 @@ def get_args_inner():
     parser.add_argument('-save_each', default=1, type=int, help="validate every k epochs")
     parser.add_argument('-dataset', default='ML_FB', type=str, help="dataset name")
     parser.add_argument('-stop_width', default=4, type=int, help="number of SAVES where test is worse for early stopping")
-    parser.add_argument('-fold', default=0, type=int, help="fold to use data from")
+    #parser.add_argument('-fold', default=0, type=int, help="fold to use data from")
     
 
     args = parser.parse_args()
@@ -127,9 +128,10 @@ if __name__ == '__main__':
         args = (crit_args, model_args)
 
         # iterate through each fold
-        for fold in range(folds):
-            full_tune_name = os.path.join('results', cv_tune_name, tune_name, 'fold_{}'.format(fold), name)
-            tuner(args, full_tune_name, fold, epochs, batch, n, tune_type) # main tune loop
+        #for fold in range(folds):
+        fold = inner_args.fold
+        full_tune_name = os.path.join('results', cv_tune_name, tune_name, 'fold_{}'.format(fold), name)
+        tuner(args, full_tune_name, fold, epochs, batch, n, tune_type) # main tune loop
 
 ############
 # code to make new dataset split

@@ -18,9 +18,9 @@ def get_args():
     parser.add_argument('-cv_tune_name', default='tuned', type = str)
     parser.add_argument('-opt', default='test', type = str, help = 'test or hp')
     parser.add_argument('-folds', default=5, type=int, help='no of folds')
+    parser.add_argument('-fold', default=0, type=int, help='fold')
     parser.add_argument('-cv_type', default='crit', type = str, help = 'train or crit')
     parser.add_argument('-name', default='diff', type = str, help = 'name of the test')
-    parser.add_argument('-test_names', default='direct_multi_hits', type = str, help = 'name of the test folder')
     parser.add_argument('-type_checking', default='no')
     parser.add_argument('-learnin_rel', default='learn')
     return parser.parse_args() 
@@ -94,6 +94,7 @@ if __name__ == '__main__':
     args = get_args()
     cv_tune_name = args.cv_tune_name
     folds = args.folds
+    fold = args.fold
     opt = args.opt
     cv_type = args.cv_type # train or crit
 
@@ -102,35 +103,38 @@ if __name__ == '__main__':
     tune_names = os.listdir(models_folder)
     #names = ['pop', 'random', 'sim_1', 'sim_5']
     #names = ['direct_multi_hits']
-    names = args.test_names
+    names = [args.name]
     for name in names:
         for tune_name in tune_names:
             print(tune_name)
-            for i in range(folds):
-                print(i)
-                if opt == 'test':
+            #for i in range(folds):
+            i = fold
+            print(i)
+            if opt == 'test':
+
                     #path = os.path.join(models_folder, tune_name, 'fold_{}'.format(i), args.name)
-                    path_higher = os.path.join(models_folder, tune_name, 'fold_{}'.format(i))
+                path_higher = os.path.join(models_folder, tune_name, 'fold_{}'.format(i))
                     
-                    if name in os.listdir(path_higher):
-                        path = os.path.join(models_folder, tune_name, 'fold_{}'.format(i), name)
-                        (best_score, best_run, best_epoch, best_folder) = best_model(path)
-                        print('best score: {}, best run: {}, best epoch: {}, best folder: {}'.format(best_score, best_run, best_epoch, best_folder))
-                        test_fold(path, tune_name, best_folder, best_epoch, cv_type)
+                if name in os.listdir(path_higher):
+
+                    path = os.path.join(models_folder, tune_name, 'fold_{}'.format(i), name)
+                    (best_score, best_run, best_epoch, best_folder) = best_model(path)
+                    print('best score: {}, best run: {}, best epoch: {}, best folder: {}'.format(best_score, best_run, best_epoch, best_folder))
+                    test_fold(path, tune_name, best_folder, best_epoch, cv_type)
     
 
-                elif opt == 'hp':
-                    load_path = os.path.join('gp', tune_name, 'fold_{}'.format(i))
-                    hp_ = torch.load(os.path.join(load_path, 'x_train.pt')).numpy()
-                    y_ = torch.load(os.path.join(load_path, 'y_train.pt')).numpy()
+            elif opt == 'hp':
+                load_path = os.path.join('gp', tune_name, 'fold_{}'.format(i))
+                hp_ = torch.load(os.path.join(load_path, 'x_train.pt')).numpy()
+                y_ = torch.load(os.path.join(load_path, 'y_train.pt')).numpy()
 
-                    if i == 0:
-                        hp = hp_
-                        y = y_
-                    else:
-                        hp = np.concatenate((hp, hp_))
-                        y = np.concatenate((y, y_))
-                    print(hp.shape, y.shape)
+                if i == 0:
+                    hp = hp_
+                    y = y_
+                else:
+                    hp = np.concatenate((hp, hp_))
+                    y = np.concatenate((y, y_))
+                print(hp.shape, y.shape)
     sys.exit()
 
     if opt == 'hp':
