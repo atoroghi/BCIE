@@ -12,33 +12,43 @@ def natural_key(string_):
     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
 
 # main entry point from inner_cv
-def tuner(args, tune_name, fold, epochs, batch, n, tune_type):
+def tuner(args, tune_name, fold, epochs, batch, n, tune_type, param_tuning, session_length, session):
     (crit_args, model_args) = args
 
     # set folder structure
     path = tune_name
     os.makedirs(path, exist_ok=True)
+    if param_tuning == 'per_session':
+        session_path = os.path.join(path, 'session_{}'.format(session))
+        os.makedirs(session_path, exist_ok=True)
 
     # get and save params required for running main scripts
-    model_params = Params('train', model_args, tune_name)
-    crit_params = Params('crit', crit_args, tune_name)
+    model_params = Params('train', model_args, tune_name, session_length)
+    crit_params = Params('crit', crit_args, tune_name, session_length)
 
     params = (crit_params, model_params)
     if tune_type == 'joint':
         model_params.save()
-        dim = len(model_params.param_dict) + len(crit_params.param_dict)
+        dim = len(model_params.param_dict) + len(crit_params.param_dict[session])
     elif tune_type == 'two_stage':
-        dim = len(crit_params.param_dict)
+        dim = len(crit_params.param_dict[session])
     crit_params.save()
-    
+
     # main script for launching subprocesses
-    script_call = ScriptCall(args, params, tune_name, fold, path, tune_type)
+    script_call = ScriptCall(args, params, tune_name, fold, path, tune_type, param_tuning, session_length, session)
 
     # load training data (if something failed)
-    if os.path.isfile(os.path.join(path, 'x_train.pt')):
+
+    # in the per_session case each session has its own x_train and y_train
+    if param_tuning == 'per_session':
+        gp_path = session_path
+    elif param_tuning == 'together':
+        gp_path = path
+
+    if os.path.isfile(os.path.join(gp_path, 'x_train.pt')):
         begin = False
-        x_train = torch.load(os.path.join(path, 'x_train.pt'))
-        y_train = torch.load(os.path.join(path, 'y_train.pt'))
+        x_train = torch.load(os.path.join(gp_path, 'x_train.pt'))
+        y_train = torch.load(os.path.join(gp_path, 'y_train.pt'))
     else: begin = True
 
     # main loop
@@ -66,8 +76,8 @@ def tuner(args, tune_name, fold, epochs, batch, n, tune_type):
             y_train = torch.cat((y_train, score))
 
             # save training examples to file
-            torch.save(x_train, os.path.join(path, 'x_train.pt'))
-            torch.save(y_train, os.path.join(path, 'y_train.pt'))
+            torch.save(x_train, os.path.join(gp_path, 'x_train.pt'))
+            torch.save(y_train, os.path.join(gp_path, 'y_train.pt'))
 
 if __name__  == '__main__':
     print('not implimented')

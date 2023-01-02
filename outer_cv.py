@@ -9,6 +9,7 @@ from sklearn.ensemble import RandomForestRegressor
 from svd import svd
 from WRMF_torch import wrmf
 from critique import critiquing
+import seaborn as sns
 
 def natural_key(string_):
     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
@@ -88,6 +89,32 @@ def best_model(path):
     best_epoch = arg_perf[np.argmax(perf)]
     # best_folder is not necessarily best_run
     return (best_score, best_run, best_epoch, folders[best_run])
+def plotter(cv_tune_name, folds):
+    models_folder = os.path.join('results', cv_tune_name)
+    tune_names = os.listdir(models_folder)
+    test_names = [ 'indirect_hits','direct_multi_hits']
+
+    sns.set_theme()
+    fig = plt.figure(figsize=(12,8), dpi = 300)
+    ax = fig.add_subplot(111)
+    for tune_name in tune_names:
+        for test_name in test_names:
+            hits_10 = np.empty((0,6))
+            for fold in range(folds):
+                result_path = os.path.join(models_folder, tune_name, 'fold_{}'.format(fold), test_name, 'test_results')
+                ranks = np.load(os.path.join(result_path, 'rank_track.npy'))
+                hit_10 = np.sum(ranks<12 , axis =0) / (ranks[:,5].shape[0])
+                hits_10 = np.append(hits_10, hit_10.reshape(1, hit_10.shape[0]), axis=0)
+            hits_10_means = np.mean(hits_10, axis=0)
+            hits_10_yerr = 1.96 / np.sqrt(hits_10.shape[0]) * np.std(hits_10, axis=0)
+            ax.errorbar(np.arange(hits_10_means.shape[0]), hits_10_means, yerr = hits_10_yerr, fmt='-o', label = test_name)
+        ax.set_xlabel('Step', fontsize=16)
+        ax.set_ylabel('Hits@10', fontsize=16)
+        ax.legend()
+        plt.savefig(os.path.join(models_folder, tune_name, 'AvgHits.png'))
+        sys.exit()
+
+
     
 # TODO: clean this up, it's bad
 if __name__ == '__main__':
@@ -100,6 +127,8 @@ if __name__ == '__main__':
 
     # search through all folders
     models_folder = os.path.join('results', cv_tune_name)
+    #plotter(cv_tune_name, folds)
+    
     tune_names = os.listdir(models_folder)
     #names = ['pop', 'random', 'sim_1', 'sim_5']
     #names = ['direct_multi_hits']

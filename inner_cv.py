@@ -21,6 +21,7 @@ def get_args_inner():
     parser.add_argument('-fold', default=0, type=int, help='fold')
     parser.add_argument('-epochs_all', default=60, type=int, help='no of total epochs')
     parser.add_argument('-tune_type', default='two_stage', type=str, help='two_stage or joint')
+    parser.add_argument('-param_tuning', default='per_session', type=str, help='per_session or together')
     parser.add_argument('-name', default='diff', type=str, help='name of current test')
 
     # critique args
@@ -32,6 +33,7 @@ def get_args_inner():
     # single vs mult
     parser.add_argument('-critique_target', default='multi', type=str, help='single or multi')
     parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
+    parser.add_argument('-no_hps', default=4, type=int, help='number of considered hps for tuning')
     # likelihood
     parser.add_argument('-update_type', default='gauss', type=str, help='laplace or gauss')
     parser.add_argument('-crit_mode', default='diff', type=str, help='random or pop or diff')
@@ -107,6 +109,7 @@ if __name__ == '__main__':
         tune_names = os.listdir(models_folder)
     elif tune_type == 'joint':
         tune_names = [crit_args.tune_name]
+    tune_names = ['tilt_small']
 
     # run each folder
     for i, tune_name in enumerate(tune_names):
@@ -131,7 +134,14 @@ if __name__ == '__main__':
         #for fold in range(folds):
         fold = inner_args.fold
         full_tune_name = os.path.join('results', cv_tune_name, tune_name, 'fold_{}'.format(fold), name)
-        tuner(args, full_tune_name, fold, epochs, batch, n, tune_type) # main tune loop
+        if inner_args.param_tuning == 'together':
+            session = 0
+            tuner(args, full_tune_name, fold, epochs, batch, n, tune_type, inner_args.param_tuning, inner_args.session_length, session)
+
+        elif inner_args.param_tuning == 'per_session':
+            for session in range(inner_args.session_length):
+                args[0].session = session
+                tuner(args, full_tune_name, fold, epochs, batch, n, tune_type, inner_args.param_tuning, inner_args.session_length, session)
 
 ############
 # code to make new dataset split

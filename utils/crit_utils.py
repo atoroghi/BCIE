@@ -5,18 +5,20 @@ import seaborn as sns
 
 # for tracking and saving important debug info
 class InfoTrack:
-    def __init__(self, sess_len, objective):
+    def __init__(self, sess_len, objective, param_tuning, session):
         self.sess_len = sess_len
         self.objective = objective
         self.dists = []
         self.ranks = []
         self.scores = []
+        self.param_tuning = param_tuning
+        self.session = session
 
     # make new storage units (append to list later)
     def new_temps(self):
-        self.d_temp = np.zeros(self.sess_len)
-        self.r_temp = np.zeros(self.sess_len + 1)
-        self.s_temp = np.zeros(self.sess_len + 1)
+            self.d_temp = np.zeros(self.sess_len)
+            self.r_temp = np.zeros(self.sess_len + 1)
+            self.s_temp = np.zeros(self.sess_len + 1)
 
     # calculate scores
     def calc_score(self, dist):
@@ -30,15 +32,17 @@ class InfoTrack:
     # NOTE: this class is very brittle...
     def store(self, sess_no, rank=None, score=None, dist=None):
         if sess_no == 0: self.new_temps()
-        if rank is not None: self.r_temp[sess_no] = rank
+        if rank is not None: self.r_temp[sess_no:] = rank
         if score is not None: self.s_temp[sess_no] = score
         if dist is not None: self.d_temp[sess_no-1] = self.calc_score(dist)
+        self.session = sess_no
 
         # list of each crit sesh
-        if sess_no == self.sess_len:
-            self.dists.append(self.d_temp)
-            self.ranks.append(self.r_temp)
-            self.scores.append(self.s_temp)
+        #if sess_no == self.sess_len:
+        self.dists.append(self.d_temp)
+        self.ranks.append(self.r_temp)
+        self.scores.append(self.s_temp)
+
 
     # save info for stopping et al.
     def save(self, test_name):
@@ -46,7 +50,6 @@ class InfoTrack:
         dists = np.array(self.dists)
         ranks = np.array(self.ranks)
         scores = np.array(self.scores)
-        
         #save_path = os.path.join('results', test_name)
         save_path = test_name
         os.makedirs(save_path, exist_ok=True)
@@ -54,13 +57,21 @@ class InfoTrack:
         # TODO: is this a good metric?
         # reduce track, save single number in stop_metric.npy
         #mrr_last = np.mean(1 / (ranks[:, -1] + 1))
-        mrr_last = (np.mean(ranks[:,0]) - np.mean(ranks[:,-1]))
-        hr_last = (np.sum(ranks[:,-1]<12, axis = 0) - np.sum(ranks[:,0]<12, axis = 0)) / (ranks[:,-1].shape[0])
-        
+        #mrr_last = (np.mean(ranks[:,0]) - np.mean(ranks[:,-1]))
+        if self.param_tuning == 'per_session':
+            mrr_last = (np.mean(ranks[:,self.session-1]) - np.mean(ranks[:,self.session]))
+            #hr_last = (np.sum(ranks[:,-1]<12, axis = 0) - np.sum(ranks[:,0]<12, axis = 0)) / (ranks[:,-1].shape[0])
+            hr_last = (np.sum(ranks[:,self.session]<12, axis = 0) - np.sum(ranks[:,self.session-1]<12, axis = 0)) / (ranks[:,self.session].shape[0])    
+        elif self.param_tuning == 'together':
+            mrr_last = (np.mean(ranks[:,-1]) - np.mean(ranks[:,0]))
+            temp = 0
+            for i in range(1,self.sess_len):
+                temp += np.sum(ranks[:,i]<12, axis = 0) - np.sum(ranks[:,0]<12, axis = 0)
+            hr_last = temp / (self.sess_len * ranks[:,0].shape[0])    
         # take this and plot it, look at it etc...
         if self.objective == 'hits':
             print("last hit rate:")
-            print((np.sum(ranks[:,-1]<12, axis = 0)/ (ranks[:,-1].shape[0])))
+            print((np.sum(ranks[:,self.session]<12, axis = 0)/ (ranks[:,self.session].shape[0])))
             np.save(os.path.join(save_path, 'stop_metric.npy'), hr_last)
         elif self.objective == 'ranks':
             print("last rank average:")

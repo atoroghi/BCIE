@@ -9,35 +9,65 @@ def natural_key(string_):
 
 # converts parameters in [0, 1] to actual ranges
 class Params:
-    def __init__(self, cv_type, args, tune_name):
+    def __init__(self, cv_type, args, tune_name, session_length):
         self.tune_name = tune_name
         self.cv_type = cv_type
+        self.no_hps = args.no_hps
+
 
         # TODO: don't tune hp's that we don't use
         if cv_type == 'crit': 
-            self.param_dict = {
-                # covar [1e-5, 1]
-                'default_prec' : ([-5, 5], float, 10),
-                'user_prec' : ([-5, 5], float, 10),
-                #'multi_k' : ([1, 100], int, None)
-                #'z_prec' : ([-5, 5], float, 10),
-                #'z_mean' : ([-5, 5], float, 10),
-                #'etta_0' : ([-5, 5], float, 10),
-                #'etta_1' : ([-5, 5], float, 10),
-                #'etta_2' : ([-5, 5], float, 10),
-                #'etta_3' : ([-5, 5], float, 10),
-                #'etta_4' : ([-5, 5], float, 10),
-                #'alpha' : ([-5, 0], float, 10),
-                #'-tau_z_f': ([-5, 5], float, 10),
-                #'-tau_z_inv': ([-5, 5], float, 10),
-            }
+            temp_dict = {}
+            temp_dict_f = {}
+            # we need one set of parameters for each session
+            temp_dict[0] = {
+                    # covar [1e-5, 1]
+                    'user_prec' : ([-5, 5], float, 10),
+                    'default_prec' : ([-5, 5], float, 10),
+                    #'multi_k' : ([1, 100], int, None)
+                    'z_prec' : ([-5, 5], float, 10),
+                    'z_mean' : ([-5, 5], float, 10),
+                    #'etta_0' : ([-5, 5], float, 10),
+                    #'etta_1' : ([-5, 5], float, 10),
+                    #'etta_2' : ([-5, 5], float, 10),
+                    #'etta_3' : ([-5, 5], float, 10),
+                    #'etta_4' : ([-5, 5], float, 10),
+                    #'alpha' : ([-5, 0], float, 10),
+                    #'-tau_z_f': ([-5, 5], float, 10),
+                    #'-tau_z_inv': ([-5, 5], float, 10),
+                }
+            part = list(temp_dict[0].keys())[:self.no_hps]
+            temp_dict_f[0] = {k: temp_dict[0][k] for k in part}
+            for i in range(1,session_length):
+                temp_dict[i]= {
+                    # covar [1e-5, 1]
+                    'default_prec' : ([-5, 5], float, 10),
+                    #'user_prec' : ([-5, 5], float, 10),
+                    #'multi_k' : ([1, 100], int, None)
+                    'z_prec' : ([-5, 5], float, 10),
+                    'z_mean' : ([-5, 5], float, 10),
+                    #'etta_0' : ([-5, 5], float, 10),
+                    #'etta_1' : ([-5, 5], float, 10),
+                    #'etta_2' : ([-5, 5], float, 10),
+                    #'etta_3' : ([-5, 5], float, 10),
+                    #'etta_4' : ([-5, 5], float, 10),
+                    #'alpha' : ([-5, 0], float, 10),
+                    #'-tau_z_f': ([-5, 5], float, 10),
+                    #'-tau_z_inv': ([-5, 5], float, 10),
+                }
+                part = list(temp_dict[i].keys())[:self.no_hps -1]
+                temp_dict_f[i] = {k: temp_dict[i][k] for k in part}
+            self.param_dict = temp_dict_f
+
+
+
 
             # TODO: better asserts to automatically set hps
-            if 'z_prec' in self.param_dict:
+            if 'z_prec' in self.param_dict[0]:
                 assert args.evidence_type == 'indirect'
-            if 'etta_0' in self.param_dict:
+            if 'etta_0' in self.param_dict[0]:
                 assert args.update_type == 'laplace'
-            if 'multi_k' in self.param_dict:
+            if 'multi_k' in self.param_dict[0]:
                 assert args.critique_target == 'multi'
 
         elif cv_type == 'train':
@@ -63,8 +93,8 @@ class Params:
 
     # TODO: this offset is bad and a quick patch
     # take params from gp to real values
-    def convert(self, i, po, p, args, offset=0):
-        for j, (arg_name, spec) in enumerate(self.param_dict.items()):
+    def convert(self, i, po, p, args, session, offset=0):
+        for j, (arg_name, spec) in enumerate(self.param_dict[session].items()):
             for a in vars(args):
                 # get proper arg corresponding to param_dict values
                 if a == arg_name:
@@ -86,14 +116,17 @@ class Params:
 
 # main class to launch code that gp is trying to opimize
 class ScriptCall:
-    def __init__(self, args, params, tune_name, fold_num, path, tune_type):
+    def __init__(self, args, params, tune_name, fold_num, path, tune_type, param_tuning, session_length, session):
         # TODO: unpack params into model and crit
         self.args = args
-        self.tune_name = tune_name
+        self.tune_name_temp = tune_name
         self.fold_num = fold_num
         self.params = params
         self.path = os.path.join(path, '..')
         self.tune_type = tune_type
+        self.param_tuning = param_tuning
+        self.session_length = session_length
+        self.session = session
 
     def run_process(self,p, py_file, args_list, crit_test_names, crit_load_names, model_test_names):
         subs = []
@@ -127,6 +160,7 @@ class ScriptCall:
         crit_test_names, crit_load_names, model_test_names = [], [], []
         train_path = os.path.join(self.path, 'train')
 
+
         # params[0] has cv_type == crit and param[1] has cv_type ==1 so we need to do this twice
         for i in range(p.shape[0]): 
             # convert gp [0, 1] to proper parameter vals
@@ -136,14 +170,22 @@ class ScriptCall:
             if self.tune_type == 'joint':
                 folders = sorted(os.listdir(os.path.join(self.path, 'train')), key=natural_key)
                 folders = [f for f in folders if 'train' in f]
-                crit_load_name = os.path.join('results', self.tune_name, 'fold_{}'.format(self.fold_num), 'train', 'train_{}'.format(len(folders) + i)) 
+                crit_load_name = os.path.join('results', self.tune_name_temp, 'fold_{}'.format(self.fold_num), 'train', 'train_{}'.format(len(folders) + i)) 
 
             # here we only load the best model of the fold and make crit result folders
             elif self.tune_type == 'two_stage':
+                if self.args[0].param_tuning == 'per_session':
+                    self.tune_name = os.path.join(self.tune_name_temp, 'session_{}'.format(self.session))
+
+                elif self.args[0].param_tuning == 'together':
+                    self.tune_name = self.tune_name_temp
+
                 folders = sorted(os.listdir(self.tune_name), key=natural_key)
                 folders = [f for f in folders if 'train' in f]
                 (best_score, best_run, best_epoch, best_folder) = best_model(train_path)
+
                 crit_load_name = os.path.join(train_path, best_folder)
+
             crit_test_name = os.path.join(self.tune_name, 'train_{}'.format(len(folders) + i))
             model_test_name = os.path.join(self.path, 'train', 'train_{}'.format(len(folders) + i))
 
@@ -153,8 +195,9 @@ class ScriptCall:
             model_test_names.append(model_test_name)
 
             # discretize params before feeding back to gp 
-            offset = len(self.params[0].param_dict)
-            crit_args, po = self.params[0].convert(i, po, p, self.args[0])
+            offset = len(self.params[0].param_dict[self.session])
+
+            crit_args, po = self.params[0].convert(i, po, p, self.args[0], self.session)
             model_args = []
             if self.tune_type == 'joint':
                 model_args, po = self.params[1].convert(i, po, p, self.args[1], offset)

@@ -29,7 +29,7 @@ def beta_update(update_info, sn, crit_args, model_args, device, update_type, map
         (mu_prior_f, mu_prior_inv), (tau_prior_f, tau_prior_inv) = update_info.get_priorinfo()
 
         etta_sn = etta[sn]
-        etta_sn = 100
+        #etta_sn = 100
 
         # in general, the updater is written in the matrix form
         if len(X_f.shape) == 1:
@@ -86,6 +86,7 @@ def beta_update_indirect(update_info, sn, crit_args, model_args, device, update_
         #item_mean_f = evidence_f
         #item_mean_inv = evidence_inv
         n = 1 # TODO: this is for later?
+
         temp_f = (item_prec_f @ item_mean_f + n * prec_evidence @ evidence_f)
         mu_z_f = torch.inverse(item_prec_f + n * prec_evidence) @ temp_f 
 
