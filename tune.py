@@ -69,6 +69,8 @@ def tuner(args, tune_name, fold, epochs, batch, n, tune_type, param_tuning, sess
             # run gaussian process
             x_test = torch.rand((n, dim))
             x_sample = train_sample_gp(x_test, x_train, y_train, batch, dim, e) 
+            if len(x_sample.shape)<2 :
+                x_sample = torch.unsqueeze(x_sample, axis = 1)
             x_sample[:2] = torch.rand(2, dim)
 
             x_out, score = script_call.train(x_sample)

@@ -99,19 +99,19 @@ def train_sample_gp(x_test, x_train, y_train, batch, dim, n_graph):
             x_sample[i] = x_test[np.argmax(sample)]
 
         # plot
-        if dim == 1:
-            fig = plt.figure(figsize=(8,6))
-            ax = fig.add_subplot(111)
-
-            lower, upper = pred.confidence_region()
-            ax.plot(x_test.numpy(), pred.mean.numpy(), 'b')
-            ax.fill_between(x_test.numpy(), lower.numpy(), upper.numpy(), alpha=0.5)
-            
-            ax.scatter(x_train.numpy(), y_train.numpy(), color='k', s=30)
-            ax.scatter(x_sample, np.zeros(batch), color='lime', s=30)
-
-            ax.set_ylim([-3, 3])
-            ax.legend(['Observed Data', 'Mean', 'Confidence'])
-            plt.savefig('gp/gp {}.png'.format(n_graph))
+        #if dim == 1:
+        #    fig = plt.figure(figsize=(8,6))
+        #    ax = fig.add_subplot(111)
+#
+        #    lower, upper = pred.confidence_region()
+        #    ax.plot(x_test.numpy(), pred.mean.numpy(), 'b')
+        #    ax.fill_between(x_test.numpy(), lower.numpy(), upper.numpy(), alpha=0.5)
+        #    
+        #    ax.scatter(x_train.numpy(), y_train.numpy(), color='k', s=30)
+        #    ax.scatter(x_sample, np.zeros(batch), color='lime', s=30)
+#
+        #    ax.set_ylim([-3, 3])
+        #    ax.legend(['Observed Data', 'Mean', 'Confidence'])
+        #    plt.savefig('gp/gp {}.png'.format(n_graph))
 
     return x_sample
