@@ -94,13 +94,16 @@ def best_model(path):
 def critiquing(crit_args, mode):
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     model_args = Namespace()
-    ettas = crit_args.session_length * [crit_args.etta]
-    alpha = crit_args.alpha
-    user_precs = crit_args.session_length * [crit_args.user_prec]
-    default_precs = crit_args.session_length * [crit_args.default_prec]
-    z_means = crit_args.session_length * [crit_args.z_mean]
-    z_precs = crit_args.session_length * [crit_args.z_prec]
-
+    if mode == 'val':
+        ettas = crit_args.session_length * [crit_args.etta]
+        alpha = crit_args.alpha
+        user_precs = crit_args.session_length * [crit_args.user_prec]
+        default_precs = crit_args.session_length * [crit_args.default_prec]
+        z_means = crit_args.session_length * [crit_args.z_mean]
+        z_precs = crit_args.session_length * [crit_args.z_prec]
+    elif mode == 'test':
+        ettas = crit_args.ettas; alpha = crit_args.alpha; user_precs = crit_args.user_precs; default_precs = crit_args.default_precs
+        z_means = crit_args.z_means; z_precs = crit_args.z_precs
 
 
     # for cluster check
@@ -125,7 +128,7 @@ def critiquing(crit_args, mode):
     model_args.learning_rel = 'learn'
     model_args.type_checking = 'yes'
 
-    if crit_args.param_tuning == 'per_session':
+    if crit_args.param_tuning == 'per_session' and mode == 'val':
         # reading hps for best models of previous sessions 
         if crit_args.session > 0:
             prev_path = os.path.join(crit_args.load_name,'../..',crit_args.name, 'session_{}'.format(crit_args.session-1))
@@ -138,7 +141,6 @@ def critiquing(crit_args, mode):
             z_precs[:crit_args.session] = yml['z_precs'][:crit_args.session]
             z_means[:crit_args.session] = yml['z_means'][:crit_args.session]
             ettas[:crit_args.session] = yml['ettas'][:crit_args.session]
-
 
 
 

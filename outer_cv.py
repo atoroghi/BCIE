@@ -24,6 +24,8 @@ def get_args():
     parser.add_argument('-name', default='diff', type = str, help = 'name of the test')
     parser.add_argument('-type_checking', default='no')
     parser.add_argument('-learnin_rel', default='learn')
+    parser.add_argument('-param_tuning', default='per_session', type=str, help='per_session or together')
+    parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
     return parser.parse_args() 
 
 def test_fold(path, tune_name, best_folder, best_epoch, cv_type):
@@ -54,7 +56,7 @@ def test_fold(path, tune_name, best_folder, best_epoch, cv_type):
             yml = yaml.safe_load(f)
             for key in yml.keys():
                 #TODO: fix this, while saving the yml file the numerical values shouldn't be strings
-                if key in ['session_length', 'multi_k', 'num_users', 'sim_k', 'batch', 'samples']:
+                if key in ['session_length', 'multi_k', 'num_users', 'sim_k', 'batch', 'samples', 'session']:
                     setattr(args, key, int(yml[key]))
                 else:
                     try:
@@ -63,6 +65,7 @@ def test_fold(path, tune_name, best_folder, best_epoch, cv_type):
                         setattr(args, key, yml[key])
 
         setattr(args, 'test_name', save_path)
+
         print("results are being saved in:", args.test_name)
         critiquing(args, 'test')
 
@@ -135,7 +138,7 @@ if __name__ == '__main__':
     names = [args.name]
     for name in names:
         for tune_name in tune_names:
-            print(tune_name)
+
             #for i in range(folds):
             i = fold
             print(i)
@@ -147,6 +150,9 @@ if __name__ == '__main__':
                 if name in os.listdir(path_higher):
 
                     path = os.path.join(models_folder, tune_name, 'fold_{}'.format(i), name)
+                    if args.param_tuning == 'per_session':
+                        path = os.path.join(path, 'session_{}'.format(args.session_length-1))
+
                     (best_score, best_run, best_epoch, best_folder) = best_model(path)
                     print('best score: {}, best run: {}, best epoch: {}, best folder: {}'.format(best_score, best_run, best_epoch, best_folder))
                     test_fold(path, tune_name, best_folder, best_epoch, cv_type)
