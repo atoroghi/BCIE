@@ -102,8 +102,12 @@ def critiquing(crit_args, mode):
         z_means = crit_args.session_length * [crit_args.z_mean]
         z_precs = crit_args.session_length * [crit_args.z_prec]
     elif mode == 'test':
-        ettas = crit_args.ettas; alpha = crit_args.alpha; user_precs = crit_args.user_precs; default_precs = crit_args.default_precs
-        z_means = crit_args.z_means; z_precs = crit_args.z_precs
+        try:
+            ettas = crit_args.ettas; alpha = crit_args.alpha; user_precs = crit_args.user_precs; default_precs = crit_args.default_precs
+            z_means = crit_args.z_means; z_precs = crit_args.z_precs
+        except:
+            ettas = crit_args.session_length * [crit_args.etta]; alpha = crit_args.alpha; user_precs = crit_args.session_length * [crit_args.user_prec]
+            default_precs = crit_args.session_length * [crit_args.default_prec]; z_means = crit_args.session_length * [crit_args.z_mean]; z_precs = crit_args.session_length * [crit_args.z_prec]
 
 
     # for cluster check
