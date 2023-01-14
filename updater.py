@@ -39,10 +39,14 @@ def beta_update(update_info, sn, crit_args, model_args, device, update_type, map
         # finding the new user belief mean
         # Using convext solver to find the W_MAP
         if map_finder == 'cvx':
-            W_new_f = SDR_cvxopt(tau_prior_f, X_f, mu_prior_f, model_args.emb_dim, etta_sn)
-            W_new_inv = SDR_cvxopt(tau_prior_inv, X_inv, mu_prior_inv, model_args.emb_dim, etta_sn)
-            W_new_f = torch.tensor(W_new_f).float().to(device)
-            W_new_inv = torch.tensor(W_new_inv).float().to(device)
+            try:
+                W_new_f = SDR_cvxopt(tau_prior_f, X_f, mu_prior_f, model_args.emb_dim, etta_sn)
+                W_new_inv = SDR_cvxopt(tau_prior_inv, X_inv, mu_prior_inv, model_args.emb_dim, etta_sn)
+                W_new_f = torch.tensor(W_new_f).float().to(device)
+                W_new_inv = torch.tensor(W_new_inv).float().to(device)
+            except:
+                W_new_f = GDOPT(tau_prior_f, X_f, mu_prior_f, etta_sn, alpha)
+                W_new_inv = GDOPT(tau_prior_inv, X_inv, mu_prior_inv, etta_sn, alpha)
         elif map_finder == 'gd':
             W_new_f = GDOPT(tau_prior_f, X_f, mu_prior_f, etta_sn, alpha)
             W_new_inv = GDOPT(tau_prior_inv, X_inv, mu_prior_inv, etta_sn, alpha)
@@ -136,10 +140,14 @@ def beta_update_indirect(update_info, sn, crit_args, model_args, device, update_
 
         etta_sn = etta[sn]
         if map_finder == 'cvx':
-            z_map_f = SDR_cvxopt(item_prec_f, X_f, item_mean_f, model_args.emb_dim, etta_sn)
-            z_map_inv = SDR_cvxopt(item_prec_inv, X_inv, item_mean_inv, model_args.emb_dim, etta_sn)
-            z_map_f = torch.tensor(z_map_f).float().to(device)
-            z_map_inv = torch.tensor(z_map_inv).float().to(device)
+            try:
+                z_map_f = SDR_cvxopt(item_prec_f, X_f, item_mean_f, model_args.emb_dim, etta_sn)
+                z_map_inv = SDR_cvxopt(item_prec_inv, X_inv, item_mean_inv, model_args.emb_dim, etta_sn)
+                z_map_f = torch.tensor(z_map_f).float().to(device)
+                z_map_inv = torch.tensor(z_map_inv).float().to(device)
+            except:
+                z_map_f = GDOPT(item_prec_f, X_f, item_mean_f, etta_sn, alpha)
+                z_map_inv = GDOPT(item_prec_inv, X_inv, item_mean_inv, etta_sn, alpha)
 
         elif map_finder == 'gd':
             z_map_f = GDOPT(item_prec_f, X_f, item_mean_f, etta_sn, alpha)
@@ -152,10 +160,14 @@ def beta_update_indirect(update_info, sn, crit_args, model_args, device, update_
             X_new_inv = torch.unsqueeze(X_new_inv , dim = 0)
 
         if map_finder == 'cvx':
-            W_new_f = SDR_cvxopt(tau_prior_f, X_new_f, mu_prior_f, model_args.emb_dim, etta_sn)
-            W_new_inv = SDR_cvxopt(tau_prior_inv, X_new_inv, mu_prior_inv, model_args.emb_dim, etta_sn)
-            W_new_f = torch.tensor(W_new_f).float().to(device)
-            W_new_inv = torch.tensor(W_new_inv).float().to(device)
+            try:
+                W_new_f = SDR_cvxopt(tau_prior_f, X_new_f, mu_prior_f, model_args.emb_dim, etta_sn)
+                W_new_inv = SDR_cvxopt(tau_prior_inv, X_new_inv, mu_prior_inv, model_args.emb_dim, etta_sn)
+                W_new_f = torch.tensor(W_new_f).float().to(device)
+                W_new_inv = torch.tensor(W_new_inv).float().to(device)
+            except:
+                W_new_f = GDOPT(tau_prior_f, X_new_f, mu_prior_f, etta_sn, alpha)
+                W_new_inv = GDOPT(tau_prior_inv, X_new_inv, mu_prior_inv, etta_sn,alpha)
         elif map_finder == 'gd':
             W_new_f = GDOPT(tau_prior_f, X_new_f, mu_prior_f, etta_sn, alpha)
             W_new_inv = GDOPT(tau_prior_inv, X_new_inv, mu_prior_inv, etta_sn,alpha)

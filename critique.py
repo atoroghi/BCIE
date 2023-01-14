@@ -27,7 +27,7 @@ def get_args_critique():
     parser.add_argument('-z_mean', default=0.0, type=float, help='item distribution mean indirect case')
 
     parser.add_argument('-etta', default=1.0, type=float, help='Precision for Laplace Approximation')
-    parser.add_argument('-alpha', default=0.05, type=float, help='Learning rate for GD in Laplace Approximation')
+    parser.add_argument('-alpha', default=0.01, type=float, help='Learning rate for GD in Laplace Approximation')
     parser.add_argument('-multi_k', default=10, type=int, help='number of samples for multi type update')
     parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
     parser.add_argument('-num_users', default=1000, type=int, help='number of users')
@@ -233,6 +233,7 @@ def critiquing(crit_args, mode):
             # save info
             info_track.store(0, rank=rank+1, score=scores[gt_ind])
 
+
             # a few sessions for each user 
             #for sn in range(crit_args.session_length):
             for sn in range(last_session):
@@ -276,7 +277,7 @@ def critiquing(crit_args, mode):
 
                 (crit_node, crit_rel) = crit
                 #print("selected critique:")
-                #print(crit)
+
                #removing the selected critique from gt_facts
                 gt_facts = np.delete(gt_facts, np.where(np.all(gt_facts == crit_triple, axis=1))[0][0], axis=0)
 
@@ -303,6 +304,7 @@ def critiquing(crit_args, mode):
 
                 # save info
                 info_track.store(sn+1, rank=post_rank+1, score=scores[gt_ind], dist=(new_user_emb, d))
+
             #rec_candidates = ranked[:(rec_k + len(train_gt))]
             #rec_candidate_ids = [index2id[int(x)] for x in rec_candidates]
             #rec_ids = [x for x in rec_candidate_ids if x not in train_gt][:rec_k]

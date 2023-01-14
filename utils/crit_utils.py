@@ -65,7 +65,7 @@ class InfoTrack:
         elif self.param_tuning == 'together':
             mrr_last = (np.mean(ranks[:,-1]) - np.mean(ranks[:,0]))
             temp = 0
-            for i in range(1,self.sess_len):
+            for i in range(1,self.sess_len+1):
                 temp += np.sum(ranks[:,i]<12, axis = 0) - np.sum(ranks[:,0]<12, axis = 0)
             hr_last = temp / (self.sess_len * ranks[:,0].shape[0])    
         # take this and plot it, look at it etc...
@@ -73,10 +73,15 @@ class InfoTrack:
             print("last hit rate:")
             print((np.sum(ranks[:,self.session]<12, axis = 0)/ (ranks[:,self.session].shape[0])))
             np.save(os.path.join(save_path, 'stop_metric.npy'), hr_last)
+            with open(os.path.join(save_path,'stop_metric.txt'), 'w') as f:
+                f.write(str(hr_last))
+ 
         elif self.objective == 'ranks':
             print("last rank average:")
             print(np.mean(ranks[:,-1]))
             np.save(os.path.join(save_path, 'stop_metric.npy'), mrr_last)
+            with open(os.path.join(save_path,'stop_metric.txt'), 'w') as f:
+                f.write(str(mrr_last))
         np.save(os.path.join(save_path, 'rank_track.npy'), ranks)
         np.save(os.path.join(save_path, 'score_track.npy'), scores)
         np.save(os.path.join(save_path, 'dist_track.npy'), dists)
@@ -117,7 +122,7 @@ class InfoTrack:
         fig = plt.figure(figsize=(12,8), dpi=300)
         ax5 = fig.add_subplot(111)
         #ax5.set_yscale('log')
-        hits_10 = np.sum(ranks<12 , axis =0) / (ranks[:,5].shape[0])
+        hits_10 = np.sum(ranks<12 , axis =0) / (ranks[:,0].shape[0])
         ax5.errorbar(np.arange(hits_10.shape[0]), hits_10, linestyle='--', fmt = 'o')
         ax5.set_xlabel('Step', fontsize=16)
         ax5.set_ylabel('Hit Rate @ 10', fontsize=16)

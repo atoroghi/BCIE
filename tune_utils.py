@@ -23,37 +23,33 @@ class Params:
             temp_dict[0] = {
                     # covar [1e-5, 1]
                     'user_prec' : ([-5, 5], float, 10),
-                    'default_prec' : ([-5, 5], float, 10),
+                    #'default_prec' : ([-5, 5], float, 10),
                     #'multi_k' : ([1, 100], int, None)
                     'z_prec' : ([-5, 5], float, 10),
                     'z_mean' : ([-5, 5], float, 10),
-                    #'etta_0' : ([-5, 5], float, 10),
+                    'etta' : ([-5, 5], float, 10),
                     #'etta_1' : ([-5, 5], float, 10),
                     #'etta_2' : ([-5, 5], float, 10),
                     #'etta_3' : ([-5, 5], float, 10),
                     #'etta_4' : ([-5, 5], float, 10),
                     #'alpha' : ([-5, 0], float, 10),
-                    #'-tau_z_f': ([-5, 5], float, 10),
-                    #'-tau_z_inv': ([-5, 5], float, 10),
                 }
             part = list(temp_dict[0].keys())[:self.no_hps]
             temp_dict_f[0] = {k: temp_dict[0][k] for k in part}
             for i in range(1,session_length):
                 temp_dict[i]= {
                     # covar [1e-5, 1]
-                    'default_prec' : ([-5, 5], float, 10),
+                    #'default_prec' : ([-5, 5], float, 10),
                     #'user_prec' : ([-5, 5], float, 10),
                     #'multi_k' : ([1, 100], int, None)
                     'z_prec' : ([-5, 5], float, 10),
                     'z_mean' : ([-5, 5], float, 10),
-                    #'etta_0' : ([-5, 5], float, 10),
+                    'etta' : ([-5, 5], float, 10),
                     #'etta_1' : ([-5, 5], float, 10),
                     #'etta_2' : ([-5, 5], float, 10),
                     #'etta_3' : ([-5, 5], float, 10),
                     #'etta_4' : ([-5, 5], float, 10),
                     #'alpha' : ([-5, 0], float, 10),
-                    #'-tau_z_f': ([-5, 5], float, 10),
-                    #'-tau_z_inv': ([-5, 5], float, 10),
                 }
                 part = list(temp_dict[i].keys())[:self.no_hps -1]
                 temp_dict_f[i] = {k: temp_dict[i][k] for k in part}
@@ -65,7 +61,7 @@ class Params:
             # TODO: better asserts to automatically set hps
             if 'z_prec' in self.param_dict[0]:
                 assert args.evidence_type == 'indirect'
-            if 'etta_0' in self.param_dict[0]:
+            if 'etta' in self.param_dict[0]:
                 assert args.update_type == 'laplace'
             if 'multi_k' in self.param_dict[0]:
                 assert args.critique_target == 'multi'
