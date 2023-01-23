@@ -146,6 +146,7 @@ def beta_update_indirect(update_info, sn, crit_args, model_args, device, update_
                 z_map_f = torch.tensor(z_map_f).float().to(device)
                 z_map_inv = torch.tensor(z_map_inv).float().to(device)
             except:
+                print("using GD")
                 z_map_f = GDOPT(item_prec_f, X_f, item_mean_f, etta_sn, alpha)
                 z_map_inv = GDOPT(item_prec_inv, X_inv, item_mean_inv, etta_sn, alpha)
 

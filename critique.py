@@ -19,10 +19,10 @@ def get_args_critique():
     parser.add_argument('-test_name', default=None, type=str, help='name of folder where model is')
     parser.add_argument('-objective', default='hits', type=str, help='hits or rank')
 
-    #parser.add_argument('-user_prec', default=42123.409928333158, type=float, help='prior cov')
-    #parser.add_argument('-default_prec', default=11292.058464079433, type=float, help='likelihood precision')
-    parser.add_argument('-user_prec', default=0.010857149510475995, type=float, help='prior cov')
-    parser.add_argument('-default_prec', default=1.0042732995119225e-05, type=float, help='likelihood precision')
+    parser.add_argument('-user_prec', default=42123.409928333158, type=float, help='prior cov')
+    parser.add_argument('-default_prec', default=11292.058464079433, type=float, help='likelihood precision')
+    #parser.add_argument('-user_prec', default=0.010857149510475995, type=float, help='prior cov')
+    #parser.add_argument('-default_prec', default=1.0042732995119225e-05, type=float, help='likelihood precision')
     parser.add_argument('-z_prec', default=2.0, type=float, help='item distribution precision indirect case')
     parser.add_argument('-z_mean', default=0.0, type=float, help='item distribution mean indirect case')
 
@@ -186,7 +186,7 @@ def critiquing(crit_args, mode):
 
     # all users, gt + data (based on test / train)
     get_gt = GetGT(dataloader.fold, mode)
-    data = dataloader.rec_test if mode == 'test' else dataloader.rec_val
+    data = dataloader.rec_test if mode == 'test' else dataloader.rec_val[:2000]
     all_users = np.unique(torch.tensor(data[:, 0]).cpu().numpy(), return_counts=False)
 
     # for tracking all info (score, distance, rank)
@@ -205,7 +205,7 @@ def critiquing(crit_args, mode):
     #np.random.shuffle(all_users)
     for i, user in enumerate(all_users):
         #print("user")
-        #print(user)
+        #print(i)
 
         if i > crit_args.num_users: break
 
@@ -316,5 +316,5 @@ def critiquing(crit_args, mode):
 
 if __name__ == '__main__':
     crit_args = get_args_critique()
-    critiquing(crit_args, 'val')
-    #critiquing(crit_args, 'test')
+    #critiquing(crit_args, 'val')
+    critiquing(crit_args, 'test')
