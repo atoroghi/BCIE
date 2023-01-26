@@ -119,10 +119,6 @@ def get_rank_nongt(ranked, test_gt, all_gt, id2index):
     for gt in test_gt:
         #remove_inds = np.setdiff1d(item_inds, id2index[gt])
         remove_inds = item_inds
-        print("gt")
-        print(gt)
-        print("ind gt")
-        print(id2index[gt])
         pre_rank = np.where(ranked == id2index[gt])[0][0]       
         
         check_ranked = ranked[:pre_rank]

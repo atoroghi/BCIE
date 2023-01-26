@@ -1,4 +1,4 @@
-import os, sys, torch, pickle
+import os, sys, torch, pickle, time
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -403,24 +403,38 @@ def get_postdiff(ranked_pre, ranked_post, crit_node, obj2items, all_gt, id2index
     # items that are related to the crit node
     pos_items = obj2items[crit_node]
 
+    
     # some elements in the obj2item dict are not items. we need to remove them
     pos_items = pos_items[np.isin(pos_items, np.fromiter(id2index.keys(), dtype=int))]
-
+    
+    
+    
     #for item in pos_items:
      #   if item not in id2index.keys():
       #      pos_items = np.setdiff1d(pos_items, item)
 
     # avg rank of positive items before critique
     try:
+        
         pos_ranked_pre = np.mean(get_rank(ranked_pre, pos_items, all_gt, id2index))
+        
+        
+        
+    
     except:
+        
         pos_ranked_pre = np.mean(get_rank_nongt(ranked_pre, pos_items, all_gt, id2index))
+        
+    
      # avg rank of positive items after critique
     try:
+        
         pos_ranked_post = np.mean(get_rank(ranked_post, pos_items, all_gt, id2index))
+
     except:
         pos_ranked_post = np.mean(get_rank_nongt(ranked_post, pos_items, all_gt, id2index))
-    pcd = (pos_ranked_pre - pos_ranked_post) / pos_ranked_pre
+
+    pcd = (1 + pos_ranked_pre - pos_ranked_post) / (pos_ranked_pre+1)
     
 
     return pcd
