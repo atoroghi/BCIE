@@ -134,10 +134,11 @@ if __name__ == '__main__':
         #for fold in range(folds):
         fold = inner_args.fold
         full_tune_name = os.path.join('results', cv_tune_name, tune_name, 'fold_{}'.format(fold), name)
+        # Using the same hps (default_prec, z_prec, etc) in all sessions
         if inner_args.param_tuning == 'together':
             session = 0
             tuner(args, full_tune_name, fold, epochs, batch, n, tune_type, inner_args.param_tuning, inner_args.session_length, session)
-
+        # Using separate hps for each session
         elif inner_args.param_tuning == 'per_session':
             for session in range(inner_args.session_length):
                 args[0].session = session

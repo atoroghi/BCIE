@@ -102,9 +102,11 @@ def critiquing(crit_args, mode):
         z_means = crit_args.session_length * [crit_args.z_mean]
         z_precs = crit_args.session_length * [crit_args.z_prec]
     elif mode == 'test':
+        # in the case a list is passed in for hps in different sessions
         try:
             ettas = crit_args.ettas; alpha = crit_args.alpha; user_precs = crit_args.user_precs; default_precs = crit_args.default_precs
             z_means = crit_args.z_means; z_precs = crit_args.z_precs
+        # otherwise
         except:
             ettas = crit_args.session_length * [crit_args.etta]; alpha = crit_args.alpha; user_precs = crit_args.session_length * [crit_args.user_prec]
             default_precs = crit_args.session_length * [crit_args.default_prec]; z_means = crit_args.session_length * [crit_args.z_mean]; z_precs = crit_args.session_length * [crit_args.z_prec]
@@ -148,7 +150,7 @@ def critiquing(crit_args, mode):
 
 
 
-
+    # save current session hps
     save_dict = {}
     for k, v in vars(crit_args).items():
         save_dict.update({k : str(v)})
@@ -307,6 +309,8 @@ def critiquing(crit_args, mode):
                 post_rank = get_rank(ranked, [gt], all_gt, id2index)
                 ranked_post = 1*ranked
                 pcd = 0
+
+                # only for single step critiquing experiment
                 if crit_args.objective == 'pcd':
 
                     pcd = get_postdiff(ranked_pre, ranked_post, crit_node, obj2items, all_gt, id2index)
