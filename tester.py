@@ -105,6 +105,33 @@ def get_rank(ranked, test_gt, all_gt, id2index):
 
     return np.array(rank)
 
+# This function is used to get ranks of items that are not in all_gt
+def get_rank_nongt(ranked, test_gt, all_gt, id2index):
+    ranked = ranked.cpu().numpy()
+    # get array of all test and train items
+    item_inds = []
+    for item in all_gt:
+        item_inds.append(id2index[item])
+    item_inds = np.array(item_inds)
+    
+    # get rank for all items in test set for user
+    rank = []
+    for gt in test_gt:
+        #remove_inds = np.setdiff1d(item_inds, id2index[gt])
+        remove_inds = item_inds
+        print("gt")
+        print(gt)
+        print("ind gt")
+        print(id2index[gt])
+        pre_rank = np.where(ranked == id2index[gt])[0][0]       
+        
+        check_ranked = ranked[:pre_rank]
+        hits = np.in1d(check_ranked, remove_inds) 
+        sub = np.count_nonzero(hits)
+        rank.append(pre_rank - sub)
+
+    return np.array(rank)
+
 # get final rank to show performance
 def get_Rprec(ranked, test_gt, train_gt, id2index):
     R = len(test_gt)

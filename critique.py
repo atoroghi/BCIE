@@ -11,7 +11,7 @@ from tester import get_array, get_emb, get_scores, get_rank, GetGT
 from recommender import crit_selector, test_crit
 from utils.plots import RankTrack, rank_plot
 from utils.updateinfo import UpdateInfo
-from utils.crit_utils import InfoTrack, fact_stack, rec_fact_stack, get_d, fake_d, get_dics, sim_selector
+from utils.crit_utils import InfoTrack, fact_stack, rec_fact_stack, get_d, fake_d, get_dics, sim_selector, get_postdiff
 
 def get_args_critique():
     parser = argparse.ArgumentParser()
@@ -228,7 +228,13 @@ def critiquing(crit_args, mode):
             # get initial rank 
             (scores, ranked) = get_scores(user_emb, rel_emb[0], item_emb, model_args.learning_rel)
             rank = get_rank(ranked, [gt], all_gt, id2index) 
+
+
             #print("initial rank:", rank)
+            #pre critiquing ranked used for postcritiquingdiff calcualtion
+            ranked_pre = 1*ranked
+            
+
 
             # save info
             info_track.store(0, rank=rank+1, score=scores[gt_ind])
@@ -276,6 +282,7 @@ def critiquing(crit_args, mode):
                         continue
 
                 (crit_node, crit_rel) = crit
+
                 #print("selected critique:")
 
                #removing the selected critique from gt_facts
@@ -298,12 +305,17 @@ def critiquing(crit_args, mode):
                 #print(new_user_emb[0])
                 (scores, ranked) = get_scores(new_user_emb, rel_emb[0], item_emb, model_args.learning_rel)
                 post_rank = get_rank(ranked, [gt], all_gt, id2index)
+                ranked_post = 1*ranked
+                pcd = 0
+                if crit_args.objective == 'pcd':
+
+                    pcd = get_postdiff(ranked_pre, ranked_post, crit_node, obj2items, all_gt, id2index)
 
                 #print("rank after update")
                 #print(post_rank)
 
                 # save info
-                info_track.store(sn+1, rank=post_rank+1, score=scores[gt_ind], dist=(new_user_emb, d))
+                info_track.store(sn+1, rank=post_rank+1, score=scores[gt_ind], dist=(new_user_emb, d), pcd=pcd)
 
             #rec_candidates = ranked[:(rec_k + len(train_gt))]
             #rec_candidate_ids = [index2id[int(x)] for x in rec_candidates]

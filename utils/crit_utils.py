@@ -2,6 +2,7 @@ import os, sys, torch, pickle
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+from tester import get_rank, get_rank_nongt
 
 # for tracking and saving important debug info
 class InfoTrack:
@@ -11,6 +12,7 @@ class InfoTrack:
         self.dists = []
         self.ranks = []
         self.scores = []
+        self.pcds = []
         self.param_tuning = param_tuning
         self.session = session
 
@@ -19,6 +21,7 @@ class InfoTrack:
             self.d_temp = np.zeros(self.sess_len)
             self.r_temp = np.zeros(self.sess_len + 1)
             self.s_temp = np.zeros(self.sess_len + 1)
+            self.pcds_temp = np.zeros(self.sess_len + 1)
 
     # calculate scores
     def calc_score(self, dist):
@@ -30,10 +33,11 @@ class InfoTrack:
 
     # update info into arrays
     # NOTE: this class is very brittle...
-    def store(self, sess_no, rank=None, score=None, dist=None):
+    def store(self, sess_no, rank=None, score=None, dist=None, pcd=None):
         if sess_no == 0: self.new_temps()
         if rank is not None: self.r_temp[sess_no:] = rank
         if score is not None: self.s_temp[sess_no] = score
+        if pcd is not None: self.pcds_temp[sess_no:] = pcd
         if dist is not None: self.d_temp[sess_no-1] = self.calc_score(dist)
         self.session = sess_no
 
@@ -42,6 +46,8 @@ class InfoTrack:
         self.dists.append(self.d_temp)
         self.ranks.append(self.r_temp)
         self.scores.append(self.s_temp)
+        self.pcds.append(self.pcds_temp)
+
 
 
     # save info for stopping et al.
@@ -50,6 +56,7 @@ class InfoTrack:
         dists = np.array(self.dists)
         ranks = np.array(self.ranks)
         scores = np.array(self.scores)
+        pcds = np.array(self.pcds)
         #save_path = os.path.join('results', test_name)
         save_path = test_name
         os.makedirs(save_path, exist_ok=True)
@@ -61,13 +68,15 @@ class InfoTrack:
         if self.param_tuning == 'per_session':
             mrr_last = (np.mean(ranks[:,self.session-1]) - np.mean(ranks[:,self.session]))
             #hr_last = (np.sum(ranks[:,-1]<12, axis = 0) - np.sum(ranks[:,0]<12, axis = 0)) / (ranks[:,-1].shape[0])
-            hr_last = (np.sum(ranks[:,self.session]<12, axis = 0) - np.sum(ranks[:,self.session-1]<12, axis = 0)) / (ranks[:,self.session].shape[0])    
+            hr_last = (np.sum(ranks[:,self.session]<12, axis = 0) - np.sum(ranks[:,self.session-1]<12, axis = 0)) / (ranks[:,self.session].shape[0])
+            pcd_last = np.mean(pcds[:,self.session])    
         elif self.param_tuning == 'together':
             mrr_last = (np.mean(ranks[:,-1]) - np.mean(ranks[:,0]))
             temp = 0
             for i in range(1,self.sess_len+1):
                 temp += np.sum(ranks[:,i]<12, axis = 0) - np.sum(ranks[:,0]<12, axis = 0)
-            hr_last = temp / (self.sess_len * ranks[:,0].shape[0])    
+            hr_last = temp / (self.sess_len * ranks[:,0].shape[0]) 
+            pcd_last = np.mean(pcds[:,self.session])    
         # take this and plot it, look at it etc...
         if self.objective == 'hits':
             print("last hit rate:")
@@ -82,6 +91,12 @@ class InfoTrack:
             np.save(os.path.join(save_path, 'stop_metric.npy'), mrr_last)
             with open(os.path.join(save_path,'stop_metric.txt'), 'w') as f:
                 f.write(str(mrr_last))
+        elif self.objective == 'pcd':
+            print("PCD value:")
+            print(np.mean(pcds[:,self.session]))
+            np.save(os.path.join(save_path, 'stop_metric.npy'), pcd_last)
+            with open(os.path.join(save_path,'stop_metric.txt'), 'w') as f:
+                f.write(str(pcd_last))
         np.save(os.path.join(save_path, 'rank_track.npy'), ranks)
         np.save(os.path.join(save_path, 'score_track.npy'), scores)
         np.save(os.path.join(save_path, 'dist_track.npy'), dists)
@@ -379,3 +394,35 @@ def sim_selector(gt, item_emb, id2index, index2id, device, k=1):
     if gt in pick: pick.remove(gt)
     ind = np.random.randint(len(pick))
     return (pick[ind], 0)
+
+
+
+# Used for the Single Step experiment to calculate postcritiquingdiff
+
+def get_postdiff(ranked_pre, ranked_post, crit_node, obj2items, all_gt, id2index):
+    # items that are related to the crit node
+    pos_items = obj2items[crit_node]
+
+    # some elements in the obj2item dict are not items. we need to remove them
+    pos_items = pos_items[np.isin(pos_items, np.fromiter(id2index.keys(), dtype=int))]
+
+    #for item in pos_items:
+     #   if item not in id2index.keys():
+      #      pos_items = np.setdiff1d(pos_items, item)
+
+    # avg rank of positive items before critique
+    try:
+        pos_ranked_pre = np.mean(get_rank(ranked_pre, pos_items, all_gt, id2index))
+    except:
+        pos_ranked_pre = np.mean(get_rank_nongt(ranked_pre, pos_items, all_gt, id2index))
+     # avg rank of positive items after critique
+    try:
+        pos_ranked_post = np.mean(get_rank(ranked_post, pos_items, all_gt, id2index))
+    except:
+        pos_ranked_post = np.mean(get_rank_nongt(ranked_post, pos_items, all_gt, id2index))
+    pcd = (pos_ranked_pre - pos_ranked_post) / pos_ranked_pre
+    
+
+    return pcd
+
+

@@ -23,11 +23,11 @@ class Params:
             temp_dict[0] = {
                     # covar [1e-5, 1]
                     'user_prec' : ([-5, 5], float, 10),
-                    #'default_prec' : ([-5, 5], float, 10),
+                    'default_prec' : ([-5, 5], float, 10),
                     #'multi_k' : ([1, 100], int, None)
                     #'z_prec' : ([-5, 5], float, 10),
                     #'z_mean' : ([-5, 5], float, 10),
-                    'etta' : ([-5, 5], float, 10),
+                    #'etta' : ([-5, 5], float, 10),
                     #'etta_1' : ([-5, 5], float, 10),
                     #'etta_2' : ([-5, 5], float, 10),
                     #'etta_3' : ([-5, 5], float, 10),
@@ -39,12 +39,12 @@ class Params:
             for i in range(1,session_length):
                 temp_dict[i]= {
                     # covar [1e-5, 1]
-                    #'default_prec' : ([-5, 5], float, 10),
+                    'default_prec' : ([-5, 5], float, 10),
                     #'user_prec' : ([-5, 5], float, 10),
                     #'multi_k' : ([1, 100], int, None)
                     #'z_prec' : ([-5, 5], float, 10),
                     #'z_mean' : ([-5, 5], float, 10),
-                    'etta' : ([-5, 5], float, 10),
+                    #'etta' : ([-5, 5], float, 10),
                     #'etta_1' : ([-5, 5], float, 10),
                     #'etta_2' : ([-5, 5], float, 10),
                     #'etta_3' : ([-5, 5], float, 10),

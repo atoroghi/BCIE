@@ -29,7 +29,7 @@ def get_args_inner():
     parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
     parser.add_argument('-num_users', default=1000, type=int, help='number of users')
     parser.add_argument('-sim_k', default=0, type=int, help='number closest movies for direct single testing')
-    parser.add_argument('-objective', default='hits', type=str, help='hits or rank')
+    parser.add_argument('-objective', default='hits', type=str, help='hits or rank or pcd')
     # single vs mult
     parser.add_argument('-critique_target', default='multi', type=str, help='single or multi')
     parser.add_argument('-evidence_type', default='direct', type=str, help='direct or indirect')
