@@ -55,6 +55,8 @@ def get_args_critique():
     parser.add_argument('-name', default='diff', type=str, help='name of current test')
     parser.add_argument('-fold', default=0, type=int, help='fold')
     parser.add_argument('-session', default=0, type=int, help='session used for per_session param_tuning')
+    parser.add_argument('-cv_type', default='crit', type = str, help = 'train or crit')
+    parser.add_argument('-dataset', default='ML_FB', type=str, help="ML_FB or LFM")
     
 
     args = parser.parse_args()
@@ -110,7 +112,6 @@ def critiquing(crit_args, mode):
         except:
             ettas = crit_args.session_length * [crit_args.etta]; alpha = crit_args.alpha; user_precs = crit_args.session_length * [crit_args.user_prec]
             default_precs = crit_args.session_length * [crit_args.default_prec]; z_means = crit_args.session_length * [crit_args.z_mean]; z_precs = crit_args.session_length * [crit_args.z_prec]
-
 
     # for cluster check
     #if crit_args.cluster_check: crit_args.num_users = 10
@@ -173,6 +174,8 @@ def critiquing(crit_args, mode):
     items_h, items_t, id2index, index2id = get_array(model, dataloader, model_args, device, rec=True)
     item_emb = (items_h, items_t)
     total_items = items_h.shape[0]
+    print(items_t[id2index[2796]])
+    sys.exit()
 
     # get all relationships
     with torch.no_grad():
@@ -185,6 +188,7 @@ def critiquing(crit_args, mode):
         rel_emb = torch.permute(rel_emb, (1,0,2))
 
     likes_rel = rel_emb[0]
+
 
     # all users, gt + data (based on test / train)
     get_gt = GetGT(dataloader.fold, mode)
@@ -239,13 +243,19 @@ def critiquing(crit_args, mode):
 
 
             # save info
-            info_track.store(0, rank=rank+1, score=scores[gt_ind])
+
+            user_emb_prec = user_precs[0] * torch.eye(model_args.emb_dim).to(device)
+            info_track.store(0, rank=rank+1, score=scores[gt_ind], user_emb=user_emb, user_emb_prec=(user_emb_prec,user_emb_prec), gt=gt, crit=(0,0), user=user)
 
 
             # a few sessions for each user 
             #for sn in range(crit_args.session_length):
             for sn in range(last_session):
 ##############################################################
+                #if rank < 11:
+                #    info_track.store(sn+1, rank=rank+1, score=scores[gt_ind], dist=(user_emb,user_emb), pcd=0)
+                #    continue
+
                 if sn == 0: 
                     update_info = UpdateInfo(user_emb, ettas, user_precs, default_precs, z_means, z_precs, crit_args, model_args, device, likes_emb=likes_rel)
                 else:
@@ -303,10 +313,11 @@ def critiquing(crit_args, mode):
                     beta_update_indirect(update_info, sn, crit_args, model_args, device, crit_args.update_type, crit_args.map_finder, ettas, alpha)
 
                 # track rank in training
-                new_user_emb, _ = update_info.get_priorinfo()
+                new_user_emb, user_emb_prec = update_info.get_priorinfo()
                 #print(new_user_emb[0])
                 (scores, ranked) = get_scores(new_user_emb, rel_emb[0], item_emb, model_args.learning_rel)
-                post_rank = get_rank(ranked, [gt], all_gt, id2index)
+                rank = get_rank(ranked, [gt], all_gt, id2index)
+                post_rank = 1*rank
                 ranked_post = 1*ranked
                 pcd = 0
 
@@ -319,7 +330,7 @@ def critiquing(crit_args, mode):
                 #print(post_rank)
 
                 # save info
-                info_track.store(sn+1, rank=post_rank+1, score=scores[gt_ind], dist=(new_user_emb, d), pcd=pcd)
+                info_track.store(sn+1, rank=post_rank+1, score=scores[gt_ind], dist=(new_user_emb, d), pcd=pcd, user_emb=(torch.unsqueeze(new_user_emb[0],axis=0),torch.unsqueeze(new_user_emb[1],axis=0)), user_emb_prec = user_emb_prec, gt=gt, crit=crit, user=user)
 
             #rec_candidates = ranked[:(rec_k + len(train_gt))]
             #rec_candidate_ids = [index2id[int(x)] for x in rec_candidates]
@@ -332,5 +343,5 @@ def critiquing(crit_args, mode):
 
 if __name__ == '__main__':
     crit_args = get_args_critique()
-    critiquing(crit_args, 'val')
-    #critiquing(crit_args, 'test')
+    #critiquing(crit_args, 'val')
+    critiquing(crit_args, 'test')

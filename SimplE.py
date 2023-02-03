@@ -8,7 +8,10 @@ class SimplE(nn.Module):
         super(SimplE, self).__init__()
         self.num_ent = dataloader.num_item
         self.num_rel = dataloader.num_rel
+        print(self.num_rel)
+        print(self.num_ent)
         self.emb_dim = args.emb_dim
+        print(self.emb_dim)
         self.reg_lambda = args.reg_lambda
         self.reg_type = args.reg_type
         self.loss_type = args.loss_type

@@ -15,7 +15,7 @@ def get_model_args():
     # hyper-parameters (optimized)
     parser.add_argument('-lr', default=1, type=float, help="learning rate")
     parser.add_argument('-batch_size', default=4096, type=int, help="batch size")
-    parser.add_argument('-emb_dim', default=128, type=int, help="embedding dimension")
+    parser.add_argument('-emb_dim', default=14, type=int, help="embedding dimension")
     parser.add_argument('-reg_lambda', default=1e-3, type=float, help="kg loss reg term")
     parser.add_argument('-kg_lambda', default=1, type=float, help="l2 regularization parameter")   
     parser.add_argument('-neg_ratio', default=30, type=int, help="number of negative examples per positive example")
@@ -77,6 +77,7 @@ def get_model_args():
     parser.add_argument('-name', default='diff', type=str, help='name of current test')
     parser.add_argument('-fold', default=0, type=int, help='fold')
     parser.add_argument('-no_hps', default=4, type=int, help='number of considered hps for tuning')
+    parser.add_argument('-cv_type', default='crit', type = str, help = 'train or crit')
 
     args = parser.parse_args()
     return args
@@ -112,7 +113,8 @@ def main(args):
     if args.test_name == None:
         raise ValueError('enter a test name folder using -test_name')
     os.makedirs('results', exist_ok=True)
-    save_path = os.path.join("results", str(args.test_name))
+    #save_path = os.path.join("results", str(args.test_name))
+    save_path = str(args.test_name)
     os.makedirs(save_path, exist_ok=True) # TODO: update this is continue training...
     save_hyperparams(save_path, args)
 

@@ -19,10 +19,11 @@ def get_args_inner():
     parser.add_argument('-batch', default=4, type=int, help='no of simultaneous calls of script')
     parser.add_argument('-folds', default=5, type=int, help='no of folds')
     parser.add_argument('-fold', default=0, type=int, help='fold')
-    parser.add_argument('-epochs_all', default=60, type=int, help='no of total epochs')
+    parser.add_argument('-epochs_all', default=2, type=int, help='no of total epochs')
     parser.add_argument('-tune_type', default='two_stage', type=str, help='two_stage or joint')
     parser.add_argument('-param_tuning', default='per_session', type=str, help='per_session or together')
     parser.add_argument('-name', default='diff', type=str, help='name of current test')
+    parser.add_argument('-cv_type', default='crit', type = str, help = 'train or crit')
 
     # critique args
     parser.add_argument('-multi_k', default=10, type=int, help='number of samples for multi type update')
@@ -53,7 +54,7 @@ def get_args_inner():
     # optimization, saving and data
     parser.add_argument('-epochs', default=30, type=int, help="number of epochs")
     parser.add_argument('-save_each', default=1, type=int, help="validate every k epochs")
-    parser.add_argument('-dataset', default='ML_FB', type=str, help="dataset name")
+    parser.add_argument('-dataset', default='ML_FB', type=str, help="ML_FB or LFM")
     parser.add_argument('-stop_width', default=4, type=int, help="number of SAVES where test is worse for early stopping")
     #parser.add_argument('-fold', default=0, type=int, help="fold to use data from")
     
@@ -111,6 +112,7 @@ if __name__ == '__main__':
         tune_names = [crit_args.tune_name]
     tune_names = ['tilt_small']
 
+
     # run each folder
     for i, tune_name in enumerate(tune_names):
         #if cluster_check and i > 0: break
@@ -120,9 +122,9 @@ if __name__ == '__main__':
         crit_args = get_args_critique()
         crit_args.crit_mode = inner_args.crit_mode
         crit_args.sim_k = inner_args.sim_k
-        
+        cv_type = inner_args.cv_type; param_tuning = inner_args.param_tuning; session_length = inner_args.session_length
 
-        
+
         # do asserts
         model_arg_asserts(model_args)
         crit_arg_asserts(crit_args)
@@ -137,14 +139,18 @@ if __name__ == '__main__':
         # Using the same hps (default_prec, z_prec, etc) in all sessions
         if inner_args.param_tuning == 'together':
             session = 0
-            tuner(args, full_tune_name, fold, epochs, batch, n, tune_type, inner_args.param_tuning, inner_args.session_length, session)
+            tuner(args, full_tune_name, fold, epochs, batch, n, tune_type, param_tuning, session_length, session, cv_type)
         # Using separate hps for each session
         elif inner_args.param_tuning == 'per_session':
-            for session in range(inner_args.session_length):
+            for session in range(session_length):
                 args[0].session = session
-                tuner(args, full_tune_name, fold, epochs, batch, n, tune_type, inner_args.param_tuning, inner_args.session_length, session)
+                tuner(args, full_tune_name, fold, epochs, batch, n, tune_type, param_tuning, session_length, session, cv_type)
 
-############
+
+
+ 
+
+####    ########
 # code to make new dataset split
 #    if False: 
         #print('making new datasets')

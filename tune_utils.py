@@ -79,7 +79,7 @@ class Params:
                     # name : (range, type, base)
                     'lr' : ([-6, 1], float, 10),
                     'init_scale' : ([-6, 1], float, 10),
-                    'batch_size' : ([11, 14], int, 2),
+                    'batch_size' : ([8, 11], int, 2),
                     #'neg_power' : ([0, 1], float, None),
                     #'emb_dim' : ([2, 8], int, 2),
                     #'reg_lambda' : ([-7, 1], float, 10),
@@ -90,7 +90,11 @@ class Params:
     # TODO: this offset is bad and a quick patch
     # take params from gp to real values
     def convert(self, i, po, p, args, session, offset=0):
-        for j, (arg_name, spec) in enumerate(self.param_dict[session].items()):
+        if self.cv_type == 'train':
+            param_dict_type = self.param_dict
+        else:
+            param_dict_type = self.param_dict[session]
+        for j, (arg_name, spec) in enumerate(param_dict_type.items()):
             for a in vars(args):
                 # get proper arg corresponding to param_dict values
                 if a == arg_name:
@@ -112,7 +116,7 @@ class Params:
 
 # main class to launch code that gp is trying to opimize
 class ScriptCall:
-    def __init__(self, args, params, tune_name, fold_num, path, tune_type, param_tuning, session_length, session):
+    def __init__(self, args, params, tune_name, fold_num, path, tune_type, param_tuning, session_length, session, cv_type):
         # TODO: unpack params into model and crit
         self.args = args
         self.tune_name_temp = tune_name
@@ -123,6 +127,7 @@ class ScriptCall:
         self.param_tuning = param_tuning
         self.session_length = session_length
         self.session = session
+        self.cv_type = cv_type
 
     def run_process(self,p, py_file, args_list, crit_test_names, crit_load_names, model_test_names):
         subs = []
@@ -141,6 +146,8 @@ class ScriptCall:
             for k, v in vars(used_args).items():
                 proc.append('-{}'.format(k))
                 proc.append('{}'.format(v))
+            print(proc)
+            #sys.exit()
 
             sub = subprocess.Popen(proc)
             subs.append(sub)
@@ -163,57 +170,78 @@ class ScriptCall:
             # po is gp values corresponding to discretization
             
             # folder names for loading and saving
-            if self.tune_type == 'joint':
-                folders = sorted(os.listdir(os.path.join(self.path, 'train')), key=natural_key)
+            if self.cv_type == 'train':
+                folders = sorted(os.listdir(self.tune_name_temp), key=natural_key)
                 folders = [f for f in folders if 'train' in f]
-                crit_load_name = os.path.join('results', self.tune_name_temp, 'fold_{}'.format(self.fold_num), 'train', 'train_{}'.format(len(folders) + i)) 
+                self.tune_name = self.tune_name_temp
+                model_test_name = os.path.join(self.tune_name, 'train_{}'.format(len(folders) + i))
 
-            # here we only load the best model of the fold and make crit result folders
-            elif self.tune_type == 'two_stage':
-                if self.args[0].param_tuning == 'per_session':
-                    self.tune_name = os.path.join(self.tune_name_temp, 'session_{}'.format(self.session))
+            if self.cv_type == 'crit':
+                if self.tune_type == 'joint':
+                    folders = sorted(os.listdir(os.path.join(self.tune_name_temp, 'train')), key=natural_key)
+                    folders = [f for f in folders if 'train' in f]
+                    crit_load_name = os.path.join('results', self.tune_name_temp, 'fold_{}'.format(self.fold_num), 'train', 'train_{}'.format(len(folders) + i)) 
 
-                elif self.args[0].param_tuning == 'together':
-                    self.tune_name = self.tune_name_temp
+                # here we only load the best model of the fold and make crit result folders
+                elif self.tune_type == 'two_stage':
+                    if self.args[0].param_tuning == 'per_session':
+                        self.tune_name = os.path.join(self.tune_name_temp, 'session_{}'.format(self.session))
+
+                    elif self.args[0].param_tuning == 'together':
+                        self.tune_name = self.tune_name_temp
 
                 folders = sorted(os.listdir(self.tune_name), key=natural_key)
                 folders = [f for f in folders if 'train' in f]
-                (best_score, best_run, best_epoch, best_folder) = best_model(train_path)
-
-                crit_load_name = os.path.join(train_path, best_folder)
-
+                model_test_name = os.path.join(self.tune_name,'train', 'train_{}'.format(len(folders) + i))
+            (best_score, best_run, best_epoch, best_folder) = best_model(train_path)
+            crit_load_name = os.path.join(train_path, best_folder)
             crit_test_name = os.path.join(self.tune_name, 'train_{}'.format(len(folders) + i))
-            model_test_name = os.path.join(self.path, 'train', 'train_{}'.format(len(folders) + i))
+            
 
             # save to list
             crit_test_names.append(crit_test_name)
             crit_load_names.append(crit_load_name)
             model_test_names.append(model_test_name)
 
-            # discretize params before feeding back to gp 
-            offset = len(self.params[0].param_dict[self.session])
+            ## if crit vs if train\
+            if self.cv_type == 'crit': 
 
-            crit_args, po = self.params[0].convert(i, po, p, self.args[0], self.session)
-            model_args = []
-            if self.tune_type == 'joint':
+                # discretize params before feeding back to gp 
+                offset = len(self.params[0].param_dict[self.session])
+
+                crit_args, po = self.params[0].convert(i, po, p, self.args[0], self.session)
+                model_args = []
+                if self.tune_type == 'joint':
+                    model_args, po = self.params[1].convert(i, po, p, self.args[1], offset)
+
+                crit_args_copy = copy.deepcopy(crit_args)
+                model_args_copy = copy.deepcopy(model_args)
+
+                args_list.append((crit_args_copy, model_args_copy))
+            
+            elif self.cv_type == 'train':
+                offset = len(self.params[1].param_dict)
+                model_args = []
+                crit_args, po = self.params[0].convert(i, po, p, self.args[0], self.session)
                 model_args, po = self.params[1].convert(i, po, p, self.args[1], offset)
-
-            crit_args_copy = copy.deepcopy(crit_args)
-            model_args_copy = copy.deepcopy(model_args)
-
-            args_list.append((crit_args_copy, model_args_copy))
+                model_args_copy = copy.deepcopy(model_args)
+                args_list.append((crit_args, model_args_copy))
 
   
-        # run script for all hyperparams in the batch   
-        if self.tune_type == 'joint':
+            # run script for all hyperparams in the batch   
+        if self.tune_type == 'joint' and self.cv_type == 'crit':
             print('training')
             self.run_process(p, 'launch.py', args_list, crit_test_names, crit_load_names, model_test_names)
             print('critique')
             self.run_process(p, 'critique.py', args_list, crit_test_names, crit_load_names, model_test_names)
-            
-        elif self.tune_type == 'two_stage':
+        
+        elif self.tune_type == 'two_stage' and self.cv_type == 'crit':
             print('critique')
             self.run_process(p, 'critique.py', args_list, crit_test_names, crit_load_names, model_test_names)
+        
+        elif self.cv_type == 'train':
+            print('training')
+            self.run_process(p, 'launch.py', args_list, crit_test_names, crit_load_names, model_test_names)
 
         ## get recall at k
         best_mrr = torch.empty(p.shape[0])

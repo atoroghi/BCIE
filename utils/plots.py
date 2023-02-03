@@ -27,7 +27,8 @@ class RankTrack:
 # plots metics over the training sequence
 def temporal_plot(test_name, k):
     # get all folders
-    path = os.path.join('results', test_name)
+    #path = os.path.join('results', test_name)
+    path = str(test_name)
     folders = [f for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
     folders = sorted(folders, key=natural_key)
 
@@ -79,7 +80,9 @@ def temporal_plot(test_name, k):
 def save_metrics(rank_track, test_name, epoch, mode, k=10):
     # for train loop
     if mode == 'val':
-        save_path = os.path.join('results', test_name, 'epoch_{}'.format(epoch)) 
+        #save_path = os.path.join('results', test_name, 'epoch_{}'.format(epoch)) 
+        save_path = os.path.join(test_name, 'epoch_{}'.format(epoch)) 
+        
         os.makedirs(save_path, exist_ok=True)
 
         # save metric_track for eval performance over training
@@ -92,7 +95,9 @@ def save_metrics(rank_track, test_name, epoch, mode, k=10):
         #rank_at_k = np.where(rank < k)[0].shape[0] / rank.shape[0]
 
         # load previous rank_tracking
-        stop_metric_path = os.path.join('results', test_name, 'stop_metric.npy')  
+        #stop_metric_path = os.path.join('results', test_name, 'stop_metric.npy')  
+        stop_metric_path = os.path.join(test_name, 'stop_metric.npy')  
+        
         if epoch != 0:
             scores = np.load(stop_metric_path, allow_pickle=True)
             saved_scores = np.append(scores, mrr)
@@ -104,21 +109,26 @@ def save_metrics(rank_track, test_name, epoch, mode, k=10):
 
     # for test loop
     else:
-        save_path = os.path.abspath(os.path.join('results', test_name, '../..'))
+        #save_path = os.path.abspath(os.path.join('results', test_name, '../..'))
+        save_path = os.path.abspath(os.path.join(test_name, '../..'))
+        
         os.makedirs(save_path, exist_ok=True)
 
         rank = rank_track.info[0] # likes relation
-        hit_1 = np.where(rank < 1)[0].shape[0] / rank.shape[0]
-        hit_3 = np.where(rank < 3)[0].shape[0] / rank.shape[0]
-        hit_10 = np.where(rank < 10)[0].shape[0] / rank.shape[0]
+        hit_1 = np.where(rank < 2)[0].shape[0] / rank.shape[0]
+        hit_3 = np.where(rank < 4)[0].shape[0] / rank.shape[0]
+        hit_10 = np.where(rank < 11)[0].shape[0] / rank.shape[0]
         print(hit_10)
 
         with open(os.path.join(save_path, 'results.txt'), 'a') as f:
-            f.write('{} {} {}\n'.format(hit_1, hit_3, hit_10))            
+            f.write('{} {} {}\n'.format(hit_1, hit_3, hit_10))
+        np.save(os.path.join(save_path, 'rank_track.npy'), rank)            
 
 # plot distribution of ranks and line plot of hits @ k per epoch
 def rank_plot(rank_track, test_name, epoch):
-    save_path = os.path.join('results', test_name, 'epoch_{}'.format(epoch)) 
+    #save_path = os.path.join('results', test_name, 'epoch_{}'.format(epoch)) 
+    save_path = os.path.join(test_name, 'epoch_{}'.format(epoch)) 
+    
     os.makedirs(save_path, exist_ok=True)
 
     # distribution
@@ -169,9 +179,14 @@ def loss_save(rec, kg, reg, test_name):
     fig2.set_xlabel('Epoch')
     
     plt.tight_layout()
-    plt.savefig(os.path.join('results', test_name, 'loss.jpg'))
-    plt.close()
+    #plt.savefig(os.path.join('results', test_name, 'loss.jpg'))
+    plt.savefig(os.path.join(test_name, 'loss.jpg'))
     
-    np.save(os.path.join('results', test_name, 'rec_loss.npy'), np.array(rec), allow_pickle=True)
-    np.save(os.path.join('results', test_name, 'kg_loss.npy'), np.array(kg), allow_pickle=True)
-    np.save(os.path.join('results', test_name, 'reg_loss.npy'), np.array(reg), allow_pickle=True)
+    plt.close()
+    #np.save(os.path.join('results', test_name, 'rec_loss.npy'), np.array(rec), allow_pickle=True)
+    #np.save(os.path.join('results', test_name, 'kg_loss.npy'), np.array(kg), allow_pickle=True)
+    #np.save(os.path.join('results', test_name, 'reg_loss.npy'), np.array(reg), allow_pickle=True)
+
+    np.save(os.path.join(test_name, 'rec_loss.npy'), np.array(rec), allow_pickle=True)
+    np.save(os.path.join(test_name, 'kg_loss.npy'), np.array(kg), allow_pickle=True)
+    np.save(os.path.join(test_name, 'reg_loss.npy'), np.array(reg), allow_pickle=True)

@@ -13,15 +13,37 @@ class InfoTrack:
         self.ranks = []
         self.scores = []
         self.pcds = []
+        self.user_embs_for = []
+        self.user_embs_inv = []
+        self.user_embs_prec_for = []
+        self.user_embs_prec_inv = []
+        self.gts = []
+        self.crit_nodes = []
+        self.crit_rels = []
+        self.users = []
         self.param_tuning = param_tuning
         self.session = session
 
     # make new storage units (append to list later)
     def new_temps(self):
+            self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
             self.d_temp = np.zeros(self.sess_len)
             self.r_temp = np.zeros(self.sess_len + 1)
             self.s_temp = np.zeros(self.sess_len + 1)
             self.pcds_temp = np.zeros(self.sess_len + 1)
+            self.users_temp = np.zeros(self.sess_len + 1)
+            self.user_embs_for_temp = torch.zeros((1, self.sess_len + 1)).to(self.device)
+            # increse its dim. user_emb isn't a number but a tensor
+            self.user_embs_for_temp = self.user_embs_for_temp[:,:, None]
+            self.user_embs_inv_temp = torch.zeros((1, self.sess_len + 1)).to(self.device)
+            self.user_embs_inv_temp = self.user_embs_inv_temp[:,:, None]
+            self.user_embs_prec_for_temp = torch.zeros((self.sess_len + 1)).to(self.device)
+            self.user_embs_prec_for_temp = self.user_embs_prec_for_temp[ :, None, None]
+            self.user_embs_prec_inv_temp = torch.zeros((self.sess_len + 1)).to(self.device)
+            self.user_embs_prec_inv_temp = self.user_embs_prec_inv_temp[ :, None, None]
+            self.gt_temp = np.zeros(self.sess_len + 1)
+            self.crit_node_temp = np.zeros(self.sess_len + 1)
+            self.crit_rel_temp = np.zeros(self.sess_len + 1)
 
     # calculate scores
     def calc_score(self, dist):
@@ -33,12 +55,29 @@ class InfoTrack:
 
     # update info into arrays
     # NOTE: this class is very brittle...
-    def store(self, sess_no, rank=None, score=None, dist=None, pcd=None):
+    def store(self, sess_no, rank=None, score=None, dist=None, pcd=None, user_emb=None, user_emb_prec=None, gt=None, crit=None, user=None):
         if sess_no == 0: self.new_temps()
         if rank is not None: self.r_temp[sess_no:] = rank
         if score is not None: self.s_temp[sess_no] = score
         if pcd is not None: self.pcds_temp[sess_no:] = pcd
         if dist is not None: self.d_temp[sess_no-1] = self.calc_score(dist)
+        if user is not None: self.users_temp[sess_no:] = user
+        if user_emb is not None:
+            self.user_embs_for_temp = self.user_embs_for_temp.expand(-1,-1,user_emb[0].shape[1]).clone()
+            self.user_embs_for_temp[0][sess_no] = user_emb[0]
+            self.user_embs_inv_temp = self.user_embs_inv_temp.expand(-1,-1,user_emb[1].shape[1]).clone()
+            #1x6x14
+            self.user_embs_inv_temp[0][sess_no] = user_emb[1]
+        if user_emb_prec is not None:
+            self.user_embs_prec_for_temp  = self.user_embs_prec_for_temp.expand(-1,user_emb_prec[0].shape[1], user_emb_prec[0].shape[1]).clone()
+            #6x14x14
+            self.user_embs_prec_for_temp[sess_no:] = user_emb_prec[0]
+            self.user_embs_prec_inv_temp  = self.user_embs_prec_inv_temp.expand(-1,user_emb_prec[1].shape[1], user_emb_prec[1].shape[1]).clone()
+            self.user_embs_prec_inv_temp[sess_no:] = user_emb_prec[1]
+        if gt is not None: self.gt_temp[sess_no:] = gt
+        if crit is not None:
+            self.crit_node_temp[sess_no:]= crit[0]
+            self.crit_rel_temp[sess_no:]= crit[1]
         self.session = sess_no
 
         # list of each crit sesh
@@ -47,6 +86,14 @@ class InfoTrack:
         self.ranks.append(self.r_temp)
         self.scores.append(self.s_temp)
         self.pcds.append(self.pcds_temp)
+        self.user_embs_for.append(self.user_embs_for_temp)
+        self.user_embs_inv.append(self.user_embs_inv_temp)
+        self.user_embs_prec_for.append(self.user_embs_prec_for_temp)
+        self.user_embs_prec_inv.append(self.user_embs_prec_inv_temp)
+        self.gts.append(self.gt_temp)
+        self.crit_nodes.append(self.crit_node_temp)
+        self.crit_rels.append(self.crit_rel_temp)
+        self.users.append(self.users_temp)
 
 
 
@@ -57,6 +104,16 @@ class InfoTrack:
         ranks = np.array(self.ranks)
         scores = np.array(self.scores)
         pcds = np.array(self.pcds)
+        #user_embs = np.array(self.user_embs)
+        #user_embs_prec = np.array(self.user_embs_prec)
+        user_embs_for = self.user_embs_for
+        user_embs_inv = self.user_embs_inv
+        user_embs_prec_for = self.user_embs_prec_for
+        user_embs_prec_inv = self.user_embs_prec_inv
+        gts = np.array(self.gts)
+        crit_nodes = np.array(self.crit_nodes)
+        crit_rels = np.array(self.crit_rels)
+        users = np.array(self.users)
         #save_path = os.path.join('results', test_name)
         save_path = test_name
         os.makedirs(save_path, exist_ok=True)
@@ -100,6 +157,17 @@ class InfoTrack:
         np.save(os.path.join(save_path, 'rank_track.npy'), ranks)
         np.save(os.path.join(save_path, 'score_track.npy'), scores)
         np.save(os.path.join(save_path, 'dist_track.npy'), dists)
+        #np.save(os.path.join((save_path, 'user_embs.npy'), user_embs))
+        #np.save(os.path.join((save_path, 'user_embs_prec.npy'), user_embs_prec))
+
+        torch.save(user_embs_for, os.path.join(save_path, 'user_embs_for.pt'))
+        torch.save(user_embs_inv, os.path.join(save_path, 'user_embs_inv.pt'))
+        torch.save(user_embs_prec_for, os.path.join(save_path, 'user_embs_prec_for.pt'))
+        torch.save(user_embs_prec_inv, os.path.join(save_path, 'user_embs_prec_inv.pt'))
+        np.save(os.path.join(save_path, 'gts.npy'), gts)
+        np.save(os.path.join(save_path, 'crit_nodes.npy'), crit_nodes)
+        np.save(os.path.join(save_path, 'crit_rels.npy'), crit_rels)
+        np.save(os.path.join(save_path, 'users.npy'), users)
 
         # plotting
         sns.set_theme()

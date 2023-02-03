@@ -48,8 +48,8 @@ def get_scores(test_emb, rel_emb, item_emb, learning_rel):
 
 # get ground truth
 class GetGT:
-    def __init__(self, fold, mode):
-        path = os.path.join('datasets', 'ML_FB', 'fold {}'.format(fold))
+    def __init__(self, fold, mode, dataset):
+        path = os.path.join('datasets', dataset, 'fold {}'.format(fold))
         #names = ['kg_head_test', 'kg_head_train', 'kg_tail_test', 'kg_tail_train',
         #         'user_likes_test', 'user_likes_train']
         if mode == 'val': names = ['ul_train', 'ul_val']
@@ -192,7 +192,7 @@ def test(model, dataloader, epoch, args, mode, device):
     kg_triples = None #dataloader.kg_test 
 
     # load gt info and track rank scores classes
-    get_gt = GetGT(dataloader.fold, mode)
+    get_gt = GetGT(dataloader.fold, mode, args.dataset)
     rank_track = RankTrack()
 
     # NOTICE: KG IS NOT BEING USED 

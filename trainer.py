@@ -34,7 +34,8 @@ def train(dataloader, args, device='cuda'):
         elif args.optim_type == 'adam':
             optimizer = torch.optim.Adagrad(model.parameters(), lr = args.lr)
 
-        path = os.path.join('results', str(args.test_name))
+        #path = os.path.join('results', str(args.test_name))
+        path = str(args.test_name)
         os.makedirs(path, exist_ok=True)
         os.makedirs(os.path.join(path, 'models'), exist_ok=True)
 
@@ -90,7 +91,8 @@ def train(dataloader, args, device='cuda'):
                 loss_save(rec_score_track, kg_score_track, reg_track, str(args.test_name))
 
                 # check for early stopping
-                stop_metric = np.load(os.path.join('results', str(args.test_name), 'stop_metric.npy'))
+                #stop_metric = np.load(os.path.join('results', str(args.test_name), 'stop_metric.npy'))
+                stop_metric = np.load(os.path.join(str(args.test_name), 'stop_metric.npy'))
                 best = np.argmax(stop_metric)
 
                 if stop_metric.shape[0] - (best + 1) >= args.stop_width or epoch == args.epochs:

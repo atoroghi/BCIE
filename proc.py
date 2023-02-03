@@ -3,9 +3,9 @@ import numpy as np
 from numpy.random import default_rng
 
 # make adj matrix from rec triplets
-def adj_matrix(fold):
+def adj_matrix(fold, dataset_name):
     # get data
-    main_path = 'datasets/ML_FB/fold {}'.format(fold)
+    main_path = 'datasets/'+str(dataset_name)+'/fold {}'.format(fold)
     rec = np.load(os.path.join(main_path, 'train.npy'))
     rec = rec[:, [0,2]]
 

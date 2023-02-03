@@ -12,13 +12,13 @@ def natural_key(string_):
     return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
 
 # main entry point from inner_cv
-def tuner(args, tune_name, fold, epochs, batch, n, tune_type, param_tuning, session_length, session):
+def tuner(args, tune_name, fold, epochs, batch, n, tune_type, param_tuning, session_length, session, cv_type):
     (crit_args, model_args) = args
 
     # set folder structure
     path = tune_name
     os.makedirs(path, exist_ok=True)
-    if param_tuning == 'per_session':
+    if param_tuning == 'per_session' and 'cv_type' == 'crit':
         session_path = os.path.join(path, 'session_{}'.format(session))
         os.makedirs(session_path, exist_ok=True)
 
@@ -27,23 +27,36 @@ def tuner(args, tune_name, fold, epochs, batch, n, tune_type, param_tuning, sess
     crit_params = Params('crit', crit_args, tune_name, session_length)
 
     params = (crit_params, model_params)
-    if tune_type == 'joint':
+
+    if cv_type == 'train':
         model_params.save()
-        dim = len(model_params.param_dict) + len(crit_params.param_dict[session])
-    elif tune_type == 'two_stage':
-        dim = len(crit_params.param_dict[session])
-    crit_params.save()
+        dim = len(model_params.param_dict)
+
+    elif cv_type == 'crit':
+        if tune_type == 'joint':
+            model_params.save()
+            dim = len(model_params.param_dict) + len(crit_params.param_dict[session])
+        elif tune_type == 'two_stage':
+            dim = len(crit_params.param_dict[session])
+        crit_params.save()
 
     # main script for launching subprocesses
-    script_call = ScriptCall(args, params, tune_name, fold, path, tune_type, param_tuning, session_length, session)
+
+    script_call = ScriptCall(args, params, tune_name, fold, path, tune_type, param_tuning, session_length, session, cv_type)
 
     # load training data (if something failed)
 
     # in the per_session case each session has its own x_train and y_train
-    if param_tuning == 'per_session':
-        gp_path = session_path
-    elif param_tuning == 'together':
+    
+    if cv_type == 'train':
         gp_path = path
+    
+    elif cv_type == 'crit':
+        if param_tuning == 'per_session':
+            gp_path = session_path
+        elif param_tuning == 'together':
+            gp_path = path
+    
 
     if os.path.isfile(os.path.join(gp_path, 'x_train.pt')):
         begin = False

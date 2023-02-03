@@ -40,7 +40,7 @@ def solve(R, X, H, lam, rank, alpha):
         X[i] = vector_x
 
 def wrmf(dataloader, args, mode, device):
-    a, u_min = adj_matrix(args.fold) # adjacency matrix of user item
+    a, u_min = adj_matrix(args.fold, args.dataset) # adjacency matrix of user item
     a = a.to('cuda')
     m,n = a.shape
     cold_rows, cold_cols = get_cold(a, m, n)
