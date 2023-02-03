@@ -57,6 +57,7 @@ def get_args_critique():
     parser.add_argument('-session', default=0, type=int, help='session used for per_session param_tuning')
     parser.add_argument('-cv_type', default='crit', type = str, help = 'train or crit')
     parser.add_argument('-dataset', default='ML_FB', type=str, help="ML_FB or LFM")
+    parser.add_argument('-model_type', default='simple', type=str, help="model type (svd, Simple, etc)")
     
 
     args = parser.parse_args()

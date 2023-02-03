@@ -15,6 +15,7 @@ class DataLoader:
         # load datasets and info mappings
         path = os.path.join('datasets', self.name, 'fold {}'.format(self.fold))
         main_path = os.path.join('datasets', self.name)
+
         self.rec_train = np.load(os.path.join(path, 'train.npy'), allow_pickle=True)
         self.rec_test = np.load(os.path.join(path, 'test.npy'), allow_pickle=True)
         self.rec_val = np.load(os.path.join(path, 'val.npy'), allow_pickle=True)

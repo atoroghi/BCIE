@@ -22,7 +22,7 @@ class Params:
             # we need one set of parameters for each session
             temp_dict[0] = {
                     # covar [1e-5, 1]
-                    'user_prec' : ([-5, 5], float, 10),
+                    #'user_prec' : ([-5, 5], float, 10),
                     'default_prec' : ([-5, 5], float, 10),
                     #'multi_k' : ([1, 100], int, None)
                     'z_prec' : ([-5, 5], float, 10),
@@ -73,6 +73,12 @@ class Params:
                     'rank' : ([2, 9], int, 2),
                     'n_iter' : ([1, 200], int,None),
                 }
+            elif args.model_type == 'wrmf':
+                self.param_dict = {
+                    #name : (range, type, base)
+                    'rank' : ([2, 4], int, 2),
+                    'lam' : ([2, 4], int, 2),
+                }
 
             elif args.model_type == 'simple':
                 self.param_dict = {
@@ -101,6 +107,7 @@ class Params:
                     # back out arg from key
                     out, po[i,j+offset] = normal2param(p[i,j], spec)
                     setattr(args, a, out)
+                    
         return args, po
 
     # save to yaml file 
@@ -226,6 +233,7 @@ class ScriptCall:
                 model_args, po = self.params[1].convert(i, po, p, self.args[1], offset)
                 model_args_copy = copy.deepcopy(model_args)
                 args_list.append((crit_args, model_args_copy))
+                print(model_args_copy)
 
   
             # run script for all hyperparams in the batch   
