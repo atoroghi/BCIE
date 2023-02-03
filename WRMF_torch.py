@@ -78,7 +78,7 @@ def wrmf(dataloader, args, mode, device):
         id2index.update({it : it})
 
     # load gt info and track rank scores classes
-    get_gt = GetGT(dataloader.fold, mode)
+    get_gt = GetGT(dataloader.fold, mode, args.dataset)
     rank_track = RankTrack()
 
     # main test loop
