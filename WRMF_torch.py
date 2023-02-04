@@ -90,9 +90,9 @@ def wrmf(dataloader, args, mode, device):
         if test_gt == None: continue
         
         ranks = get_rank(ranked, test_gt, all_gt, id2index)
-        rprec = get_Rprec(ranked, test_gt, train_gt, id2index[i])
+        #rprec = get_Rprec(ranked, test_gt, train_gt, id2index[i])
 
-        rank_track.update(ranks, rprec, 0)
+        rank_track.update(ranks, 1, 0)
 
     # different save options if train or testing        
     epoch = 0
