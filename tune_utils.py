@@ -88,9 +88,9 @@ class Params:
                     'batch_size' : ([8, 11], int, 2),
                     #'neg_power' : ([0, 1], float, None),
                     #'emb_dim' : ([2, 8], int, 2),
-                    #'reg_lambda' : ([-7, 1], float, 10),
-                    #'kg_lambda' : ([-7, 1], float, 10),
-                    #'neg_ratio' : ([15, 30], int, None),
+                    'reg_lambda' : ([-7, 1], float, 10),
+                    'kg_lambda' : ([-7, 1], float, 10),
+                    'neg_ratio' : ([15, 30], int, None),
                 }
 
     # TODO: this offset is bad and a quick patch

@@ -86,7 +86,7 @@ def wrmf(dataloader, args, mode, device):
         scores = out[user2index[user]]
         ranked = torch.argsort(scores, descending=True)
 
-        test_gt, all_gt = get_gt.get(user)
+        test_gt, all_gt,_ = get_gt.get(user)
         if test_gt == None: continue
         
         ranks = get_rank(ranked, test_gt, all_gt, id2index)
@@ -94,10 +94,12 @@ def wrmf(dataloader, args, mode, device):
 
     # different save options if train or testing        
     epoch = 0
-    if mode == 'val': 
-        rank_plot(rank_track, args.test_name, epoch)
-        rank_at_k = save_metrics(rank_track, args.test_name, epoch, mode)
-        return rank_at_k
-
-    else:
-        save_metrics(rank_track, args.test_name, epoch, mode)
+    rank_plot(rank_track, args.test_name, epoch)
+    save_metrics(rank_track, args.test_name, epoch, mode)
+    #if mode == 'val': 
+    #    rank_plot(rank_track, args.test_name, epoch)
+    #    rank_at_k = save_metrics(rank_track, args.test_name, epoch, mode)
+    #    return rank_at_k
+##
+#    #else:
+    #    save_metrics(rank_track, args.test_name, epoch, mode)

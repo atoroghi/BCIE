@@ -254,7 +254,8 @@ if __name__ == '__main__':
             #if int(ml_id.group(1)) in rec[:,0]:
             if ml_id.group(1) in rec[:,0]:
                 new_ids += 1
-                userid2fbid_map.update({int(ml_id.group(1)) : TOTAL_FB_IDS + new_ids})
+                #userid2fbid_map.update({int(ml_id.group(1)) : TOTAL_FB_IDS + new_ids})
+                userid2fbid_map.update({ml_id.group(1) : TOTAL_FB_IDS + new_ids})
     # convert movielens user id's into freebase id's
     for i in range(rec.shape[0]):
         rec[i,0] = userid2fbid_map[rec[i,0]]
