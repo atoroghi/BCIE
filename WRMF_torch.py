@@ -1,5 +1,5 @@
 import sys, torch
-from tester import GetGT, RankTrack, get_rank 
+from tester import GetGT, RankTrack, get_rank, get_Rprec
 from proc import adj_matrix
 import numpy as np
 from utils import rank_plot, save_metrics
@@ -86,11 +86,13 @@ def wrmf(dataloader, args, mode, device):
         scores = out[user2index[user]]
         ranked = torch.argsort(scores, descending=True)
 
-        test_gt, all_gt,_ = get_gt.get(user)
+        test_gt, all_gt, train_gt = get_gt.get(user)
         if test_gt == None: continue
         
         ranks = get_rank(ranked, test_gt, all_gt, id2index)
-        rank_track.update(ranks, 0)
+        rprec = get_Rprec(ranked, test_gt, train_gt, id2index[i])
+
+        rank_track.update(ranks, rprec, 0)
 
     # different save options if train or testing        
     epoch = 0
