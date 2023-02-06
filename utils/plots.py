@@ -114,7 +114,7 @@ def save_metrics(rank_track, test_name, epoch, mode, k=10):
         
         os.makedirs(save_path, exist_ok=True)
 
-        rank = rank_track.info[0] # likes relation
+        rank = rank_track.info['rank'][0] # likes relation
         hit_1 = np.where(rank < 2)[0].shape[0] / rank.shape[0]
         hit_3 = np.where(rank < 4)[0].shape[0] / rank.shape[0]
         hit_10 = np.where(rank < 11)[0].shape[0] / rank.shape[0]
