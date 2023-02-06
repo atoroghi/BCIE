@@ -32,7 +32,7 @@ def get_model_args():
     parser.add_argument('-lam', default=100, type=int, help="lam for WRMF")
     
     # other hyper-params
-    parser.add_argument('-model_type', default='simple', type=str, help="model type (svd, Simple, etc)")
+    parser.add_argument('-model_type', default='simple', type=str, help="model type (svd, simple, etc)")
     parser.add_argument('-reg_type', default='tilt', type=str, help="tilt or gauss")
     parser.add_argument('-loss_type', default='gauss', type=str, help="softplus or gauss")
     parser.add_argument('-reduce_type', default='sum', type=str, help="sum or mean")

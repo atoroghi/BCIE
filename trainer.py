@@ -16,7 +16,7 @@ def train(dataloader, args, device='cuda'):
     if args.model_type == 'wrmf':
         wrmf(dataloader, args, 'val', device)
 
-    if args.model_type == 'svd':
+    elif args.model_type == 'svd':
         # train model
         print('svd is fucked')
         sys.exit()
@@ -25,7 +25,7 @@ def train(dataloader, args, device='cuda'):
         ranks = model.test_model(matrix_U, matrix_V)
         hits10 = np.sum(ranks<11)/ranks.shape[0]
 
-    else:
+    elif args.model_type == 'simple':
         model = SimplE(dataloader, args, device)
 
         if args.optim_type == 'adagrad':
