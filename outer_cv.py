@@ -24,7 +24,7 @@ def get_args():
     parser.add_argument('-name', default='diff', type = str, help = 'name of the test')
     parser.add_argument('-type_checking', default='no')
     parser.add_argument('-learnin_rel', default='learn')
-    parser.add_argument('-param_tuning', default='per_session', type=str, help='per_session or together')
+    parser.add_argument('-param_tuning', default='together', type=str, help='per_session or together')
     parser.add_argument('-session_length', default=5, type=int, help='number of critiquing sessions')
     return parser.parse_args() 
 
@@ -34,7 +34,8 @@ def test_fold(path, tune_name, best_folder, best_epoch, cv_type):
 
     # load model
     if cv_type == 'train':
-        path = os.path.join('results', tune_name, 'train', 'fold_{}'.format(i), 'train_{}'.format(best_run))
+        path = os.path.join(path, best_folder)
+        #path = os.path.join('results', tune_name, 'train', 'fold_{}'.format(i), 'train_{}'.format(best_run))
         with open(os.path.join(path, 'info.yml'), 'r') as f:
             yml = yaml.safe_load(f)
             for key in yml.keys():
