@@ -21,7 +21,7 @@ def get_args_inner():
     parser.add_argument('-fold', default=0, type=int, help='fold')
     parser.add_argument('-epochs_all', default=2, type=int, help='no of total epochs')
     parser.add_argument('-tune_type', default='two_stage', type=str, help='two_stage or joint')
-    parser.add_argument('-param_tuning', default='per_session', type=str, help='per_session or together')
+    parser.add_argument('-param_tuning', default='together', type=str, help='per_session or together')
     parser.add_argument('-name', default='diff', type=str, help='name of current test')
     parser.add_argument('-cv_type', default='crit', type = str, help = 'train or crit')
 

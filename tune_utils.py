@@ -153,8 +153,6 @@ class ScriptCall:
             for k, v in vars(used_args).items():
                 proc.append('-{}'.format(k))
                 proc.append('{}'.format(v))
-            print(proc)
-            #sys.exit()
 
             sub = subprocess.Popen(proc)
             subs.append(sub)
@@ -233,7 +231,6 @@ class ScriptCall:
                 model_args, po = self.params[1].convert(i, po, p, self.args[1], offset)
                 model_args_copy = copy.deepcopy(model_args)
                 args_list.append((crit_args, model_args_copy))
-                print(model_args_copy)
 
   
             # run script for all hyperparams in the batch   
