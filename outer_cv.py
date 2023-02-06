@@ -44,7 +44,7 @@ def test_fold(path, tune_name, best_folder, best_epoch, cv_type):
         if args.model_type == 'simple':
             load_path = os.path.join(path, 'models', 'best_model.pt')
             model = torch.load(load_path).to(device)
-            test(model, dataloader, best_epoch, args, 'test')
+            test(model, dataloader, best_epoch, args, 'test', device)
 
         elif args.model_type == 'wrmf':
             wrmf(dataloader, args, 'test', device)
