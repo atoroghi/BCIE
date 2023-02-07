@@ -2,6 +2,7 @@ import os, time, sys
 from SimplE import SimplE
 from utils import loss_save
 from WRMF_torch import wrmf
+from SVD_torch import svd
 import numpy as np
 from tqdm import tqdm
 import torch
@@ -18,7 +19,8 @@ def train(dataloader, args, device='cuda'):
 
     elif args.model_type == 'svd':
         # train model
-        print('svd is fucked')
+        print('reviving svd')
+        svd(dataloader, args, 'val', device)
         sys.exit()
         model = PureSVD(dataloader, args)
         matrix_U , matrix_V = model.train_model()
