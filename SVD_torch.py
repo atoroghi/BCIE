@@ -10,9 +10,9 @@ def svd(dataloader, args, mode, device):
     a = a.to('cuda')
     m,n = a.shape
     
-    #R = a.to_dense()
+    R = a.to_dense()
 
-    P, sigma, Qt = torch.svd_lowrank(a, args.rank)
+    P, sigma, Qt = torch.svd_lowrank(a, args.rank, niter=args.n_iter)
     RQ = torch.mm(R, Qt)
 
     # train
