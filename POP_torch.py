@@ -10,9 +10,9 @@ def pop(dataloader, args, mode, device):
     a = a.to('cuda')
     m,n = a.shape
     R = a.to_dense()
-    item_popularity = torch.tensor(torch.sum(R, axis = 0)).flatten()
-    RQ = torch.ones((m,1))
-    Y = item_popularity.reshape((1,n))
+    item_popularity = torch.tensor(torch.sum(R, axis = 0)).flatten().to(device)
+    RQ = torch.ones((m,1)).to(device)
+    Y = item_popularity.reshape((1,n)).to(device)
     #P, sigma, Qt = torch.svd_lowrank(a, args.rank, niter=args.n_iter)
     #RQ = torch.mm(R, Qt)
 
