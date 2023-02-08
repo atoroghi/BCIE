@@ -76,8 +76,8 @@ class Params:
             elif args.model_type == 'wrmf':
                 self.param_dict = {
                     #name : (range, type, base)
-                    'rank' : ([2, 4], int, 2),
-                    'lam' : ([2, 4], int, 2),
+                    'rank' : ([2, 8], int, 2),
+                    'lam' : ([2, 8], int, 2),
                 }
 
             elif args.model_type == 'simple':
