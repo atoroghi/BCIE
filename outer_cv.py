@@ -8,6 +8,7 @@ from dataload import DataLoader
 from sklearn.ensemble import RandomForestRegressor
 from SVD_torch import svd
 from WRMF_torch import wrmf
+from POP_torch import pop
 from critique import critiquing
 import seaborn as sns
 
@@ -50,6 +51,8 @@ def test_fold(path, tune_name, best_folder, best_epoch, cv_type):
             wrmf(dataloader, args, 'test', device)
         elif args.model_type == 'svd':
             svd(dataloader, args, 'test', device)
+        elif args.model_type == 'pop':
+            pop(dataloader, args, 'test', device)
     if cv_type == 'crit':
         save_path = os.path.join(path, 'test_results')
         os.makedirs(save_path, exist_ok = True)
