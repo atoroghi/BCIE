@@ -3,6 +3,7 @@ from SimplE import SimplE
 from utils import loss_save
 from WRMF_torch import wrmf
 from SVD_torch import svd
+from POP_torch import pop
 import numpy as np
 from tqdm import tqdm
 import torch
@@ -21,12 +22,8 @@ def train(dataloader, args, device='cuda'):
         # train model
         print('reviving svd')
         svd(dataloader, args, 'val', device)
-        sys.exit()
-        model = PureSVD(dataloader, args)
-        matrix_U , matrix_V = model.train_model()
-        ranks = model.test_model(matrix_U, matrix_V)
-        hits10 = np.sum(ranks<11)/ranks.shape[0]
-
+    elif args.model_type == 'pop':
+        pop(dataloader, args, 'val', device)
     elif args.model_type == 'simple':
         model = SimplE(dataloader, args, device)
 

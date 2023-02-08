@@ -67,7 +67,7 @@ class Params:
                 assert args.critique_target == 'multi'
 
         elif cv_type == 'train':
-            if args.model_type == 'svd':
+            if args.model_type == 'svd' or args.model_type == 'pop':
                 self.param_dict = {
                     # name : (range, type, base)
                     'rank' : ([2, 9], int, 2),
