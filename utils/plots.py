@@ -110,7 +110,7 @@ def save_metrics(rank_track, test_name, epoch, mode, k=10):
     # for test loop
     else:
         #save_path = os.path.abspath(os.path.join('results', test_name, '../..'))
-        save_path = os.path.abspath(os.path.join(test_name, '../..'))
+        save_path = os.path.abspath(os.path.join(test_name, '..'))
         
         os.makedirs(save_path, exist_ok=True)
 
@@ -119,6 +119,8 @@ def save_metrics(rank_track, test_name, epoch, mode, k=10):
         hit_3 = np.where(rank < 4)[0].shape[0] / rank.shape[0]
         hit_10 = np.where(rank < 11)[0].shape[0] / rank.shape[0]
         print(hit_10)
+        print("saving results in:")
+        print(save_path)
 
         with open(os.path.join(save_path, 'results.txt'), 'a') as f:
             f.write('{} {} {}\n'.format(hit_1, hit_3, hit_10))
