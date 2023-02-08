@@ -10,18 +10,18 @@ def svd(dataloader, args, mode, device):
     a = a.to('cuda')
     m,n = a.shape
     
-    R = a.to_dense()
+    #R = a.to_dense()
 
-    P, sigma, Qt = torch.svd_lowrank(a, args.rank, niter=args.n_iter)
-    RQ = torch.mm(R, Qt)
+    #P, sigma, Qt = torch.svd_lowrank(a, args.rank, niter=args.n_iter)
+    #RQ = torch.mm(R, Qt)
 
     # train
     print('args: {} {} {} {}'.format(args.rank, args.n_iter, args.alpha, args.lam))
-    out = RQ @ Qt.T
+    #out = RQ @ Qt.T
 
-    #(u, s, v) = torch.svd_lowrank(a, q=args.rank, niter=args.n_iter)
-    #e = s * torch.eye(s.shape[0]).to(device)
-    #out = u @ (e @ v.T) # estimate of user likes matrix
+    (u, s, v) = torch.svd_lowrank(a, q=args.rank, niter=args.n_iter)
+    e = s * torch.eye(s.shape[0]).to(device)
+    out = u @ (e @ v.T) # estimate of user likes matrix
     
     # all users and items in maps
     data = dataloader.rec_test if mode == 'test' else dataloader.rec_val
