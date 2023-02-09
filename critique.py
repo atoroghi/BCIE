@@ -58,6 +58,15 @@ def get_args_critique():
     parser.add_argument('-cv_type', default='crit', type = str, help = 'train or crit')
     parser.add_argument('-dataset', default='ML_FB', type=str, help="ML_FB or LFM")
     parser.add_argument('-model_type', default='simple', type=str, help="model type (svd, Simple, etc)")
+    parser.add_argument('-reg_type', default='tilt', type=str, help="tilt or gauss")
+    parser.add_argument('-loss_type', default='gauss', type=str, help="softplus or gauss")
+    parser.add_argument('-reduce_type', default='sum', type=str, help="sum or mean")
+    parser.add_argument('-optim_type', default='adagrad', type=str, help="adagrad or adam")
+    parser.add_argument('-sample_type', default='split_reg', type=str, help="combo, split_reg, split_rev")
+    parser.add_argument('-init_type', default='uniform', type=str, help="uniform or normal")
+    parser.add_argument('-learning_rel', default='learn', type=str, help="learn or freeze")
+    parser.add_argument('-type_checking', default='check', type=str, help="check or no")
+    parser.add_argument('-kg', default='kg', type=str, help="kg or no_kg")
     
 
     args = parser.parse_args()
