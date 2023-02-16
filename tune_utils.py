@@ -22,10 +22,10 @@ class Params:
             # we need one set of parameters for each session
             temp_dict[0] = {
                     # covar [1e-5, 1]
-                    #'user_prec' : ([-5, 5], float, 10),
+                    'user_prec' : ([-5, 5], float, 10),
                     'default_prec' : ([-5, 5], float, 10),
                     #'multi_k' : ([1, 100], int, None)
-                    'z_prec' : ([-5, 5], float, 10),
+                    #'z_prec' : ([-5, 5], float, 10),
                     #'z_mean' : ([-5, 5], float, 10),
                     #'etta' : ([-5, 5], float, 10),
                     #'etta_1' : ([-5, 5], float, 10),
@@ -42,7 +42,7 @@ class Params:
                     'default_prec' : ([-5, 5], float, 10),
                     #'user_prec' : ([-5, 5], float, 10),
                     #'multi_k' : ([1, 100], int, None)
-                    'z_prec' : ([-5, 5], float, 10),
+                    #'z_prec' : ([-5, 5], float, 10),
                     #'z_mean' : ([-5, 5], float, 10),
                     #'etta' : ([-5, 5], float, 10),
                     #'etta_1' : ([-5, 5], float, 10),
@@ -87,10 +87,10 @@ class Params:
                     'init_scale' : ([-6, 1], float, 10),
                     'batch_size' : ([8, 11], int, 2),
                     #'neg_power' : ([0, 1], float, None),
-                    #'emb_dim' : ([2, 8], int, 2),
-                    'reg_lambda' : ([-7, 1], float, 10),
-                    'kg_lambda' : ([-7, 1], float, 10),
-                    'neg_ratio' : ([15, 30], int, None),
+                    'emb_dim' : ([2, 5], int, 2),
+                    #'reg_lambda' : ([-7, 1], float, 10),
+                    #'kg_lambda' : ([-7, 1], float, 10),
+                    'neg_ratio' : ([15, 45], int, None),
                 }
 
     # TODO: this offset is bad and a quick patch
@@ -197,6 +197,7 @@ class ScriptCall:
 
                 folders = sorted(os.listdir(self.tune_name), key=natural_key)
                 folders = [f for f in folders if 'train' in f]
+
                 model_test_name = os.path.join(self.tune_name,'train', 'train_{}'.format(len(folders) + i))
             (best_score, best_run, best_epoch, best_folder) = best_model(train_path)
             crit_load_name = os.path.join(train_path, best_folder)

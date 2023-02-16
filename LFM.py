@@ -174,7 +174,6 @@ def dataset_fold(rec, num_fold, val_ratio=0.005):
 if __name__ == '__main__':
     kg_path = 'datasets/www_data/www_data/AmazonBook/kg/train.dat'
     rec_path = 'datasets/www_data/www_data/AmazonBook/rs/ratings.txt'
-
     #%
 
     kg = np.genfromtxt(kg_path, delimiter='\t', dtype=np.int32)
@@ -201,8 +200,8 @@ if __name__ == '__main__':
         for line in f:
             ml_id = re.search('(.+?)\t', line)
             fb_http = re.search('\t(.+?)\n', line)
-            #ml2fb_map.update({int(ml_id.group(1)) : fb_http.group(1)})
-            ml2fb_map.update({ml_id.group(1) : fb_http.group(1)})
+            ml2fb_map.update({int(ml_id.group(1)) : fb_http.group(1)})
+            #ml2fb_map.update({ml_id.group(1) : fb_http.group(1)})
     # maps free base html links to free base id's (final format)
     id2html_map = {}
     fb2id_map = {}

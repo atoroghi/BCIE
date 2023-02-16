@@ -18,7 +18,8 @@ def tuner(args, tune_name, fold, epochs, batch, n, tune_type, param_tuning, sess
     # set folder structure
     path = tune_name
     os.makedirs(path, exist_ok=True)
-    if param_tuning == 'per_session' and 'cv_type' == 'crit':
+    if param_tuning == 'per_session' and cv_type == 'crit':
+
         session_path = os.path.join(path, 'session_{}'.format(session))
         os.makedirs(session_path, exist_ok=True)
 
@@ -41,13 +42,12 @@ def tuner(args, tune_name, fold, epochs, batch, n, tune_type, param_tuning, sess
         crit_params.save()
 
     # main script for launching subprocesses
-
     script_call = ScriptCall(args, params, tune_name, fold, path, tune_type, param_tuning, session_length, session, cv_type)
 
     # load training data (if something failed)
 
     # in the per_session case each session has its own x_train and y_train
-    
+
     if cv_type == 'train':
         gp_path = path
     

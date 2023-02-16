@@ -205,6 +205,7 @@ def test(model, dataloader, epoch, args, mode, device):
         for j, test_item in enumerate(test_items):
             if j > 100: break
             #if j%100 == 0: print('{:.5f} {:.5f}'.format(j/test_items.shape[0], (time.time()-t0) / 60))
+            
 
             # for rec testing
             if i == 0:

@@ -54,7 +54,7 @@ def get_args_inner():
     # optimization, saving and data
     parser.add_argument('-epochs', default=30, type=int, help="number of epochs")
     parser.add_argument('-save_each', default=1, type=int, help="validate every k epochs")
-    parser.add_argument('-dataset', default='ML_FB', type=str, help="ML_FB or LFM")
+    parser.add_argument('-dataset', default='LFM', type=str, help="ML_FB or LFM")
     parser.add_argument('-stop_width', default=4, type=int, help="number of SAVES where test is worse for early stopping")
     #parser.add_argument('-fold', default=0, type=int, help="fold to use data from")
     
@@ -122,6 +122,7 @@ if __name__ == '__main__':
         crit_args = get_args_critique()
         crit_args.crit_mode = inner_args.crit_mode
         crit_args.sim_k = inner_args.sim_k
+        crit_args.param_tuning = inner_args.param_tuning
         cv_type = inner_args.cv_type; param_tuning = inner_args.param_tuning; session_length = inner_args.session_length
 
 

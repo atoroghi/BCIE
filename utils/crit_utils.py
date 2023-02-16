@@ -133,6 +133,7 @@ class InfoTrack:
             for i in range(1,self.sess_len+1):
                 temp += np.sum(ranks[:,i]<12, axis = 0) - np.sum(ranks[:,0]<12, axis = 0)
             hr_last = temp / (self.sess_len * ranks[:,0].shape[0]) 
+            #hr_last = (np.sum(ranks[:,self.sess_len]<12, axis = 0) - np.sum(ranks[:,0]<12, axis = 0))/ (ranks[:,0].shape[0]) 
             pcd_last = np.mean(pcds[:,self.session])    
         # take this and plot it, look at it etc...
         if self.objective == 'hits':
@@ -160,14 +161,14 @@ class InfoTrack:
         #np.save(os.path.join((save_path, 'user_embs.npy'), user_embs))
         #np.save(os.path.join((save_path, 'user_embs_prec.npy'), user_embs_prec))
 
-        torch.save(user_embs_for, os.path.join(save_path, 'user_embs_for.pt'))
-        torch.save(user_embs_inv, os.path.join(save_path, 'user_embs_inv.pt'))
-        torch.save(user_embs_prec_for, os.path.join(save_path, 'user_embs_prec_for.pt'))
-        torch.save(user_embs_prec_inv, os.path.join(save_path, 'user_embs_prec_inv.pt'))
-        np.save(os.path.join(save_path, 'gts.npy'), gts)
-        np.save(os.path.join(save_path, 'crit_nodes.npy'), crit_nodes)
-        np.save(os.path.join(save_path, 'crit_rels.npy'), crit_rels)
-        np.save(os.path.join(save_path, 'users.npy'), users)
+        #torch.save(user_embs_for, os.path.join(save_path, 'user_embs_for.pt'))
+        #torch.save(user_embs_inv, os.path.join(save_path, 'user_embs_inv.pt'))
+        #torch.save(user_embs_prec_for, os.path.join(save_path, 'user_embs_prec_for.pt'))
+        #torch.save(user_embs_prec_inv, os.path.join(save_path, 'user_embs_prec_inv.pt'))
+        #np.save(os.path.join(save_path, 'gts.npy'), gts)
+        #np.save(os.path.join(save_path, 'crit_nodes.npy'), crit_nodes)
+        #np.save(os.path.join(save_path, 'crit_rels.npy'), crit_rels)
+        #np.save(os.path.join(save_path, 'users.npy'), users)
 
         # plotting
         sns.set_theme()

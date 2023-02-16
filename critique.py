@@ -56,7 +56,7 @@ def get_args_critique():
     parser.add_argument('-fold', default=0, type=int, help='fold')
     parser.add_argument('-session', default=0, type=int, help='session used for per_session param_tuning')
     parser.add_argument('-cv_type', default='crit', type = str, help = 'train or crit')
-    parser.add_argument('-dataset', default='ML_FB', type=str, help="ML_FB or LFM")
+    parser.add_argument('-dataset', default='LFM', type=str, help="ML_FB or LFM")
     parser.add_argument('-model_type', default='simple', type=str, help="model type (svd, Simple, etc)")
     parser.add_argument('-reg_type', default='tilt', type=str, help="tilt or gauss")
     parser.add_argument('-loss_type', default='gauss', type=str, help="softplus or gauss")
@@ -184,8 +184,8 @@ def critiquing(crit_args, mode):
     items_h, items_t, id2index, index2id = get_array(model, dataloader, model_args, device, rec=True)
     item_emb = (items_h, items_t)
     total_items = items_h.shape[0]
-    print(items_t[id2index[2796]])
-    sys.exit()
+    #print(items_t[id2index[2796]])
+    #sys.exit()
 
     # get all relationships
     with torch.no_grad():
@@ -201,7 +201,7 @@ def critiquing(crit_args, mode):
 
 
     # all users, gt + data (based on test / train)
-    get_gt = GetGT(dataloader.fold, mode)
+    get_gt = GetGT(dataloader.fold, mode, model_args.dataset)
     data = dataloader.rec_test if mode == 'test' else dataloader.rec_val[:2000]
     all_users = np.unique(torch.tensor(data[:, 0]).cpu().numpy(), return_counts=False)
 
@@ -285,7 +285,9 @@ def critiquing(crit_args, mode):
                 # we should make sure not to recommend items in train set!
                 #rec_ids = [index2id[int(x)] for x in ranked[:rec_k]]
                 rec_facts = rec_fact_stack(rec_ids, item_facts_head, item_facts_tail)
-                if gt_facts.shape[0] <= 1: continue
+                try:
+                    if gt_facts.shape[0] <= 1: continue
+                except: continue
 
                 #crit = (gt, 0)
                 if crit_args.sim_k > 0:
@@ -353,5 +355,5 @@ def critiquing(crit_args, mode):
 
 if __name__ == '__main__':
     crit_args = get_args_critique()
-    #critiquing(crit_args, 'val')
-    critiquing(crit_args, 'test')
+    critiquing(crit_args, 'val')
+    #critiquing(crit_args, 'test')
