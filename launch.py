@@ -49,7 +49,7 @@ def get_model_args():
     # optimization, saving and data
     parser.add_argument('-epochs', default=30, type=int, help="number of epochs")
     parser.add_argument('-save_each', default=1, type=int, help="validate every k epochs")
-    parser.add_argument('-dataset', default='LFM', type=str, help="dataset name")
+    parser.add_argument('-dataset', default='AB', type=str, help="dataset name")
     parser.add_argument('-stop_width', default=4, type=int, help="number of SAVES where test is worse for early stopping")
     #parser.add_argument('-fold', default=0, type=int, help="fold to use data from")
 

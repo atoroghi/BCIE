@@ -56,8 +56,6 @@ def tuner(args, tune_name, fold, epochs, batch, n, tune_type, param_tuning, sess
             gp_path = session_path
         elif param_tuning == 'together':
             gp_path = path
-    
-
     if os.path.isfile(os.path.join(gp_path, 'x_train.pt')):
         begin = False
         x_train = torch.load(os.path.join(gp_path, 'x_train.pt'))

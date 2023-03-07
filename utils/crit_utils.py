@@ -128,7 +128,7 @@ class InfoTrack:
             hr_last = (np.sum(ranks[:,self.session]<12, axis = 0) - np.sum(ranks[:,self.session-1]<12, axis = 0)) / (ranks[:,self.session].shape[0])
             pcd_last = np.mean(pcds[:,self.session])    
         elif self.param_tuning == 'together':
-            mrr_last = (np.mean(ranks[:,-1]) - np.mean(ranks[:,0]))
+            mrr_last = (np.mean(ranks[:,0]) - np.mean(ranks[:,-1]))
             temp = 0
             for i in range(1,self.sess_len+1):
                 temp += np.sum(ranks[:,i]<12, axis = 0) - np.sum(ranks[:,0]<12, axis = 0)
@@ -138,12 +138,12 @@ class InfoTrack:
         # take this and plot it, look at it etc...
         if self.objective == 'hits':
             print("last hit rate:")
-            print((np.sum(ranks[:,self.session]<12, axis = 0)/ (ranks[:,self.session].shape[0])))
+            print((np.sum(ranks[:,-1]<12, axis = 0)/ (ranks[:,self.session].shape[0])))
             np.save(os.path.join(save_path, 'stop_metric.npy'), hr_last)
             with open(os.path.join(save_path,'stop_metric.txt'), 'w') as f:
                 f.write(str(hr_last))
  
-        elif self.objective == 'ranks':
+        elif self.objective == 'rank':
             print("last rank average:")
             print(np.mean(ranks[:,-1]))
             np.save(os.path.join(save_path, 'stop_metric.npy'), mrr_last)
@@ -204,14 +204,30 @@ class InfoTrack:
 
         # plotting hitrate@10
         fig = plt.figure(figsize=(12,8), dpi=300)
-        ax5 = fig.add_subplot(111)
+        ax5 = fig.add_subplot(131)
+        ax6 = fig.add_subplot(132)
+        ax7 = fig.add_subplot(133)
         #ax5.set_yscale('log')
         hits_10 = np.sum(ranks<12 , axis =0) / (ranks[:,0].shape[0])
         ax5.errorbar(np.arange(hits_10.shape[0]), hits_10, linestyle='--', fmt = 'o')
         ax5.set_xlabel('Step', fontsize=16)
         ax5.set_ylabel('Hit Rate @ 10', fontsize=16)
-        plt.savefig(os.path.join(save_path, 'HR10.png'))
 
+
+
+
+        
+        hits_5 = np.sum(ranks<7 , axis =0) / (ranks[:,0].shape[0])
+        ax6.errorbar(np.arange(hits_5.shape[0]), hits_5, linestyle='--', fmt = 'o')
+        ax6.set_xlabel('Step', fontsize=16)
+        ax6.set_ylabel('Hit Rate @ 5', fontsize=16)
+
+        
+        hits_20 = np.sum(ranks<22 , axis =0) / (ranks[:,0].shape[0])
+        ax7.errorbar(np.arange(hits_20.shape[0]), hits_20, linestyle='--', fmt = 'o')
+        ax7.set_xlabel('Step', fontsize=16)
+        ax7.set_ylabel('Hit Rate @ 20', fontsize=16)
+        plt.savefig(os.path.join(save_path, 'HR20.png'))
         # same plot but instead of CIs, errorbars are STD
 
         #fig = plt.figure(figsize=(12,8), dpi=300)

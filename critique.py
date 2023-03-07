@@ -15,15 +15,15 @@ from utils.crit_utils import InfoTrack, fact_stack, rec_fact_stack, get_d, fake_
 
 def get_args_critique():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-load_name', default='results/tuned/tilt_small/fold_0/train/train_21', type=str, help='name of folder where model is')
-    parser.add_argument('-test_name', default=None, type=str, help='name of folder where model is')
+    parser.add_argument('-load_name', default='results/tuned6/tilt_small/fold_0/train_ab_indirect/../train/train_114', type=str, help='name of folder where model is')
+    parser.add_argument('-test_name', default='results/tuned6/tilt_small/fold_0/train_ab_indirect/test_results', type=str, help='name of folder where model is')
     parser.add_argument('-objective', default='hits', type=str, help='hits or rank')
 
-    parser.add_argument('-user_prec', default=42123.409928333158, type=float, help='prior cov')
-    parser.add_argument('-default_prec', default=11292.058464079433, type=float, help='likelihood precision')
+    parser.add_argument('-user_prec', default=5.2724506061840115, type=float, help='prior cov')
+    parser.add_argument('-default_prec', default=1.1108590206566038, type=float, help='likelihood precision')
     #parser.add_argument('-user_prec', default=0.010857149510475995, type=float, help='prior cov')
     #parser.add_argument('-default_prec', default=1.0042732995119225e-05, type=float, help='likelihood precision')
-    parser.add_argument('-z_prec', default=2.0, type=float, help='item distribution precision indirect case')
+    parser.add_argument('-z_prec', default=983.1839340723782, type=float, help='item distribution precision indirect case')
     parser.add_argument('-z_mean', default=0.0, type=float, help='item distribution mean indirect case')
 
     parser.add_argument('-etta', default=1.0, type=float, help='Precision for Laplace Approximation')
@@ -51,12 +51,12 @@ def get_args_critique():
     parser.add_argument('-folds', default=5, type=int, help='no of folds')
     parser.add_argument('-epochs_all', default=120, type=int, help='no of total epochs')
     parser.add_argument('-tune_type', default='two_stage', type=str, help='two_stage or joint')
-    parser.add_argument('-param_tuning', default='per_session', type=str, help='per_session or together')
+    parser.add_argument('-param_tuning', default='together', type=str, help='per_session or together')
     parser.add_argument('-name', default='diff', type=str, help='name of current test')
     parser.add_argument('-fold', default=0, type=int, help='fold')
     parser.add_argument('-session', default=0, type=int, help='session used for per_session param_tuning')
     parser.add_argument('-cv_type', default='crit', type = str, help = 'train or crit')
-    parser.add_argument('-dataset', default='LFM', type=str, help="ML_FB or LFM")
+    parser.add_argument('-dataset', default='AB', type=str, help="ML_FB or LFM")
     parser.add_argument('-model_type', default='simple', type=str, help="model type (svd, Simple, etc)")
     parser.add_argument('-reg_type', default='tilt', type=str, help="tilt or gauss")
     parser.add_argument('-loss_type', default='gauss', type=str, help="softplus or gauss")
@@ -175,17 +175,46 @@ def critiquing(crit_args, mode):
     # load model
     model_path = os.path.join(crit_args.load_name, 'models/best_model.pt')
     model = torch.load(model_path).to(device)
-
     # load dataset + dictionaries
     dataloader = DataLoader(model_args)
     (item_facts_head, item_facts_tail, obj2items, pop_counts) = get_dics(model_args)
+
 
     # make arrays with embeddings, and dict to map 
     items_h, items_t, id2index, index2id = get_array(model, dataloader, model_args, device, rec=True)
     item_emb = (items_h, items_t)
     total_items = items_h.shape[0]
-    #print(items_t[id2index[2796]])
-    #sys.exit()
+#
+    #pos_inds_japan = obj2items[27394][:10]
+    #pos_inds_otomo = obj2items[49483][:10]
+    #pos_inds_hashimoto = obj2items[33235][:10] 
+#
+    ##pulp fiction , # Star Wars I , Pirates of Car. I, Terminator, Shawshank,Leon, Birds, SpiderMan2, E.T., KillBill2  
+    #neg_inds = [8640,7033,15574,12180, 16244, 12030, 14924, 4320, 16367, 17007]
+    #neg_embs_f = []
+    #neg_embs_inv = []
+    #for ind in neg_inds:
+    #    neg_embs_f.append(get_emb(ind, model, device)[0])
+    #    neg_embs_inv.append(get_emb(ind, model, device)[1])
+    #pos_embs_japan_f = []; pos_embs_japan_inv = []; pos_embs_otomo_f = []; pos_embs_otomo_inv = []; pos_embs_hashimoto_f = []; pos_embs_hashimoto_inv = []
+    #for ind in pos_inds_japan:
+    #    pos_embs_japan_f.append(get_emb(ind, model, device)[0])
+    #    pos_embs_japan_inv.append(get_emb(ind, model, device)[1])
+    #for ind in pos_inds_otomo:
+    #    pos_embs_otomo_f.append(get_emb(ind, model, device)[0])
+    #    pos_embs_otomo_inv.append(get_emb(ind, model, device)[1])
+    #for ind in pos_inds_hashimoto:
+    #    pos_embs_hashimoto_f.append(get_emb(ind, model, device)[0])
+    #    pos_embs_hashimoto_inv.append(get_emb(ind, model, device)[1])
+    #torch.save(neg_embs_f, os.path.join(save_path, 'neg_embs_for.pt'))
+    #torch.save(neg_embs_inv, os.path.join(save_path, 'neg_embs_inv.pt'))
+    #torch.save(pos_embs_japan_f, os.path.join(save_path, 'pos_embs_japan_f.pt'))
+    #torch.save(pos_embs_japan_inv, os.path.join(save_path, 'pos_embs_japan_inv.pt'))
+    #torch.save(pos_embs_otomo_f, os.path.join(save_path, 'pos_embs_otomo_f.pt'))
+    #torch.save(pos_embs_otomo_inv, os.path.join(save_path, 'pos_embs_otomo_inv.pt'))
+    #torch.save(pos_embs_hashimoto_f, os.path.join(save_path, 'pos_embs_hashimoto_f.pt'))
+    #torch.save(pos_embs_hashimoto_inv, os.path.join(save_path, 'pos_embs_hashimoto_inv.pt'))
+#
 
     # get all relationships
     with torch.no_grad():
@@ -235,7 +264,6 @@ def critiquing(crit_args, mode):
         for j, gt in enumerate(val_or_test_gt):
             #if j >1 : 
                 #sys.exit()
-            #print("gt:", gt)
 
             # get all triplets w gt
             gt_ind = id2index[gt]
@@ -355,5 +383,5 @@ def critiquing(crit_args, mode):
 
 if __name__ == '__main__':
     crit_args = get_args_critique()
-    critiquing(crit_args, 'val')
-    #critiquing(crit_args, 'test')
+    #critiquing(crit_args, 'val')
+    critiquing(crit_args, 'test')

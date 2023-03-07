@@ -19,6 +19,10 @@ class DataLoader:
         self.rec_train = np.load(os.path.join(path, 'train.npy'), allow_pickle=True)
         self.rec_test = np.load(os.path.join(path, 'test.npy'), allow_pickle=True)
         self.rec_val = np.load(os.path.join(path, 'val.npy'), allow_pickle=True)
+        #print("num_items")
+        #print(np.unique(self.rec_train[:,2]).shape)
+        #print("num_users")
+        #print(np.unique(self.rec_train[:,0]).shape)
 
         # load data for training
         if args.kg == 'kg':

@@ -168,7 +168,6 @@ class ScriptCall:
         crit_test_names, crit_load_names, model_test_names = [], [], []
         train_path = os.path.join(self.path, 'train')
 
-
         # params[0] has cv_type == crit and param[1] has cv_type ==1 so we need to do this twice
         for i in range(p.shape[0]): 
             # convert gp [0, 1] to proper parameter vals

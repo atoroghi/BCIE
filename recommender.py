@@ -62,7 +62,7 @@ def crit_selector(gt_facts, rec_facts, critique_mode, pop_counts):
 
         for i, ind in enumerate(inds):
             if pop_counts[get_node(gt_facts[i])] > most_pop: best_ind = inds[i]
-        return return_crit(gt_facts[best_ind]), gt_facts[np.argmin(count)]
+        return return_crit(gt_facts[best_ind]), gt_facts[best_ind]
     
     # select tripet that is least popular
     if critique_mode == 'antipop':
@@ -71,7 +71,7 @@ def crit_selector(gt_facts, rec_facts, critique_mode, pop_counts):
 
         for i, ind in enumerate(inds):
             if pop_counts[get_node(gt_facts[i])] < most_pop: best_ind = inds[i]
-        return return_crit(gt_facts[best_ind]), gt_facts[np.argmin(count)]
+        return return_crit(gt_facts[best_ind]), gt_facts[best_ind]
 
     # get triplet that has least similarity
     if critique_mode == 'diff': return return_crit(gt_facts[np.argmin(count)]), gt_facts[np.argmin(count)]
