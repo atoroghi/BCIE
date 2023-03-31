@@ -203,7 +203,7 @@ def test(model, dataloader, epoch, args, mode, device):
         item_emb = (rec_h, rec_t) #if i == 0 else (kg_h, kg_t)
 
         for j, test_item in enumerate(test_items):
-            if j > 100: break
+            #if j > 100: break
             #if j%100 == 0: print('{:.5f} {:.5f}'.format(j/test_items.shape[0], (time.time()-t0) / 60))
             
 

@@ -1,5 +1,6 @@
 import os, time, sys
 from SimplE import SimplE
+from ComplEx import ComplEx
 from utils import loss_save
 from WRMF_torch import wrmf
 from SVD_torch import svd
@@ -24,15 +25,15 @@ def train(dataloader, args, device='cuda'):
         svd(dataloader, args, 'val', device)
     elif args.model_type == 'pop':
         pop(dataloader, args, 'val', device)
-    elif args.model_type == 'simple':
+    elif args.model_type == 'simple' or args.model_type == 'complex':
         model = SimplE(dataloader, args, device)
-
+        if args.model_type == 'complex':
+            model = ComplEx(dataloader, args, device)
         if args.optim_type == 'adagrad':
             optimizer = torch.optim.Adagrad(
                 model.parameters(), lr=args.lr, initial_accumulator_value=0.1)
         elif args.optim_type == 'adam':
             optimizer = torch.optim.Adagrad(model.parameters(), lr = args.lr)
-
         #path = os.path.join('results', str(args.test_name))
         path = str(args.test_name)
         os.makedirs(path, exist_ok=True)

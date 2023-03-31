@@ -32,7 +32,7 @@ def get_model_args():
     parser.add_argument('-lam', default=100, type=int, help="lam for WRMF")
     
     # other hyper-params
-    parser.add_argument('-model_type', default='simple', type=str, help="model type (svd, simple, etc)")
+    parser.add_argument('-model_type', default='simple', type=str, help="model type (svd, simple, complex, etc)")
     parser.add_argument('-reg_type', default='tilt', type=str, help="tilt or gauss")
     parser.add_argument('-loss_type', default='gauss', type=str, help="softplus or gauss")
     parser.add_argument('-reduce_type', default='sum', type=str, help="sum or mean")
@@ -119,7 +119,7 @@ def main(args):
     save_hyperparams(save_path, args)
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    
+
     # print important hyperparameters
     print('lr {:.7f}, init scale: {:.7f}, batch size: {}'. format(args.lr, args.init_scale, args.batch_size))
     dataloader = DataLoader(args)

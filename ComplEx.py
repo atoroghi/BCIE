@@ -3,9 +3,9 @@ import torch.nn as nn
 import numpy as np
 import torch.nn.functional as F
 
-class SimplE(nn.Module):
+class ComplEx(nn.Module):
     def __init__(self, dataloader, args, device):
-        super(SimplE, self).__init__()
+        super(ComplEx, self).__init__()
         self.num_ent = dataloader.num_item
         self.num_rel = dataloader.num_rel
         self.emb_dim = args.emb_dim
@@ -15,10 +15,10 @@ class SimplE(nn.Module):
         self.device = device
         self.hinge_margin = args.hinge_margin
         self.learning_rel = args.learning_rel
-
+        # ent_h embs is the real part of the embedding and ent_t embs is the imaginary part of the embedding
         self.ent_h_embs   = nn.Embedding(self.num_ent, args.emb_dim).to(device)
         self.ent_t_embs   = nn.Embedding(self.num_ent, args.emb_dim).to(device)
-        
+        # rel_embs is the real part of the embedding and rel_inv_embs is the imaginary part of the embedding
         self.rel_embs     = nn.Embedding(self.num_rel, args.emb_dim).to(device)
         self.rel_inv_embs = nn.Embedding(self.num_rel, args.emb_dim).to(device)
 
@@ -42,22 +42,25 @@ class SimplE(nn.Module):
 
 
     def forward(self, heads, rels, tails):
-        hh_embs = self.ent_h_embs(heads)
-        ht_embs = self.ent_h_embs(tails)
-        th_embs = self.ent_t_embs(heads)
-        tt_embs = self.ent_t_embs(tails)
-        r_embs = self.rel_embs(rels)
-        r_inv_embs = self.rel_inv_embs(rels)
+        # real of head
+        h_real = self.ent_h_embs(heads)
+        # real of tail
+        t_real = self.ent_h_embs(tails)
+        #img of head
+        h_img = self.ent_t_embs(heads)
+        #img of tail
+        t_img = self.ent_t_embs(tails)
+        r_real = self.rel_embs(rels)
+        r_img = self.rel_inv_embs(rels)
 
         if self.learning_rel == 'freeze':
-            for_prod = torch.sum(hh_embs * tt_embs, dim=1)
-            return torch.clamp(for_prod, -20, 20)
+            torch.sum(
+                h_real * t_real + h_img * t_img 
+                + h_real * t_img - h_img * t_real, dim=1)
         else:
-            for_prod = torch.sum(hh_embs * r_embs * tt_embs, dim=1)
-            inv_prod = torch.sum(ht_embs * r_inv_embs * th_embs, dim=1)
-            return torch.clamp((for_prod + inv_prod) / 2, -20, 20) 
-
-
+            return torch.sum(
+                r_real * h_real * t_real + r_real * h_img * t_img 
+                + r_img * h_real * t_img - r_img * h_img * t_real, dim=1)
 
     def loss(self, score, labels):
 

@@ -80,17 +80,17 @@ class Params:
                     'lam' : ([2, 8], int, 2),
                 }
 
-            elif args.model_type == 'simple':
+            elif args.model_type == 'simple' or args.model_type == 'complex':
                 self.param_dict = {
                     # name : (range, type, base)
-                    'lr' : ([-6, 1], float, 10),
+                    'lr' : ([-3, 1], float, 10),
                     'init_scale' : ([-6, 1], float, 10),
                     'batch_size' : ([8, 11], int, 2),
                     #'neg_power' : ([0, 1], float, None),
-                    'emb_dim' : ([2, 5], int, 2),
+                    'emb_dim' : ([4, 7], int, 2),
                     #'reg_lambda' : ([-7, 1], float, 10),
                     #'kg_lambda' : ([-7, 1], float, 10),
-                    'neg_ratio' : ([15, 45], int, None),
+                    'neg_ratio' : ([10, 45], int, None),
                 }
 
     # TODO: this offset is bad and a quick patch
@@ -156,6 +156,7 @@ class ScriptCall:
 
             sub = subprocess.Popen(proc)
             subs.append(sub)
+        print(proc)
 
         for proc in subs:
             proc.wait() 
@@ -198,6 +199,7 @@ class ScriptCall:
                 folders = [f for f in folders if 'train' in f]
 
                 model_test_name = os.path.join(self.tune_name,'train', 'train_{}'.format(len(folders) + i))
+# changing this for now
             (best_score, best_run, best_epoch, best_folder) = best_model(train_path)
             crit_load_name = os.path.join(train_path, best_folder)
             crit_test_name = os.path.join(self.tune_name, 'train_{}'.format(len(folders) + i))

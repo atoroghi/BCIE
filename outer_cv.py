@@ -42,7 +42,7 @@ def test_fold(path, tune_name, best_folder, best_epoch, cv_type):
             for key in yml.keys():
                 setattr(args, key, yml[key])
         dataloader = DataLoader(args)
-        if args.model_type == 'simple':
+        if args.model_type == 'simple' or args.model_type == 'complex':
             load_path = os.path.join(path, 'models', 'best_model.pt')
             model = torch.load(load_path).to(device)
             test(model, dataloader, best_epoch, args, 'test', device)
@@ -80,24 +80,26 @@ def best_model(path):
     
     folders = os.listdir(path)
     folders = [f for f in folders if 'train' in f]
-    folders = sorted(folders, key=natural_key)
+    if len(folders) == 0:
+        return (0, 0, 0, path)
+    else:
+        folders = sorted(folders, key=natural_key)
+        # get performance for each model in a fold
+        perf, arg_perf = [], []
 
-    # get performance for each model in a fold
-    perf, arg_perf = [], []
+        for f in folders:
+            try:
+                scores = np.load(os.path.join(path, f, 'stop_metric.npy'), allow_pickle=True)
+                perf.append(np.max(scores))
+                arg_perf.append(np.argmax(scores))
+            except:
+                print('skipped: ', f)
 
-    for f in folders:
-        try:
-            scores = np.load(os.path.join(path, f, 'stop_metric.npy'), allow_pickle=True)
-            perf.append(np.max(scores))
-            arg_perf.append(np.argmax(scores))
-        except:
-            print('skipped: ', f)
-
-    best_run = np.argmax(perf)
-    best_score = np.max(perf)
-    best_epoch = arg_perf[np.argmax(perf)]
+        best_run = np.argmax(perf)
+        best_score = np.max(perf)
+        best_epoch = arg_perf[np.argmax(perf)]
     # best_folder is not necessarily best_run
-    return (best_score, best_run, best_epoch, folders[best_run])
+        return (best_score, best_run, best_epoch, folders[best_run])
 def plotter(cv_tune_name, folds):
     models_folder = os.path.join('results', cv_tune_name)
     tune_names = os.listdir(models_folder)
