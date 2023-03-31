@@ -84,7 +84,7 @@ class Params:
                 self.param_dict = {
                     # name : (range, type, base)
                     'lr' : ([-3, 1], float, 10),
-                    'init_scale' : ([-6, 1], float, 10),
+                    #'init_scale' : ([-6, 1], float, 10),
                     'batch_size' : ([8, 11], int, 2),
                     #'neg_power' : ([0, 1], float, None),
                     'emb_dim' : ([4, 7], int, 2),
@@ -156,7 +156,6 @@ class ScriptCall:
 
             sub = subprocess.Popen(proc)
             subs.append(sub)
-        print(proc)
 
         for proc in subs:
             proc.wait() 

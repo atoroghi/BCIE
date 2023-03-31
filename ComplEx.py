@@ -33,8 +33,16 @@ class ComplEx(nn.Module):
 
         # init weights
         if args.init_type == 'uniform':
-            for w in weights:
-                nn.init.uniform_(w, -args.init_scale, args.init_scale)
+            self.ent_h_embs   = nn.Embedding(self.num_ent, args.emb_dim).to(device)
+            self.ent_t_embs   = nn.Embedding(self.num_ent, args.emb_dim).to(device)
+            self.rel_embs     = nn.Embedding(self.num_rel, args.emb_dim).to(device)
+            self.rel_inv_embs = nn.Embedding(self.num_rel, args.emb_dim).to(device)
+
+            sqrt_size = 6.0 / np.sqrt(self.emb_dim)
+            nn.init.uniform_(self.ent_h_embs.weight.data, -sqrt_size, sqrt_size)
+            nn.init.uniform_(self.ent_t_embs.weight.data, -sqrt_size, sqrt_size)
+            nn.init.uniform_(self.rel_embs.weight.data, -sqrt_size, sqrt_size)
+            nn.init.uniform_(self.rel_inv_embs.weight.data, -sqrt_size, sqrt_size)
 
         elif args.init_type == 'normal':
             for w in weights:
