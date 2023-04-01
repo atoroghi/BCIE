@@ -66,9 +66,9 @@ class ComplEx(nn.Module):
                 h_real * t_real + h_img * t_img 
                 + h_real * t_img - h_img * t_real, dim=1)
         else:
-            return torch.sum(
+            return torch.clamp(torch.sum(
                 r_real * h_real * t_real + r_real * h_img * t_img 
-                + r_img * h_real * t_img - r_img * h_img * t_real, dim=1)
+                + r_img * h_real * t_img - r_img * h_img * t_real, dim=1), -20, 20)
 
     def loss(self, score, labels):
 
