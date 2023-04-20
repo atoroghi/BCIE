@@ -6,3 +6,10 @@ In order to perform critiquing using the BCIE model, you can follow these steps:
 ~~~
 pip install -r requirements.txt
 ~~~
+## 1- Download or Preprocess the Datasets
+You can either download our preprocessed datasets from here, or do the preprocessing on your own. The entity matching data are obtained from [KB4rec](https://github.com/RUCDM/KB4Rec).
+~~~
+python proc.py
+python LFM.py
+python AB.py
+~~~
