@@ -2,5 +2,5 @@ This repository contains the implementation of the paper Bayesian Critiquing wit
 
 In order to perform critiquing using the BCIE model, you can follow these steps:
 
-##1- Install requirements
+## 1- Install requirements
 pip install -r requirements.txt
