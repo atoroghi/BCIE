@@ -1,4 +1,4 @@
-Readme Under Construction!
+**Readme Under Construction!**
 
 
 This repository contains the implementation of the paper Bayesian Critiquing with Indirect Evidence (BCIE) from SIGIR 2023.
