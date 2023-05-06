@@ -1,4 +1,5 @@
-import os, sys, re, pickle, torch
+import os, sys, re, pickle
+sys.path.append('..')
 import numpy as np
 from numpy.random import default_rng
 

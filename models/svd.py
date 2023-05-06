@@ -1,4 +1,5 @@
 import sys, torch
+sys.path.append('..')
 from tester import GetGT, RankTrack, get_rank 
 from proc import adj_matrix
 import numpy as np
