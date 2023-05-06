@@ -15,7 +15,8 @@ You can either download our preprocessed datasets from here, or do the preproces
 python proc.py
 python AB.py
 ~~~
-## 3- The first step of BCIE's framework is training a SimplE model to obtain KG embedding. You can either download our trained models from here, or run the following command to perform it yourself. Running this code, the inner loop of the nested cross-validation will be performed which is used to perform hyperparameter tuning on the validation data. You can identify the hyperparameters that you want to be tuned by uncommenting the respective key and value pairs in the *param_dict* from *tune_utils.py*
+## 3- Pre-critiquing
+The first step of BCIE's framework is training a SimplE model to obtain KG embedding. You can either download our trained models from here, or run the following command to perform it yourself. Running this code, the inner loop of the nested cross-validation will be performed which is used to perform hyperparameter tuning on the validation data. You can identify the hyperparameters that you want to be tuned by uncommenting the respective key and value pairs in the *param_dict* from *tune_utils.py*
 ~~~
 python inner_cv.py -cv_type train
 ~~~
