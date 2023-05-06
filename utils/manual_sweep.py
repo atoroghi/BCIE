@@ -1,4 +1,5 @@
 import os, re, yaml, argparse, torch, math, sys, subprocess
+sys.path.append('..')
 from random import Random
 import numpy as np
 import matplotlib.pyplot as plt
@@ -40,7 +41,6 @@ def test_fold(path, tune_name, best_folder, best_epoch):
     with open(os.path.join(best_path, 'crit hps.yml'), 'r') as f:
         yml = yaml.safe_load(f)
         for key in yml.keys():
-            #TODO: fix this, while saving the yml file the numerical values shouldn't be strings
             if key in ['session_length', 'multi_k', 'num_users', 'sim_k', 'batch', 'samples', 'folds', 'epochs_all']:
                 setattr(args, key, int(yml[key]))
             else:
@@ -97,7 +97,6 @@ def best_model(path):
     # best_folder is not necessarily best_run
     return (best_score, best_run, best_epoch, folders[best_run])
     
-# TODO: clean this up, it's bad
 if __name__ == '__main__':
     args = get_args()
     cv_tune_name = args.cv_tune_name

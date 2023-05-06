@@ -1,4 +1,5 @@
 import os, re, yaml, argparse, torch, math, sys
+sys.path.append('..')
 from random import Random
 import numpy as np
 import matplotlib.pyplot as plt
@@ -41,7 +42,6 @@ def test_fold(path, tune_name, cv_type):
         with open(os.path.join(path, 'crit hps.yml'), 'r') as f:
             yml = yaml.safe_load(f)
             for key in yml.keys():
-                #TODO: fix this, while saving the yml file the numerical values shouldn't be strings
                 if key in ['session_length', 'multi_k', 'num_users', 'sim_k', 'batch', 'samples', 'session']:
                     setattr(args, key, int(yml[key]))
                 else:

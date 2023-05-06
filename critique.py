@@ -141,7 +141,6 @@ def critiquing(crit_args, mode):
             if key != "test_name":
                 setattr(model_args, key, yml[key])
 
-    # TODO: save these in yaml file
     model_args.learning_rel = 'learn'
     model_args.type_checking = 'yes'
 
@@ -246,7 +245,7 @@ def critiquing(crit_args, mode):
     # main test loop (each user)
 ##############################################################
     t0 = time.time()
-    rec_k = 10 # TODO: (number of recommended items to user) this must be an hp
+    rec_k = 10 
     #np.random.shuffle(all_users)
     for i, user in enumerate(all_users):
         #print("user")

@@ -40,7 +40,6 @@ def train(dataloader, args, device='cuda'):
         os.makedirs(os.path.join(path, 'models'), exist_ok=True)
 
         # main training loop
-        # TODO: track these metrics using a class
         rec_score_track, kg_score_track, reg_track = [], [], []
         for epoch in range(args.epochs + 1):
             rec_score_temp, kg_score_temp, reg_temp = [], [], []

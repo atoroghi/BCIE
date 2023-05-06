@@ -250,7 +250,7 @@ if __name__ == '__main__':
             # get correct freebase id from data
             fb_http = ml2fb_map[rec[i,2]]
             fb_id = fb2id_map[fb_http]
-            # TODO: is this right
+
             rec[i,2] = fb_id
             i += 1
         # remove from rec (only use movies that are in kg)

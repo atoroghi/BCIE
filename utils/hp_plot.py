@@ -1,4 +1,5 @@
 import os, sys, torch
+sys.path.append('..')
 import numpy as np
 import matplotlib.pyplot as plt
 

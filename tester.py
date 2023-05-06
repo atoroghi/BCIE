@@ -72,7 +72,6 @@ class GetGT:
             train_gt = self.maps[0][test_item]
             test_gt = self.maps[1][test_item]
 
-            # TODO: this is bad practice...
             # if user is in validation, filter this too... 
             try: 
                 val_gt = self.maps[2][test_item]

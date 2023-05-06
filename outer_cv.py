@@ -61,7 +61,6 @@ def test_fold(path, tune_name, best_folder, best_epoch, cv_type):
         with open(os.path.join(path, 'crit hps.yml'), 'r') as f:
             yml = yaml.safe_load(f)
             for key in yml.keys():
-                #TODO: fix this, while saving the yml file the numerical values shouldn't be strings
                 if key in ['session_length', 'multi_k', 'num_users', 'sim_k', 'batch', 'samples', 'session']:
                     setattr(args, key, int(yml[key]))
                 else:
@@ -133,7 +132,6 @@ def plotter(cv_tune_name, folds):
 
 
     
-# TODO: clean this up, it's bad
 if __name__ == '__main__':
     args = get_args()
     cv_tune_name = args.cv_tune_name

@@ -1,6 +1,6 @@
 import os, sys, argparse
 from proc import dataset_fold
-from tune import tuner
+from tune.tune import tuner
 from launch import get_model_args, model_arg_asserts
 from critique import get_args_critique, crit_arg_asserts
 
@@ -63,7 +63,6 @@ def get_args_inner():
     return args
 
 
-# TODO: passing in of name is terrible 
 if __name__ == '__main__':
     # for quick testing
     #cluster_check = False 

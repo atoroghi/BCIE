@@ -43,7 +43,6 @@ def get_model_args():
     parser.add_argument('-type_checking', default='check', type=str, help="check or no")
     parser.add_argument('-kg', default='kg', type=str, help="kg or no_kg")
     
-    # TODO: is this used now ??
     #parser.add_argument('-type_checking',default='no', type=str, help="doing type checking or not")
 
     # optimization, saving and data
@@ -115,7 +114,7 @@ def main(args):
     os.makedirs('results', exist_ok=True)
     #save_path = os.path.join("results", str(args.test_name))
     save_path = str(args.test_name)
-    os.makedirs(save_path, exist_ok=True) # TODO: update this is continue training...
+    os.makedirs(save_path, exist_ok=True) 
     save_hyperparams(save_path, args)
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')

@@ -1,6 +1,7 @@
 import os, re, sys, yaml, torch, subprocess, copy
+sys.path.append('..')
 import numpy as np
-from gp import normal2param
+from tune.gp import normal2param
 from outer_cv import best_model
 
 # sorts files aplpha-numerically
@@ -15,7 +16,7 @@ class Params:
         self.no_hps = args.no_hps
 
 
-        # TODO: don't tune hp's that we don't use
+        # don't tune hp's that we don't use
         if cv_type == 'crit': 
             temp_dict = {}
             temp_dict_f = {}
@@ -58,7 +59,6 @@ class Params:
 
 
 
-            # TODO: better asserts to automatically set hps
             if 'z_prec' in self.param_dict[0]:
                 assert args.evidence_type == 'indirect'
             if 'etta' in self.param_dict[0]:
@@ -93,7 +93,6 @@ class Params:
                     'neg_ratio' : ([10, 20], int, None),
                 }
 
-    # TODO: this offset is bad and a quick patch
     # take params from gp to real values
     def convert(self, i, po, p, args, session, offset=0):
         if self.cv_type == 'train':
@@ -124,7 +123,6 @@ class Params:
 # main class to launch code that gp is trying to opimize
 class ScriptCall:
     def __init__(self, args, params, tune_name, fold_num, path, tune_type, param_tuning, session_length, session, cv_type):
-        # TODO: unpack params into model and crit
         self.args = args
         self.tune_name_temp = tune_name
         self.fold_num = fold_num

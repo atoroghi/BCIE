@@ -1,10 +1,11 @@
 #from concurrent.futures import process
 import os, sys, torch, gpytorch, argparse, math, subprocess, re, pickle, yaml
+sys.path.append('..')
 import numpy as np
 import matplotlib.pyplot as plt
 #from varname import nameof
-from gp import normal2param, train_sample_gp
-from tune_utils import Params, ScriptCall
+from tune.gp import normal2param, train_sample_gp
+from tune.tune_utils import Params, ScriptCall
 from outer_cv import best_model 
 
 # sorts files aplpha-numerically

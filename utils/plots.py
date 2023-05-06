@@ -1,4 +1,5 @@
 import os, sys, pickle, re, torch
+sys.path.append('..')
 import seaborn as sns
 import matplotlib.pyplot as plt 
 import numpy as np
@@ -75,7 +76,6 @@ def temporal_plot(test_name, k):
     plt.savefig(os.path.join(path, 'hits_epoch.jpg'))
     plt.close()
 
-# TODO: this is a bad function
 # save metric info
 def save_metrics(rank_track, test_name, epoch, mode, k=10):
     # for train loop

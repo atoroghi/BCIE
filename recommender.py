@@ -38,7 +38,6 @@ def test_crit(gt, model, item_emb, index2id, device):
 # ht facts is facts of gt, other are facts about top k rec (naming is terrible)
 # pop count is number of connections for each node in kg
 def crit_selector(gt_facts, rec_facts, critique_mode, pop_counts):
-    # TODO: there must be a better way...
     # get counts for each triplet
     count = np.zeros(gt_facts.shape[0])
     for i in range(gt_facts.shape[0]):
@@ -48,7 +47,7 @@ def crit_selector(gt_facts, rec_facts, critique_mode, pop_counts):
 
     # inds that are unique (aren't in all rec_facts)        
     inds = np.where(count < len(rec_facts))[0]
-    #inds = np.random.permutation(inds) # TODO: this is extra silly
+    #inds = np.random.permutation(inds) 
 
     # select random triplet
     if critique_mode == 'random': 

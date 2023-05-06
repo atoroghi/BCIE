@@ -1,4 +1,5 @@
 import os, re, pickle, sys, argparse
+sys.path.append('..')
 
 def get_args_review():
     parser = argparse.ArgumentParser()

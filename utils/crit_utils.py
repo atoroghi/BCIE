@@ -2,6 +2,7 @@ import os, sys, torch, pickle, time
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+sys.path.append('..')
 from tester import get_rank, get_rank_nongt
 
 # for tracking and saving important debug info
@@ -118,7 +119,6 @@ class InfoTrack:
         save_path = test_name
         os.makedirs(save_path, exist_ok=True)
 
-        # TODO: is this a good metric?
         # reduce track, save single number in stop_metric.npy
         #mrr_last = np.mean(1 / (ranks[:, -1] + 1))
         #mrr_last = (np.mean(ranks[:,0]) - np.mean(ranks[:,-1]))
@@ -252,7 +252,6 @@ def fact_stack(head, tail):
     if tail.shape[0] != 0:
         return np.hstack((tail, -np.ones((tail.shape[0], 1)))).astype(np.int32)
 
-# TODO: what does this do again?
 def rec_fact_stack(ids, items_facts_head, items_facts_tail):
     rec_facts = []
     for rec_id in ids:
@@ -278,7 +277,6 @@ def get_dics(args):
 
 # return info about each of the priors
 class Priors:
-    #TODO: this is for more complex prior
     def __init__(self, crit_args, model_args):
         # we assume this (this is a hp)
         self.user_prec_f = crit_args.user_prec * np.eye(model_args.emb_dim)
@@ -287,7 +285,6 @@ class Priors:
         # the model defines this. N(0, lambda*I)
         # prior over items for I^2
 
-        # TODO: resolve this
         #if crit_args.evidence_type == 'indirect':
         # Armin: shouldn't this be precision? so 1/reg_lambda ? 
         self.z_prec_f = model_args.reg_lambda * np.eye(model_args.emb_dim)
@@ -304,7 +301,6 @@ def get_d(model, crit, rel_emb, obj2items, get_emb, crit_args, model_args, devic
     if crit_args.critique_target == 'single':
         node_emb = get_emb(crit_node, model, device)
 
-        # TODO: this is bad bad bad bad bad 
         if crit_args.evidence_type == 'direct':
             d_f = rel_emb[0] * node_emb[1]
             d_inv = rel_emb[1] * node_emb[0]
@@ -312,7 +308,6 @@ def get_d(model, crit, rel_emb, obj2items, get_emb, crit_args, model_args, devic
             d_f = node_emb[1]
             d_inv = node_emb[0]
 
-    # TODO: clean this up.. too many lines!
     # make stack of likes * items related to feedback node
     elif crit_args.critique_target == 'multi':
         liked_items = obj2items[crit_node]
@@ -324,7 +319,6 @@ def get_d(model, crit, rel_emb, obj2items, get_emb, crit_args, model_args, devic
         liked_embeddings_list_f = []
         liked_embeddings_list_inv = []
 
-        # TODO: this should be random or something...
         for x in liked_items[:crit_args.multi_k]:
             liked_embeddings_list_f.append(get_emb(torch.tensor(x), model, device)[1])
             liked_embeddings_list_inv.append(get_emb(torch.tensor(x), model, device)[0])
@@ -444,7 +438,6 @@ def MNR_calculator(rank, total_items, all_gt):
 
 # we may want to use these again...
 def stack_emb(get_emb, model, items, device): # currying would be useful here
-    # TODO: this should be random....
     for i, x in enumerate(items[:10]):
         out = get_emb(torch.tensor(x), model, device)
         if i == 0:

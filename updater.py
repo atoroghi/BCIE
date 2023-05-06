@@ -7,7 +7,6 @@ import scipy.linalg as sp
 import sys
 
 # fast gaussian update
-# TODO: this is wrong, update tn
 def beta_update(update_info, sn, crit_args, model_args, device, update_type, map_finder, etta, alpha):
     if update_type == "gauss":
         #print(n, "this should be one for direct single")
@@ -89,7 +88,7 @@ def beta_update_indirect(update_info, sn, crit_args, model_args, device, update_
         # update z given evidence d
         #item_mean_f = evidence_f
         #item_mean_inv = evidence_inv
-        n = 1 # TODO: this is for later?
+        n = 1 
         # update mean of z given evidence d
         temp_f = (item_prec_f @ item_mean_f + n * prec_evidence @ evidence_f)
         mu_z_f = torch.inverse(item_prec_f + n * prec_evidence) @ temp_f 
@@ -255,7 +254,6 @@ def GDOPT(tau_prior, X, W,  etta, alpha):
 
 
 
-# TODO: no comments or explanation of how this is supposed to work
 class Updater:
     def __init__(self, X, y, mu_prior, tau_prior, crit_args, model_args, device, etta):
         self.X = X
@@ -311,11 +309,6 @@ class Updater:
         #prob2 = cp.Problem(cp.Minimize(objective_function),constraints)
         prob2 = cp.Problem(cp.Minimize(objective_function))
 
-        # TODO: this is bad 
-        # armin: this is bad, but it's because cvxpy is unstable with small 
-        # numbers and you have to scale the objective function if it fails. Clearly, the solution 
-        # doesn't change though. We should probably try more advanced solvers such as MOSEK
-        # http://ask.cvxr.com/t/scaling-and-numerical-stability/320/3
         #try:
         #	prob.solve(solver=cp.CVXOPT)
         #except: 

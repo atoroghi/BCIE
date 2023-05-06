@@ -1,4 +1,5 @@
 import torch, argparse, time, os, sys, yaml
+sys.path.append('..')
 from dataload import DataLoader
 from tester import test
 

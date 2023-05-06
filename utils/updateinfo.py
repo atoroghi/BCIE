@@ -1,4 +1,5 @@
 import sys, torch
+sys.path.append('..')
 import numpy as np
 
 def stack_(x):
@@ -50,7 +51,6 @@ class UpdateInfo:
     def get_priorinfo(self):
         return (self.user_emb_f[-1], self.user_emb_inv[-1]), (self.user_prec_f[-1], self.user_prec_inv[-1])
 
-    # TODO: stack rel
     # store either the user or feeback embs
     def store(self, user_emb=None, d=None, user_prec=None, crit_rel_emb=None, likelihood_prec=None, z_mean=None, z_prec=None):
         if user_emb is not None:

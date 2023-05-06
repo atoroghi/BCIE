@@ -118,7 +118,6 @@ class DataLoader:
     def get_negatives(self, pos):
         n = self.neg_ratio * pos.shape[0] # number of neg samples
         pos = np.repeat(np.copy(pos), self.neg_ratio, axis=0)
-        # TODO: switch to only modify tail (to make similar to svd)
         mask = np.random.randint(0, 2, size=(n))
         mask = np.vstack((mask, np.ones(n), 1 - mask)).T
 
@@ -146,7 +145,6 @@ class DataLoader:
         neg = pos * mask + samples * (1 - mask)
         return neg
 
-# TODO: merge these into a single class
 # treats head and tail as single dist
 class SingleSample:
     def __init__(self, data, power=0):
