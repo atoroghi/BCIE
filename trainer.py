@@ -1,10 +1,10 @@
 import os, time, sys
-from SimplE import SimplE
-from ComplEx import ComplEx
+from models.SimplE import SimplE
+from models.ComplEx import ComplEx
 from utils import loss_save
-from WRMF_torch import wrmf
-from SVD_torch import svd
-from POP_torch import pop
+from models.WRMF_torch import wrmf
+from models.SVD_torch import svd
+from models.POP_torch import pop
 import numpy as np
 from tqdm import tqdm
 import torch

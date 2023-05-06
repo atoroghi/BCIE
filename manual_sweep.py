@@ -6,8 +6,8 @@ from tester import test
 from trainer import train
 from dataload import DataLoader
 from sklearn.ensemble import RandomForestRegressor
-from svd import svd
-from WRMF_torch import wrmf
+from models.svd import svd
+from models.WRMF_torch import wrmf
 from critique import critiquing
 
 def natural_key(string_):
