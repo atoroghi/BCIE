@@ -6,9 +6,9 @@ from tester import test
 from trainer import train
 from dataload import DataLoader
 from sklearn.ensemble import RandomForestRegressor
-from SVD_torch import svd
-from WRMF_torch import wrmf
-from POP_torch import pop
+from models.SVD_torch import svd
+from models.WRMF_torch import wrmf
+from models.POP_torch import pop
 from critique import critiquing
 import seaborn as sns
 
@@ -86,20 +86,26 @@ def best_model(path):
         folders = sorted(folders, key=natural_key)
         # get performance for each model in a fold
         perf, arg_perf = [], []
+        folders_copy = folders.copy()
 
         for f in folders:
             try:
                 scores = np.load(os.path.join(path, f, 'stop_metric.npy'), allow_pickle=True)
                 perf.append(np.max(scores))
                 arg_perf.append(np.argmax(scores))
+
             except:
                 print('skipped: ', f)
+                folders_copy.remove(f)
+        
 
         best_run = np.argmax(perf)
         best_score = np.max(perf)
         best_epoch = arg_perf[np.argmax(perf)]
+        best_folder = folders_copy[best_run]
+
     # best_folder is not necessarily best_run
-        return (best_score, best_run, best_epoch, folders[best_run])
+        return (best_score, best_run, best_epoch, best_folder)
 def plotter(cv_tune_name, folds):
     models_folder = os.path.join('results', cv_tune_name)
     tune_names = os.listdir(models_folder)

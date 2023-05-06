@@ -5,7 +5,7 @@ from utils.plots import RankTrack, rank_plot, save_metrics
 # make array of all items to suggest (rec or all possible head tail)
 def get_array(model, dataloader, args, device, rec):
     if rec:
-        all_items = torch.tensor(dataloader.rec_train[:,2]).to(device)
+        all_items = torch.tensor(dataloader.rec_train[:,2].astype(np.int64)).to(device)
         items = torch.unique(all_items, sorted=False)
     else:
         print('error, kg tester not implimented')
@@ -187,7 +187,7 @@ def test(model, dataloader, epoch, args, mode, device):
     # all users to test rec on and all test triples to test kg on
     data = dataloader.rec_test if mode == 'test' else dataloader.rec_val
 
-    all_users = torch.tensor(data[:,0]).to('cuda')
+    all_users = torch.tensor(data[:,0].astype(np.int64)).to('cuda')
     users = torch.unique(all_users, sorted=False)
     kg_triples = None #dataloader.kg_test 
 
@@ -203,7 +203,7 @@ def test(model, dataloader, epoch, args, mode, device):
         item_emb = (rec_h, rec_t) #if i == 0 else (kg_h, kg_t)
 
         for j, test_item in enumerate(test_items):
-            if j > 100: break
+            #if j > 100: break
             #if j%100 == 0: print('{:.5f} {:.5f}'.format(j/test_items.shape[0], (time.time()-t0) / 60))
             
 

@@ -90,7 +90,7 @@ def beta_update_indirect(update_info, sn, crit_args, model_args, device, update_
         #item_mean_f = evidence_f
         #item_mean_inv = evidence_inv
         n = 1 # TODO: this is for later?
-
+        # update mean of z given evidence d
         temp_f = (item_prec_f @ item_mean_f + n * prec_evidence @ evidence_f)
         mu_z_f = torch.inverse(item_prec_f + n * prec_evidence) @ temp_f 
 

@@ -85,12 +85,12 @@ class Params:
                     # name : (range, type, base)
                     'lr' : ([-3, 1], float, 10),
                     #'init_scale' : ([-6, 1], float, 10),
-                    'batch_size' : ([8, 11], int, 2),
+                    'batch_size' : ([6, 9], int, 2),
                     #'neg_power' : ([0, 1], float, None),
                     'emb_dim' : ([4, 7], int, 2),
                     #'reg_lambda' : ([-7, 1], float, 10),
                     #'kg_lambda' : ([-7, 1], float, 10),
-                    'neg_ratio' : ([10, 45], int, None),
+                    'neg_ratio' : ([10, 20], int, None),
                 }
 
     # TODO: this offset is bad and a quick patch
