@@ -25,7 +25,8 @@ You can also train our baselines (WRMF and SVD) by specifying the corresponding 
 ~~~
 python outer_cv.py -cv_type train
 ~~~
-## 3- In order to perform critiquing tests, you can download our tuned hyperparameters for baselines and the BCIE model from here and test it on the test set by using:
+## 4- Critiquing
+In order to perform critiquing tests, you can download our tuned hyperparameters for baselines and the BCIE model from here and test it on the test set by using:
 ~~~
 python critique.py
 ~~~
