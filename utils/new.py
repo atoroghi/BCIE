@@ -1,5 +1,6 @@
 import numpy as np
 import os, sys, torch, gpytorch, argparse, math, subprocess, re, pickle, yaml
+sys.path.append('..')
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-tune_name', default="gausstypereg", type=str, help='gausstypereg or tilt for now')
